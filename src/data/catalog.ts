@@ -29,6 +29,33 @@ export function exercisePhotos(catalogId: string): [string, string] {
   return [`${PHOTOS}/${catalogId}/0.jpg`, `${PHOTOS}/${catalogId}/1.jpg`];
 }
 
+/** How a library exercise is done, and what it works (free-exercise-db's own file for it). */
+export interface ExerciseInfo {
+  instructions: string[];
+  primaryMuscles: string[];
+  secondaryMuscles: string[];
+}
+
+const infoCache = new Map<string, Promise<ExerciseInfo | null>>();
+
+/**
+ * Fetched when the exercise's pictures are opened rather than bundled (~575 KB for the library), from the same pinned
+ * commit as the photos; the service worker keeps it once seen. Null offline or when there's no file.
+ */
+export function loadExerciseInfo(catalogId: string): Promise<ExerciseInfo | null> {
+  let info = infoCache.get(catalogId);
+  if (!info) {
+    info = fetch(`${PHOTOS}/${encodeURIComponent(catalogId)}.json`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => (d && Array.isArray(d.instructions) ? { instructions: d.instructions, primaryMuscles: d.primaryMuscles ?? [], secondaryMuscles: d.secondaryMuscles ?? [] } : null))
+      .catch(() => null);
+    // A failure (offline) is tried again next time.
+    info.then((d) => d || infoCache.delete(catalogId));
+    infoCache.set(catalogId, info);
+  }
+  return info;
+}
+
 /**
  * BETA ONLY: shows ExerciseDB's anatomical GIFs (a 3D figure, working muscles in red) instead of the photos, for
  * exercises matched to theirs by name (exerciseMedia; the library's ahead of time by scripts/match-exercise-gifs.mjs). Their free V1 GIFs
@@ -71,6 +98,8 @@ const matchedByName = new Map<string, string | undefined>();
 export interface ExerciseMedia {
   gif?: string;
   photoId?: string;
+  /** The library entry whose instructions to show (`loadExerciseInfo`), whichever picture is shown. */
+  infoId?: string;
 }
 
 /**
@@ -83,7 +112,7 @@ export function exerciseMedia(
   index: GifCandidate[] | undefined,
 ): ExerciseMedia {
   const photoId = photoIdFor(exercise, catalog);
-  if (!USE_ANATOMICAL) return { photoId };
+  if (!USE_ANATOMICAL) return { photoId, infoId: photoId };
   // While the GIFs are on, one style only: no photos (unmatched exercises get the dumbbell).
   let gifId = photoId ? (exerciseGifs as Record<string, string>)[photoId] : undefined;
   if (!gifId && !exercise.catalogId && index) {
@@ -94,7 +123,7 @@ export function exerciseMedia(
     }
     gifId = matchedByName.get(key);
   }
-  return gifId ? { gif: `${GIFS}/${gifId}.gif` } : {};
+  return gifId ? { gif: `${GIFS}/${gifId}.gif`, infoId: photoId } : {};
 }
 
 /** Common lifts, offered in the exercise search before anything is typed (a new account has no exercises yet). */

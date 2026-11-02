@@ -1,5 +1,9 @@
 import {
+  deleteUser,
   getRedirectResult,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
+  revokeAccessToken,
   GoogleAuthProvider,
   OAuthProvider,
   signInWithCredential,
@@ -13,7 +17,7 @@ import {
   type AuthProvider,
   type User,
 } from 'firebase/auth';
-import { clearIndexedDbPersistence, terminate, waitForPendingWrites } from 'firebase/firestore';
+import { clearIndexedDbPersistence, collection, doc, getDocs, terminate, waitForPendingWrites, writeBatch } from 'firebase/firestore';
 import { CloudRepository } from '../data/cloudRepository';
 import { isNative } from '../native/platform';
 import { stopNativeRest } from '../native/rest';
@@ -107,6 +111,12 @@ async function signInNatively() {
   const iOSClientId = import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID as string | undefined;
   const webClientId = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID as string | undefined;
   if (!iOSClientId || !webClientId) throw new Error('Google sign-in is not set up for the iPhone app');
+  const idToken = await googleSheet(iOSClientId, webClientId);
+  if (idToken) await signInNativeCredential(GoogleAuthProvider.credential(idToken));
+}
+
+/** The native Google sheet's ID token, or null if it was closed. */
+async function googleSheet(iOSClientId: string, webClientId: string): Promise<string | null> {
   const { SocialLogin } = await import('@capgo/capacitor-social-login');
   await SocialLogin.initialize({ google: { iOSClientId, iOSServerClientId: webClientId, mode: 'online' } });
   let idToken: string | null | undefined;
@@ -114,11 +124,11 @@ async function signInNatively() {
     const login = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } });
     idToken = 'idToken' in login.result ? login.result.idToken : null;
   } catch (err) {
-    if (/cancel/i.test(String((err as Error).message ?? err))) return; // closed the Google sheet
+    if (/cancel/i.test(String((err as Error).message ?? err))) return null; // closed the Google sheet
     throw err;
   }
   if (!idToken) throw new Error('Google did not return an ID token');
-  await signInNativeCredential(GoogleAuthProvider.credential(idToken));
+  return idToken;
 }
 
 /** Popup sign-in, falling back to a full-page redirect where popups aren't allowed. */
@@ -157,6 +167,17 @@ async function nonces() {
  * name only the first time, so it's kept as the account's display name then.
  */
 async function signInWithAppleNatively() {
+  const apple = await appleSheet();
+  if (!apple) return;
+  const { user } = await signInNativeCredential(apple.credential);
+  if (!user.displayName && apple.name) await updateProfile(user, { displayName: apple.name }).catch(() => {});
+}
+
+/**
+ * Apple's native sheet: a Firebase credential, the name (first sign-in only), and the one-time authorization code
+ * (which is what revoking needs when the account is deleted). Null if it was closed.
+ */
+async function appleSheet(): Promise<{ credential: AuthCredential; name: string; code: string | null } | null> {
   const { SocialLogin } = await import('@capgo/capacitor-social-login');
   await SocialLogin.initialize({ apple: { redirectUrl: '' } });
   const nonce = await nonces();
@@ -164,15 +185,19 @@ async function signInWithAppleNatively() {
   try {
     result = (await SocialLogin.login({ provider: 'apple', options: { nonce: nonce.hashed } })).result;
   } catch (err) {
-    if (/cancel|1001/i.test(String((err as Error).message ?? err))) return; // closed Apple's sheet
+    if (/cancel|1001/i.test(String((err as Error).message ?? err))) return null; // closed Apple's sheet
     throw err;
   }
   const idToken = 'idToken' in result ? result.idToken : null;
   if (!idToken) throw new Error('Apple did not return an ID token');
-  const { user } = await signInNativeCredential(new OAuthProvider('apple.com').credential({ idToken, rawNonce: nonce.raw }));
   const profile = 'profile' in result ? result.profile : null;
-  const name = [profile?.givenName, profile?.familyName].filter(Boolean).join(' ');
-  if (!user.displayName && name) await updateProfile(user, { displayName: name }).catch(() => {});
+  // Without the plugin's token exchange, the "access token" it returns is Apple's authorization code.
+  const code = ('authorizationCode' in result && result.authorizationCode) || ('accessToken' in result && result.accessToken?.token) || null;
+  return {
+    credential: new OAuthProvider('apple.com').credential({ idToken, rawNonce: nonce.raw }),
+    name: [profile?.givenName, profile?.familyName].filter(Boolean).join(' '),
+    code,
+  };
 }
 
 export async function signInWithApple() {
@@ -223,4 +248,96 @@ export async function signOutAndClear() {
   } catch {
     // Storage unavailable: nothing to clear.
   }
+}
+
+const USER_COLLECTIONS = ['exercises', 'workouts', 'routines', 'sessions'];
+
+/**
+ * Deletes the signed-in account and everything in it, as App Review requires apps with accounts to offer:
+ * 1. signs in again with the account's provider (Firebase only deletes after a recent sign-in; Apple first when
+ *    linked, since its sign-in also gives what revoking needs). Closing that sheet cancels, with nothing deleted;
+ * 2. deletes every document under users/{uid} (the app's queued writes reach the server first, so none come back);
+ * 3. revokes Sign in with Apple's token, so the app no longer shows under the Apple ID's "Sign in with Apple" apps;
+ * 4. deletes the Firebase user, then clears this device's offline copy like signing out.
+ */
+export async function deleteAccount(): Promise<'deleted' | 'cancelled'> {
+  const { auth, db } = services();
+  const user = auth.currentUser;
+  if (!user) throw new Error('Not signed in');
+  const providers = user.providerData.map((p) => p.providerId);
+  const apple = providers.includes('apple.com');
+
+  let appleCode: string | null = null;
+  let appleAccessToken: string | null = null;
+  try {
+    if (isNative) {
+      if (apple) {
+        const sheet = await appleSheet();
+        if (!sheet) return 'cancelled';
+        await reauthenticateWithCredential(user, sheet.credential);
+        appleCode = sheet.code;
+      } else {
+        const iOSClientId = import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID as string | undefined;
+        const webClientId = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID as string | undefined;
+        if (!iOSClientId || !webClientId) throw new Error('Google sign-in is not set up for the iPhone app');
+        const idToken = await googleSheet(iOSClientId, webClientId);
+        if (!idToken) return 'cancelled';
+        await reauthenticateWithCredential(user, GoogleAuthProvider.credential(idToken));
+      }
+    } else {
+      const provider = apple ? new OAuthProvider('apple.com') : new GoogleAuthProvider();
+      const result = await reauthenticateWithPopup(user, provider);
+      if (apple) appleAccessToken = OAuthProvider.credentialFromResult(result)?.accessToken ?? null;
+    }
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return 'cancelled';
+    if (code === 'auth/user-mismatch') throw new Error('That’s a different account. Sign in with the one you’re deleting.');
+    if (code === 'auth/popup-blocked') throw new Error('Your browser blocked the sign-in window. Allow pop-ups for this site and try again.');
+    throw err;
+  }
+
+  await stopNativeRest().catch(() => {});
+  const refs = [doc(db, 'users', user.uid, 'meta', 'settings')];
+  for (const name of USER_COLLECTIONS) refs.push(...(await getDocs(collection(db, 'users', user.uid, name))).docs.map((d) => d.ref));
+  for (let i = 0; i < refs.length; i += 400) {
+    const batch = writeBatch(db);
+    refs.slice(i, i + 400).forEach((ref) => batch.delete(ref));
+    await batch.commit();
+  }
+
+  // Best effort: the account goes either way.
+  if (appleAccessToken) await revokeAccessToken(auth, appleAccessToken).catch((err) => console.warn('Apple token not revoked', err));
+  if (appleCode) await revokeAppleCode(user, appleCode).catch((err) => console.warn('Apple token not revoked', err));
+
+  await deleteUser(user);
+  if (isNative) {
+    const { SocialLogin } = await import('@capgo/capacitor-social-login');
+    await SocialLogin.logout({ provider: 'google' }).catch(() => {});
+    await SocialLogin.logout({ provider: 'apple' }).catch(() => {});
+  }
+  await terminate(db);
+  await clearIndexedDbPersistence(db).catch((err) => console.warn('Could not clear offline cache', err));
+  try {
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('fitness-tracker:pending-writes:'))
+      .forEach((k) => localStorage.removeItem(k));
+  } catch {
+    // Storage unavailable: nothing to clear.
+  }
+  return 'deleted';
+}
+
+/**
+ * Revokes Sign in with Apple from the native sheet's authorization code: what the iOS SDK's revokeToken(withAuthorizationCode:)
+ * sends, since the web SDK's revokeAccessToken only takes an access token.
+ */
+async function revokeAppleCode(user: User, code: string) {
+  const { app } = services();
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v2/accounts:revokeToken?key=${encodeURIComponent(app.options.apiKey ?? '')}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ providerId: 'apple.com', tokenType: 'CODE', token: code, idToken: await user.getIdToken() }),
+  });
+  if (!res.ok) throw new Error(`revokeToken ${res.status}: ${await res.text()}`);
 }

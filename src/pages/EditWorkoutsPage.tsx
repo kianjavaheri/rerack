@@ -1,7 +1,9 @@
-import { Check, ClipboardPaste, Library, Pencil, Plus } from 'lucide-react';
+import { Check, ClipboardPaste, LayoutList, Library, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useFeedback } from '../components/Feedback';
 import { NewWorkoutWindow } from '../components/NewWorkout';
+import { ProgramsWindow } from '../components/Programs';
 import { PageSkeleton } from '../components/Skeleton';
 import { RoutineActions, WorkoutActions, type Held } from '../components/WorkoutActions';
 import { everyLabel, pluralize } from '../core/format';
@@ -10,6 +12,7 @@ import { uniqueName } from '../core/plan';
 import { followedRoutine, routinesContaining, WEEKDAYS } from '../core/stats';
 import type { Routine, Workout } from '../core/types';
 import { repo } from '../data';
+import { addProgram, removeProgram, type Program } from '../data/programs';
 import { useSettings } from '../hooks/settings';
 import { useLongPress } from '../hooks/useLongPress';
 import { useExercises, useRoutines, useWorkouts } from '../hooks/useRepo';
@@ -31,7 +34,30 @@ export function WorkoutPlan() {
   const [creating, setCreating] = useState(false);
   const hold = useLongPress(setHeld);
   const holdRoutine = useLongPress(setHeldRoutine);
+  const { notify } = useFeedback();
+  /** The Programs window, and the program being added. */
+  const [programs, setPrograms] = useState(false);
+  const [adding, setAdding] = useState<string | null>(null);
 
+  // A program becomes a routine of yours, and the one you follow (that's why you'd pick one).
+  const startProgram = async (program: Program) => {
+    if (adding) return;
+    setAdding(program.id);
+    try {
+      const before = settings.activeRoutineId;
+      const added = await addProgram(program);
+      updateSettings({ activeRoutineId: added.routineId });
+      setPrograms(false);
+      notify(`Added ${program.name}`, {
+        undo: async () => {
+          await removeProgram(added);
+          updateSettings({ activeRoutineId: before });
+        },
+      });
+    } finally {
+      setAdding(null);
+    }
+  };
 
   const createRoutine = async () => {
     const ts = now();
@@ -52,6 +78,9 @@ export function WorkoutPlan() {
   return (
     <>
       <div className="row-wrap" style={{ gap: 6, marginTop: 20 }}>
+        <button className="btn btn-sm" onClick={() => setPrograms(true)}>
+          <LayoutList size={15} /> Programs
+        </button>
         <Link to="/edit/import" className="btn btn-sm">
           <ClipboardPaste size={15} /> Import from notes
         </Link>
@@ -69,7 +98,14 @@ export function WorkoutPlan() {
             <Plus size={15} /> New routine
           </button>
         </div>
-        {routines?.length === 0 && <div className="empty">No routines yet. A routine groups workouts you rotate through.</div>}
+        {routines?.length === 0 && (
+          <div className="empty">
+            No routines yet. A routine groups workouts you rotate through.{' '}
+            <button className="link-btn" onClick={() => setPrograms(true)}>
+              Start from a program
+            </button>
+          </div>
+        )}
         {(routines.length > 0 || workouts.length > 0) && (
           <p className="muted small" style={{ margin: '-4px 0 12px' }}>
             {canPick && "Tap the routine you're following; Home plans your week from it. The pencil edits a routine. "}
@@ -159,6 +195,7 @@ export function WorkoutPlan() {
       )}
       {held && <WorkoutActions held={held} workouts={workouts} routines={routines} exercises={exercises ?? []} onClose={() => setHeld(null)} />}
       {creating && <NewWorkoutWindow onClose={() => setCreating(false)} />}
+      {programs && <ProgramsWindow onUse={startProgram} busy={adding} onClose={() => setPrograms(false)} />}
     </>
   );
 }

@@ -12,6 +12,7 @@ import { PageSkeleton } from '../components/Skeleton';
 import { SessionActions, type Held } from '../components/WorkoutActions';
 import { useLongPress } from '../hooks/useLongPress';
 import { canGoBack } from '../utils/history';
+import { HOME_PATH } from '../config';
 
 /** Home's "Recent workouts": the last few logged sessions, and a way to all of them. */
 export function RecentWorkouts({ count = 4 }: { count?: number }) {
@@ -49,7 +50,7 @@ export function HistoryPage() {
   const navigate = useNavigate();
   return (
     <>
-      <button className="back-link" onClick={() => (canGoBack() ? navigate(-1) : navigate('/', { replace: true }))}>
+      <button className="back-link" onClick={() => (canGoBack() ? navigate(-1) : navigate(HOME_PATH, { replace: true }))}>
         <ArrowLeft size={15} /> Back
       </button>
       <h1 className="title">History</h1>

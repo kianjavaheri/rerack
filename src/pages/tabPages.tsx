@@ -4,6 +4,7 @@ import { CheckInPage } from './CheckInPage';
 import { HomePage } from './HomePage';
 import { LogPage } from './LogPage';
 import { WorkoutsPage } from './WorkoutsPage';
+import { HOME_PATH } from '../config';
 
 // Charts are the heaviest dependency, so they're split out of the main bundle.
 const loadAnalytics = () => import('./AnalyticsPage').then((m) => ({ default: m.AnalyticsPage }));
@@ -21,7 +22,7 @@ export function preloadTabPages() {
  * its neighbours, ready to be swiped to); App's routes for these paths only make the URLs match.
  */
 export const TAB_PAGES: { path: string; element: ReactNode }[] = [
-  { path: '/', element: <HomePage /> },
+  { path: HOME_PATH, element: <HomePage /> },
   { path: '/workouts', element: <WorkoutsPage /> },
   // Behind the +: swiping passes through it like any other tab.
   { path: '/check-in', element: <CheckInPage /> },

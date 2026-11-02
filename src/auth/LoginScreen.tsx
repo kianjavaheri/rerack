@@ -33,6 +33,10 @@ export function LoginScreen({
         <p className="muted small" style={{ marginTop: 6, lineHeight: 1.5 }}>
           Your workouts stay on this device. You can sign in later from Settings.
         </p>
+        {/* On the website, the way back to the landing page (the installed apps have none). */}
+        <a className="muted small login-about web-only" href="/about">
+          What’s {APP_NAME}?
+        </a>
       </div>
     </main>
   );

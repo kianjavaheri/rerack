@@ -1,6 +1,6 @@
 import { Dumbbell } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { exercisePhotos, type ExerciseMedia } from '../data/catalog';
+import { exercisePhotos, loadExerciseInfo, type ExerciseInfo, type ExerciseMedia } from '../data/catalog';
 import { Modal } from './Modal';
 
 /** True when there's a picture to show (data/catalog.ts exerciseMedia). */
@@ -37,11 +37,22 @@ export function ExerciseThumb({ media, size = 40 }: { media: ExerciseMedia; size
 
 /**
  * How the exercise is done: its anatomical GIF, or its two library photos (start and end of the movement) shown in
- * turn so they read like a short clip. Opened from the picture on an exercise card.
+ * turn so they read like a short clip, then what it works and step-by-step instructions (library exercises) to
+ * scroll and read. Opened from the picture on an exercise card.
  */
 export function ExercisePhotos({ name, media, onClose }: { name: string; media: ExerciseMedia; onClose: () => void }) {
   const [shown, setShown] = useState(0);
   const [failed, setFailed] = useState(false);
+  // undefined while loading, null when there's none (or offline).
+  const [info, setInfo] = useState<ExerciseInfo | null | undefined>(media.infoId ? undefined : null);
+  useEffect(() => {
+    if (!media.infoId) return;
+    let live = true;
+    loadExerciseInfo(media.infoId).then((d) => live && setInfo(d));
+    return () => {
+      live = false;
+    };
+  }, [media.infoId]);
   useEffect(() => {
     if (media.gif) return;
     const id = setInterval(() => setShown((n) => 1 - n), 1100);
@@ -65,6 +76,26 @@ export function ExercisePhotos({ name, media, onClose }: { name: string; media: 
       <p className="muted small" style={{ marginTop: 10 }}>
         {media.gif ? 'Working muscles in red. Animation from ExerciseDB.' : 'Start and end of the movement. Photos from free-exercise-db.'}
       </p>
+      {info && (
+        <div className="exercise-info">
+          {info.primaryMuscles.length > 0 && (
+            <p className="exercise-muscles">
+              <strong>Works</strong> {[...info.primaryMuscles, ...info.secondaryMuscles].join(' · ')}
+            </p>
+          )}
+          {info.instructions.length > 0 && (
+            <>
+              <h3 className="exercise-info-title">How to do it</h3>
+              <ol className="exercise-steps">
+                {info.instructions.map((step, i) => (
+                  <li key={i}>{step}</li>
+                ))}
+              </ol>
+            </>
+          )}
+        </div>
+      )}
+      {info === undefined && <p className="muted small">Loading instructions…</p>}
     </Modal>
   );
 }

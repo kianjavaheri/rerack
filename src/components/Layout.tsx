@@ -2,7 +2,7 @@ import { ChartLine, Dumbbell, House, Moon, NotebookText, Plus, Settings, Sun, ty
 import { useEffect, type CSSProperties } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigationType } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
-import { APP_NAME } from '../config';
+import { APP_NAME, APP_USER_KEY, HOME_PATH } from '../config';
 import { useSettings } from '../hooks/settings';
 import { useEdgeSwipeBack } from '../hooks/useEdgeSwipeBack';
 import { useTabSwipe, type SwipeState } from '../hooks/useTabSwipe';
@@ -10,16 +10,21 @@ import { useExerciseMedia } from '../hooks/useCatalog';
 import { useExercises, useSessions } from '../hooks/useRepo';
 import { exercisePhotos } from '../data/catalog';
 import { isNative } from '../native/platform';
+import { useScheduledNotifications } from '../native/notifications';
+import { useHomeWidget } from '../native/widget';
+import { useAppLinks } from '../native/links';
 import { useNativeRestTimer } from '../native/rest';
+import { notificationOn } from '../core/notifications';
 import { preloadTabPages, TAB_PATHS } from '../pages/tabPages';
 import { AccountMenu } from './AccountMenu';
 import { ForgottenWorkoutPrompt } from './ForgottenWorkout';
 import { IntroGate } from './Intro';
+import { SummaryWindow } from './SummaryWindow';
 import { SyncIndicator } from './SyncIndicator';
 import { TabPager } from './TabPager';
 
 const LINKS: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
-  { to: '/', label: 'Home', icon: House, end: true },
+  { to: HOME_PATH, label: 'Home', icon: House, end: true },
   { to: '/workouts', label: 'Workouts', icon: Dumbbell },
   { to: '/analytics', label: 'Analytics', icon: ChartLine },
   { to: '/log', label: 'Log', icon: NotebookText },
@@ -36,7 +41,7 @@ const scrollPositions = new Map<string, number>();
  * the account button at the top of each tab page).
  */
 function activeTab(pathname: string, openSessionId: string | undefined): number {
-  if (pathname === '/') return 0;
+  if (pathname === HOME_PATH) return 0;
   if (pathname === '/check-in' || (openSessionId && pathname === `/session/${openSessionId}`)) return 2;
   if (pathname === '/history' || pathname.startsWith('/session/')) return 0;
   if (pathname.startsWith('/workouts') || pathname.startsWith('/edit')) return 1;
@@ -71,8 +76,31 @@ export function Layout() {
     const media = exercise ? mediaFor(exercise) : {};
     return media.gif ?? (media.photoId ? exercisePhotos(media.photoId)[0] : undefined);
   };
-  useNativeRestTimer(sessions === undefined ? undefined : (open ?? null), exercises, settings.restTimer !== false, resolvedTheme === 'dark', pictureOf);
+  useNativeRestTimer(
+    sessions === undefined ? undefined : (open ?? null),
+    exercises,
+    settings.restTimer !== false,
+    resolvedTheme === 'dark',
+    pictureOf,
+    notificationOn(settings, 'rest'),
+  );
+  // Workout reminders and the workout-left-open alert, scheduled ahead on the phone.
+  useScheduledNotifications(sessions, settings);
+  // The home-screen widget's next workout and week.
+  useHomeWidget(sessions, settings);
+  // rerack:// links (the widget opens Check in).
+  useAppLinks(sessions);
   const openLabel = open ? `${open.live === false ? 'Logging' : 'Live'}: ${open.name}` : '';
+
+  // This browser uses the app (past sign-in, or without an account): from now on the website's `/` opens the app
+  // instead of the landing page (the inline script in index.html).
+  useEffect(() => {
+    try {
+      localStorage.setItem(APP_USER_KEY, '1');
+    } catch {
+      // Private mode: the landing page shows at `/` again, one tap from the app.
+    }
+  }, []);
 
   // New pages start at the top; going back returns to where you were (pages render after their data loads, so keep
   // trying briefly until the page is tall enough).
@@ -124,7 +152,7 @@ export function Layout() {
     <>
       <header className="nav">
         <div className="nav-inner">
-          <NavLink to="/" className="nav-brand">
+          <NavLink to={HOME_PATH} className="nav-brand">
             {APP_NAME}
           </NavLink>
           <nav className="nav-links">
@@ -186,6 +214,7 @@ export function Layout() {
       </div>
 
       <ForgottenWorkoutPrompt />
+      <SummaryWindow />
       <IntroGate />
       <SyncIndicator />
 

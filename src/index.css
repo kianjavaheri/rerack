@@ -246,6 +246,10 @@ p { margin: 0; }
 .swipe-peek.peek-left { transform: translate3d(-100%, 0, 0); }
 .swipe-peek.peek-right { transform: translate3d(100%, 0, 0); }
 .swipe-peek, .swipe-peek * { animation: none !important; }
+/* A parked page clips its overflow, which makes it the scroller its sticky rest bar measures from: the bar was pushed
+   down from the page's top by the status bar's height (then jumped back once the page was current). Parked, it simply
+   sits in place. */
+main.swipe-peek .rest-timer { position: relative; top: auto; } /* outweighs .standalone/.native .rest-timer's top */
 /* In the app the current tab page stays on its own GPU layer too. Promoting it when a drag began made iOS paint the
    whole page into a new layer during the first frames of the swipe (a visible hitch), and dropping it afterwards
    repainted it again; this way a swiped-in page keeps the layer it had while parked. */
@@ -556,6 +560,13 @@ button.thumb-btn { display: inline-flex; padding: 0; border: 0; background: none
 .exercise-gif { display: grid; place-items: center; border-radius: 16px; background: #fff; }
 .exercise-gif img { width: min(100%, 360px); aspect-ratio: 1; }
 @media (prefers-reduced-motion: reduce) { .exercise-photos img { transition: none; } }
+/* Below the pictures: what it works and how to do it (ExercisePhotos). */
+.exercise-info { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--card-border); }
+.exercise-muscles { font-size: 13px; color: var(--muted); text-transform: capitalize; margin: 0 0 12px; }
+.exercise-muscles strong { color: var(--text); font-weight: 600; margin-right: 4px; }
+.exercise-info-title { font-size: 15px; font-weight: 600; margin: 0 0 8px; }
+.exercise-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.45; }
+.exercise-steps li::marker { color: var(--muted); font-weight: 600; }
 
 .list-row {
   display: flex; align-items: center; gap: 10px; width: 100%;
@@ -611,9 +622,18 @@ button.thumb-btn { display: inline-flex; padding: 0; border: 0; background: none
 }
 /* In a set row the number is a button that opens the set's menu (components/SetMenu.tsx). */
 .set-menu-wrap { position: relative; display: grid; place-items: center start; }
-button.set-num { width: 26px; height: 26px; border: 0; padding: 0; cursor: pointer; color: var(--text); font-family: inherit; }
+button.set-num {
+  width: 28px; height: 40px; border-radius: 10px; border: 0; padding: 0; cursor: pointer; color: var(--text);
+  font-family: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  line-height: 1;
+}
+.set-num-chevron { opacity: 0.55; margin-bottom: -3px; }
 button.set-num.open { background: var(--chip-bg-hover); }
 .set-num.warmup { background: var(--warning-soft); color: var(--warning); }
+.set-num.drop { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+/* Barbell lifts: the bar this exercise uses (components/SetMenu.tsx). */
+.set-menu-bar { display: flex; align-items: center; gap: 5px; padding: 4px 10px 8px; }
+.set-menu-bar .chip { min-width: 0; height: 28px; padding: 0 9px; font-size: 13px; justify-content: center; }
 .set-menu { left: 0; right: auto; top: calc(100% + 6px); min-width: 220px; }
 .menu-note { display: flex; align-items: center; gap: 10px; padding: 9px 10px; font-size: 13px; color: var(--muted); }
 .menu-note strong { color: var(--text); font-weight: 600; }
@@ -724,7 +744,7 @@ button.stat { cursor: pointer; transition: border-color 0.2s, transform 0.2s var
 /* A row with nothing yet: the button spans Weight and Date. */
 .log-add { width: 100%; justify-content: center; margin: -4px 0; }
 .log-table td.date:has(.log-add) { vertical-align: middle; }
-.log-not-done { white-space: nowrap; padding-left: 8px !important; }
+.log-not-done { display: block; margin-top: 2px; font-size: 12px; font-weight: 500; color: var(--muted); }
 /* The date field: iOS gives date inputs a minimum width (see .datetime). */
 .log-entry-date { display: block; position: relative; }
 .log-entry-date .input { display: block; width: 100%; min-width: 0; max-width: 100%; -webkit-appearance: none; appearance: none; text-align: center; padding-top: 0; padding-bottom: 0; line-height: 36px; }
@@ -781,9 +801,9 @@ button.stat { cursor: pointer; transition: border-color 0.2s, transform 0.2s var
 }
 
 /* Set grid: set, reps, weight, done (what was done last time is in the placeholders, and in "Previous"). */
-.set-grid { grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr) 40px; }
+.set-grid { grid-template-columns: 30px minmax(0, 1fr) minmax(0, 1fr) 40px; }
 @media (max-width: 480px) {
-  .set-grid { grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1fr) 38px; gap: 6px 6px; }
+  .set-grid { grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr) 38px; gap: 6px 6px; }
   .set-input { padding: 0 18px 0 4px; font-size: 14px; }
   .affix .suffix { right: 6px; font-size: 11px; }
   .check { width: 34px; }
@@ -939,6 +959,7 @@ button.heat-cell { cursor: pointer; }
 /* Apple's button in its black (light mode) / white (dark mode) style. */
 .login-apple { background: var(--text); color: var(--page-base); }
 @media (hover: hover) { .login-apple:hover:not(:disabled) { background: var(--text); opacity: 0.88; } }
+.login-about { display: inline-block; margin-top: 18px; text-decoration: underline; text-underline-offset: 3px; }
 .login-skip {
   margin-top: 22px; padding: 6px 10px; border: 0; background: none; cursor: pointer;
   color: var(--text); font: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px;
@@ -1124,6 +1145,8 @@ button.heat-cell { cursor: pointer; }
 .standalone .account-btn img, .standalone .account-btn .avatar { width: 37px !important; height: 37px !important; box-shadow: 0 1px 3px #00000033; }
 .app-only { display: none !important; }
 .standalone .app-only { display: inline-flex !important; }
+/* Website only: hidden in the home-screen web app and the iPhone app. */
+.standalone .web-only { display: none !important; }
 .home-greeting { display: none; }
 .standalone .home-greeting { display: flex; margin-bottom: 4px; }
 .home-greeting .muted { margin-top: 2px; }
@@ -1434,3 +1457,136 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
 .ex-tile.on .ex-tile-check { background: var(--rainbow-dot) border-box; border-color: transparent; animation: check-pop 0.28s var(--ease); }
 .ex-tile-new { border-style: dashed; box-shadow: none; background: none; }
 .ex-tile-plus { display: grid; place-items: center; aspect-ratio: 1; border-radius: 11px; background: var(--chip-bg); color: var(--muted); }
+
+/* An exercise just finished (components/DoneBurst.tsx): a circle pops, its check draws itself, a ring ripples out. */
+.done-burst { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; pointer-events: none; }
+.done-burst > * { grid-area: 1 / 1; }
+.done-burst-circle {
+  width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--rainbow-dot) border-box; color: var(--on-rainbow); box-shadow: 0 14px 40px #00000059;
+  animation: burst-pop 0.95s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.done-burst-circle path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: burst-draw 0.3s 0.16s ease-out forwards; }
+.done-burst-ring {
+  width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--accent);
+  animation: burst-ring 0.7s 0.08s ease-out both;
+}
+@keyframes burst-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  28% { transform: scale(1.08); opacity: 1; }
+  40% { transform: scale(1); }
+  78% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.92); opacity: 0; }
+}
+@keyframes burst-draw { to { stroke-dashoffset: 0; } }
+@keyframes burst-ring { from { transform: scale(0.9); opacity: 0.7; } to { transform: scale(1.9); opacity: 0; } }
+/* A finished workout's summary as a page (components/SummaryWindow.tsx), over the app like the intro's window. Right
+   after Finish it celebrates: the check circle pops and draws itself, two rings ripple and sparks fly out. */
+.summary-window { z-index: 95; }
+.summary-hero { text-align: center; padding: 4px 0 6px; }
+.summary-mark { display: grid; place-items: center; height: 128px; }
+.summary-mark > * { grid-area: 1 / 1; }
+.summary-check {
+  width: 88px; height: 88px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--rainbow-dot) border-box; color: var(--on-rainbow); box-shadow: 0 12px 34px #0000003d;
+}
+.summary-check path { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.celebrate .summary-check { animation: done-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.celebrate .summary-check path { stroke-dashoffset: 1; animation: burst-draw 0.35s 0.22s ease-out forwards; }
+.summary-mark .done-burst-ring { width: 88px; height: 88px; animation-duration: 0.9s; }
+.done-burst-ring.late { animation-delay: 0.3s; }
+.summary-spark {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--rainbow-dot);
+  transform: rotate(var(--a)) translateY(0); opacity: 0; animation: done-spark 0.75s 0.12s ease-out both;
+}
+.summary-spark:nth-child(odd) { width: 6px; height: 6px; animation-delay: 0.2s; }
+.summary-kicker {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  background: var(--ink-grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.summary-title { margin: 2px 0 2px; }
+.celebrate .summary-kicker, .celebrate .summary-title { animation: done-rise 0.4s 0.25s var(--ease) both; }
+@keyframes done-pop { 0% { transform: scale(0.4); opacity: 0; } 55% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes done-spark {
+  0% { transform: rotate(var(--a)) translateY(-36px) scale(1); opacity: 1; }
+  100% { transform: rotate(var(--a)) translateY(-104px) scale(0.3); opacity: 0; }
+}
+@keyframes done-rise { from { transform: translateY(8px); opacity: 0; } }
+
+/* A finished workout's summary (components/WorkoutSummary.tsx), at the top of every finished session. */
+.workout-summary { margin: 20px 0 16px; }
+.workout-summary.page { margin-top: 18px; }
+.summary-open { width: 32px; height: 32px; }
+.summary-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0 14px; }
+.summary-tile { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--chip-bg); min-width: 0; }
+.summary-label { font-size: 12px; color: var(--muted); }
+.summary-value { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.summary-delta { font-size: 12px; color: var(--muted); }
+.summary-delta.up { color: var(--success); }
+.summary-exercises { display: flex; flex-direction: column; }
+.summary-exercise {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name trend' 'sets trend';
+  column-gap: 10px; padding: 8px 0; border-top: 1px solid var(--card-border);
+}
+.summary-name { grid-area: name; font-weight: 500; }
+.summary-sets { grid-area: sets; font-size: 13px; color: var(--muted); }
+.summary-trend { grid-area: trend; align-self: center; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--chip-bg); color: var(--muted); }
+.summary-trend.up { color: var(--success); }
+.summary-trend.down { color: var(--danger); }
+.summary-trend.new { color: var(--accent); }
+@media (max-width: 560px) {
+  .summary-tiles { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .done-burst-circle { animation: fade 0.95s reverse both; }
+  .done-burst-circle path { animation: none; stroke-dashoffset: 0; }
+  .done-burst-ring, .summary-spark { display: none; }
+  .celebrate .summary-check, .celebrate .summary-kicker, .celebrate .summary-title { animation: none; }
+  .celebrate .summary-check path { animation: none; stroke-dashoffset: 0; }
+}
+
+/* Ready-made programs (components/Programs.tsx): cards that open to show their workouts. */
+.program-list { display: flex; flex-direction: column; gap: 8px; }
+.program { padding: 0; overflow: hidden; }
+.program-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 16px; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.program-chevron { transition: transform 0.2s var(--ease); flex-shrink: 0; }
+.program.open .program-chevron { transform: rotate(180deg); }
+.program-body { padding: 0 16px 16px; }
+.program-workout { margin-bottom: 12px; }
+.program-workout-name { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.program-workout ul { list-style: none; margin: 0; padding: 0; }
+.program-workout li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: 14px; border-top: 1px solid var(--card-border); }
+.intro-subhead { font-size: 16px; font-weight: 600; margin: 26px 0 4px; }
+
+/* Settings → Profile (components/ProfileWindow.tsx). */
+.settings-link { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.profile-top { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 16px; }
+.profile-photo { position: relative; width: 96px; height: 96px; border-radius: 50%; padding: 0; border: 0; background: none; cursor: pointer; }
+.profile-photo img, .profile-photo .avatar { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; font-size: 38px; }
+.profile-photo-badge {
+  position: absolute; right: 0; bottom: 0; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--rainbow-dot); color: var(--on-rainbow); border: 2px solid var(--paper);
+}
+.profile-field { display: block; margin-bottom: 14px; }
+.profile-weight { margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--card-border); }
+.profile-subhead { font-size: 15px; font-weight: 600; margin: 0; }
+.profile-chart { height: 160px; margin-top: 12px; }
+.profile-weights { list-style: none; margin: 10px 0 0; padding: 0; }
+.profile-weights li { display: grid; grid-template-columns: 1fr auto 30px; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; border-top: 1px solid var(--card-border); }
+
+/* Notifications: All / None / Choose (components/NotificationChoice.tsx). */
+.notify-choice .segmented { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
+.notify-kinds { margin-top: 10px; }
+.notify-kind { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--card-border); }
+.notify-kind:first-child { border-top: 0; }
+.notify-kind-name { font-weight: 500; font-size: 14px; }
+.notify-kind .switch { flex-shrink: 0; }
+.notify-time { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; border-top: 1px solid var(--card-border); font-size: 14px; }
+.notify-time .input { width: auto; }
+
+/* Deleting the account (components/DeleteAccountDialog.tsx): typed confirmation, like GitHub's. */
+.delete-warning { color: var(--danger); font-weight: 600; margin: 0; }
+.delete-phrase { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: var(--text); }
+.btn-delete { background: var(--danger); color: var(--page-base); }
+.btn-delete:disabled { opacity: 0.4; cursor: not-allowed; }

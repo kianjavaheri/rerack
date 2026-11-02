@@ -2,11 +2,13 @@ import { LogOut, Settings } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
+import { useAccountUser } from '../hooks/useAccount';
 import { Avatar } from './Avatar';
 
 /** Navbar avatar that opens a small menu: who's signed in, Settings, Sign out. */
 export function AccountMenu() {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
+  const user = useAccountUser();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 

@@ -1,6 +1,7 @@
 # One-time (idempotent) setup of ios/App/App.xcodeproj beyond what `cap add ios` generates: the app's own Swift files
-# (RestActivityPlugin, AppHapticsPlugin, AppHealthPlugin, AppViewController, the shared RestActivityAttributes), the
-# HealthKit and app group entitlements, and the RestTimerWidget extension that draws the rest timer on the lock screen. Needs the xcodeproj gem: `gem install --user-install xcodeproj`.
+# (RestActivityPlugin, AppHapticsPlugin, AppHealthPlugin, AppWidgetPlugin, AppViewController, the shared
+# RestActivityAttributes and HomeWidgetData), the HealthKit and app group entitlements, the RestTimerWidget extension
+# that draws the rest timer on the lock screen and the home-screen widget, and Crashlytics' config and symbol upload. Needs the xcodeproj gem: `gem install --user-install xcodeproj`.
 # Run: ruby scripts/ios-setup-project.rb
 require 'xcodeproj'
 
@@ -21,12 +22,14 @@ end
 
 # The app's own Swift files.
 app_group = project.main_group['App']
-%w[RestActivityPlugin.swift AppHapticsPlugin.swift AppHealthPlugin.swift AppViewController.swift].each { |f| add_source(app, file_ref(app_group, f)) }
+%w[RestActivityPlugin.swift AppHapticsPlugin.swift AppHealthPlugin.swift AppWidgetPlugin.swift AppViewController.swift].each { |f| add_source(app, file_ref(app_group, f)) }
 
 # Shared between the app and the widget.
 shared = project.main_group['Shared'] || project.main_group.new_group('Shared', 'Shared')
 attributes = file_ref(shared, 'RestActivityAttributes.swift')
 add_source(app, attributes)
+widget_data = file_ref(shared, 'HomeWidgetData.swift')
+add_source(app, widget_data)
 
 # The widget extension.
 widget = project.targets.find { |t| t.name == 'RestTimerWidget' }
@@ -47,6 +50,8 @@ unless widget
   build_file.settings = { 'ATTRIBUTES' => ['RemoveHeadersOnCopy'] }
 end
 add_source(widget, attributes)
+add_source(widget, widget_data)
+add_source(widget, file_ref(project.main_group['RestTimerWidget'], 'HomeWidget.swift'))
 
 # The widget must ship with the app's version and build numbers.
 app_settings = app.build_configurations.first.build_settings
@@ -81,5 +86,34 @@ app.build_configurations.each do |config|
   config.build_settings['TARGETED_DEVICE_FAMILY'] = '1'
 end
 
+# Crashlytics (@capacitor-firebase/crashlytics): the app's Firebase config, once downloaded from the Firebase console
+# into ios/App/App/GoogleService-Info.plist (the plugin skips Firebase without it), and uploading debug symbols after
+# each build so crash reports show function names.
+has_plist = File.exist?(File.expand_path('../ios/App/App/GoogleService-Info.plist', __dir__))
+if has_plist
+  plist = file_ref(app_group, 'GoogleService-Info.plist')
+  app.resources_build_phase.add_file_reference(plist, true)
+end
+app.build_configurations.each { |config| config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym' }
+DSYM_PHASE = 'Upload symbols to Crashlytics'
+dsym = app.shell_script_build_phases.find { |p| p.name == DSYM_PHASE } || app.new_shell_script_build_phase(DSYM_PHASE)
+# Skipped until GoogleService-Info.plist is there (the upload needs it); must stay the last build phase.
+dsym.shell_script = <<~SH
+  if [ -f "${SRCROOT}/App/GoogleService-Info.plist" ]; then
+    "${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run"
+  fi
+SH
+dsym.input_paths = [
+  '${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}',
+  '${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}',
+  '${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist',
+  '$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)',
+  # A missing input fails the build, so this one only once the file is there (run this script again after adding it).
+  *(has_plist ? ['$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist'] : []),
+]
+dsym.always_out_of_date = '1'
+app.build_phases.delete(dsym)
+app.build_phases << dsym
+
 project.save
-puts 'ios/App/App.xcodeproj: RestTimerWidget extension and app Swift files set up'
+puts 'ios/App/App.xcodeproj: RestTimerWidget extension, app Swift files and Crashlytics set up'

@@ -182,6 +182,7 @@ export function LiftLog({ routines, workouts, exercises, sessions, unit, followe
                 const name = (
                   <td rowSpan={rows} className="log-name">
                     {exercise?.name ?? 'Unknown exercise'}
+                    {groups.length === 0 && <span className="log-not-done">Not done yet</span>}
                   </td>
                 );
                 const date = (
@@ -205,11 +206,8 @@ export function LiftLog({ routines, workouts, exercises, sessions, unit, followe
                     {groups.length === 0 ? (
                       <tr>
                         {name}
-                        <td colSpan={2} className="muted small log-not-done">
-                          Not done
-                        </td>
-                        {/* Gray and wide, so it can't be taken for a date (those are rainbow). */}
-                        <td colSpan={2} className="date">
+                        {/* Gray and across every column, so it can't be taken for a date (those are rainbow). */}
+                        <td colSpan={4} className="date">
                           <button className="log-date log-add" onClick={() => setEntering({ slotId: slot.id, workout })} aria-label={`Add sets, reps and weight for ${exercise?.name ?? 'this exercise'}`}>
                             <Plus size={13} /> Add
                           </button>

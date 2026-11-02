@@ -11,6 +11,14 @@
     <meta name="apple-mobile-web-app-title" content="Rerack" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Rerack</title>
+    <meta name="description" content="A workout log for the gym: plan your routine, log every set with last time's numbers in front of you, and see your progress. On the web and iPhone." />
+    <meta property="og:title" content="Rerack" />
+    <meta property="og:description" content="A workout log for the gym: plan your routine, log every set, see your progress." />
+    <meta property="og:image" content="https://rerackapp.net/landing/og.png" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- The landing page's styles (scoped to html.landing, so the app is unaffected). -->
+    <link rel="stylesheet" href="/src/landing/landing.css" />
     <script>
       // The app's theme before first paint (so the loader matches it): the choice remembered on this device
       // (hooks/settings.tsx), else the phone's light/dark setting.
@@ -21,8 +29,19 @@
       // Opened from the home screen: app-style bottom tabs instead of the website's top bar.
       // The iPhone app (Capacitor injects window.Capacitor before this runs) looks the same.
       const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-      if (native || matchMedia('(display-mode: standalone)').matches || navigator.standalone) document.documentElement.classList.add('standalone');
+      const installed = native || matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+      if (installed) document.documentElement.classList.add('standalone');
       if (native) document.documentElement.classList.add('native');
+      // On the website, `/` is the landing page (the <template> below) for new visitors, and `/about` for anyone; the
+      // app's code isn't loaded then (src/main.tsx). Someone who has used the app in this browser (src/config.ts
+      // APP_USER_KEY), and the installed apps, go straight to the app's Home instead.
+      let appUser = false;
+      try { appUser = localStorage.getItem('rerack:app-user') === '1'; } catch {}
+      if (!installed && (location.pathname === '/about' || (location.pathname === '/' && !appUser))) {
+        document.documentElement.classList.add('landing');
+      } else if (location.pathname === '/') {
+        history.replaceState(null, '', '/home' + location.search + location.hash);
+      }
     </script>
     <style>
       /* Shown until the app's code has loaded (React replaces #root), and reused by the sign-in splash
@@ -71,6 +90,191 @@
     <div id="root">
       <div class="boot" role="status" aria-label="Loading"><div class="boot-spin"><img src="/favicon.svg" alt="" /></div></div>
     </div>
+    <!-- The website's landing page, shown at / to new visitors and at /about (see the script in <head>). A template so
+         the app never lays it out or loads its pictures. Styles: src/landing/landing.css. Screenshots: public/landing/
+         (the app with demo data, at 390 x 797, dark). -->
+    <template id="landing">
+      <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+        <symbol id="lp-status-icons" viewBox="0 0 66 12">
+          <rect x="0" y="8" width="3" height="4" rx="1" /><rect x="5" y="5.5" width="3" height="6.5" rx="1" /><rect x="10" y="3" width="3" height="9" rx="1" /><rect x="15" y="0.5" width="3" height="11.5" rx="1" />
+          <path d="M31 3.2a9 9 0 0 1 11.6 0l-1.3 1.4a7 7 0 0 0-9 0Zm2.5 2.9a5 5 0 0 1 6.6 0l-1.4 1.4a3 3 0 0 0-3.8 0Zm3.3 2.4 1.6 1.7-1.6 1.6-1.6-1.6Z" />
+          <rect x="45.5" y="0.5" width="18" height="11" rx="3.2" fill="none" stroke="currentColor" opacity="0.4" /><rect x="47.5" y="2.5" width="12" height="7" rx="1.6" /><rect x="64.5" y="4" width="1.5" height="4" rx="0.7" opacity="0.4" />
+        </symbol>
+      </svg>
+      <div class="lp">
+        <header class="lp-top">
+          <a class="lp-brand" href="/about"><img src="/favicon.svg" alt="" width="30" height="30" />Rerack</a>
+          <a class="lp-btn small" href="/home">Open Rerack</a>
+        </header>
+
+        <section class="lp-hero">
+          <div class="lp-copy">
+            <div class="lp-kicker">Workout log · Web and iPhone</div>
+            <h1>The workout log that remembers last time.</h1>
+            <p class="lp-lead">
+              Your routine and every set you lift, in one place. Open today’s workout and last time’s numbers are already
+              there to beat. Made to replace the notes app.
+            </p>
+            <div class="lp-actions">
+              <a class="lp-btn" href="/home">Open Rerack</a>
+              <a class="lp-link" href="#features">See how it works</a>
+            </div>
+            <p class="lp-note">Works in your browser. The iPhone app is coming to the App Store.</p>
+          </div>
+          <div class="lp-shot lp-hero-shot">
+            <div class="lp-phone">
+            <div class="lp-screen">
+              <div class="lp-status" aria-hidden="true"><span>9:41</span><i></i><svg viewBox="0 0 66 12"><use href="#lp-status-icons" /></svg></div>
+              <img src="/landing/home.webp" width="390" height="797" alt="Home: this week’s plan, the workout that’s up next, and six months of training." fetchpriority="high" decoding="async" />
+            </div>
+          </div>
+          </div>
+        </section>
+
+        <div id="features">
+
+      <section class="lp-feature">
+        <div class="lp-copy">
+          <div class="lp-kicker">Plan</div>
+          <h2>Start from a plan</h2>
+          <p>A routine holds your workouts, and each workout holds its exercises. Start from a program like Push / Pull / Legs, build your own from a library of exercises with animations and how-to steps, or paste the plan you already wrote in your notes app.</p>
+        </div>
+        <div class="lp-shot">
+          <div class="lp-phone">
+            <div class="lp-screen">
+              <div class="lp-status" aria-hidden="true"><span>9:41</span><i></i><svg viewBox="0 0 66 12"><use href="#lp-status-icons" /></svg></div>
+              <img src="/landing/programs.webp" width="390" height="797" alt="Programs to start from: Beginner Strength, Full Body Starter and Upper / Lower, with each workout’s exercises, sets and reps." loading="lazy" decoding="async" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lp-feature flip">
+        <div class="lp-copy">
+          <div class="lp-kicker">Log</div>
+          <h2>Last time is already filled in</h2>
+          <p>Every set shows what you did last time, so you know what to beat. Tap the check and it’s logged, and the rest timer starts. Warm-ups, drop sets, supersets and plates per side are a tap away.</p>
+        </div>
+        <div class="lp-shot">
+          <div class="lp-phone">
+            <div class="lp-screen">
+              <div class="lp-status" aria-hidden="true"><span>9:41</span><i></i><svg viewBox="0 0 66 12"><use href="#lp-status-icons" /></svg></div>
+              <img src="/landing/workout.webp" width="390" height="797" alt="A workout in progress: each exercise with its sets, reps and weight, and a rest timer counting down." loading="lazy" decoding="async" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lp-feature">
+        <div class="lp-copy">
+          <div class="lp-kicker">Finish</div>
+          <h2>See how it went</h2>
+          <p>Finishing a workout shows its time, sets and volume next to the last time you did it, and which lifts went up. Every workout in your history keeps its summary.</p>
+        </div>
+        <div class="lp-shot">
+          <div class="lp-phone">
+            <div class="lp-screen">
+              <div class="lp-status" aria-hidden="true"><span>9:41</span><i></i><svg viewBox="0 0 66 12"><use href="#lp-status-icons" /></svg></div>
+              <img src="/landing/summary.webp" width="390" height="797" alt="A finished workout’s summary: time, sets and volume compared with last time, and each lift with an arrow up." loading="lazy" decoding="async" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lp-feature flip">
+        <div class="lp-copy">
+          <div class="lp-kicker">Progress</div>
+          <h2>Watch the numbers climb</h2>
+          <p>Every lift gets a chart of its estimated one-rep max and its best sets. A workout charts all its lifts side by side, so you can see which ones are moving.</p>
+        </div>
+        <div class="lp-shot">
+          <div class="lp-phone">
+            <div class="lp-screen">
+              <div class="lp-status" aria-hidden="true"><span>9:41</span><i></i><svg viewBox="0 0 66 12"><use href="#lp-status-icons" /></svg></div>
+              <img src="/landing/progress.webp" width="390" height="797" alt="Bench press progress: best sets and a chart of estimated one-rep max rising over six months." loading="lazy" decoding="async" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lp-feature">
+        <div class="lp-copy">
+          <div class="lp-kicker">Look back</div>
+          <h2>Like your notes, but tidy</h2>
+          <p>The Log shows each workout in your routine as a table: every exercise with the sets, reps and weight from the last day you did it. Tap a date to see any day before.</p>
+        </div>
+        <div class="lp-shot">
+          <div class="lp-phone">
+            <div class="lp-screen">
+              <div class="lp-status" aria-hidden="true"><span>9:41</span><i></i><svg viewBox="0 0 66 12"><use href="#lp-status-icons" /></svg></div>
+              <img src="/landing/log.webp" width="390" height="797" alt="The Log: a table per workout with each exercise’s sets, reps, weight and date." loading="lazy" decoding="async" />
+            </div>
+          </div>
+        </div>
+      </section>
+        </div>
+
+        <section class="lp-extras">
+          <h2>And the small things</h2>
+          <div class="lp-extras-grid">
+          <div class="lp-extra">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h.01"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M5 12.9a10 10 0 0 1 5.2-2.8"/><path d="M19 12.9a10 10 0 0 0-2.3-1.6"/><path d="M2 8.8a15 15 0 0 1 4.2-2.6"/><path d="M22 8.8A15 15 0 0 0 11 4.3"/><path d="m2 2 20 20"/></svg>
+            <h3>Works offline</h3>
+            <p>Log in a basement gym with no signal. It syncs when you’re back online.</p>
+          </div>
+          <div class="lp-extra">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+            <h3>On all your devices</h3>
+            <p>Sign in with Apple or Google and it syncs between phone and computer. Or use it without an account.</p>
+          </div>
+          <div class="lp-extra">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M12 7v4l2 1.5"/><circle cx="12" cy="10" r="4.5"/><path d="M9 18h6"/></svg>
+            <h3>Lock screen</h3>
+            <p>On iPhone, the set you’re on and your rest countdown stay on the lock screen.</p>
+          </div>
+          <div class="lp-extra">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="18" height="8" rx="2"/></svg>
+            <h3>Home screen widget</h3>
+            <p>Your next workout and this week’s training at a glance.</p>
+          </div>
+          <div class="lp-extra">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg>
+            <h3>Apple Health</h3>
+            <p>Save finished workouts to Health if you want them there.</p>
+          </div>
+          <div class="lp-extra">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+            <h3>Yours to keep</h3>
+            <p>No ads. Export a backup of everything whenever you like.</p>
+          </div>
+          </div>
+        </section>
+
+        <section class="lp-cta">
+          <h2>Try it now</h2>
+          <p>It runs in your browser, so there’s nothing to install.</p>
+          <a class="lp-btn" href="/home">Open Rerack</a>
+        </section>
+
+        <footer class="lp-foot">
+          <span>Made by Kian Javaheri</span>
+          <nav><a href="/privacy">Privacy</a><a href="/home">Open Rerack</a></nav>
+        </footer>
+      </div>
+    </template>
+    <script>
+      // Shows the landing page (decided in <head>) in place of the app's loader, and fades in each part as it scrolls
+      // into view.
+      if (document.documentElement.classList.contains('landing')) {
+        document.getElementById('root').replaceWith(document.getElementById('landing').content.cloneNode(true));
+        document.title = 'Rerack: a workout log for the gym';
+        const seen = new IntersectionObserver(
+          (entries) => entries.forEach((e) => e.isIntersecting && (e.target.classList.add('in'), seen.unobserve(e.target))),
+          { rootMargin: '0px 0px -10% 0px' },
+        );
+        document.querySelectorAll('.lp-feature, .lp-extra, .lp-cta').forEach((el) => seen.observe(el));
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

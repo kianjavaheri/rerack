@@ -11,6 +11,7 @@
 		0E418019E830EA02360C6F85 /* RestActivityPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AF5576758A9C5BCFB465AB /* RestActivityPlugin.swift */; };
 		16EC2CDD86BB626DB84EB397 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6212EE87699ADDDD453058EA /* WidgetKit.framework */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		4AC5329E7FC9833AF102BFCA /* HomeWidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE450428D7E7778A93048785 /* HomeWidgetData.swift */; };
 		4C685F54B57105816D7A6E09 /* AppHealthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB3E7CFCC1F85068165595E /* AppHealthPlugin.swift */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
@@ -21,8 +22,12 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		53A04E56D03A94BDF0840533 /* RestTimerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC57CE1CAA308D265794F505 /* RestTimerWidget.swift */; };
 		5923AFB69228539B04277996 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 57BFEA82C7F1CC945C3AD9F6 /* Foundation.framework */; };
+		61B2B7BEE75E218BDB4E3BF9 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6719E4583EC9A7D05101BD4B /* GoogleService-Info.plist */; };
+		65B32491BF5DCF88EBD224A4 /* HomeWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = C722CF406C3F3475A975D6AB /* HomeWidget.swift */; };
 		6D21E690E1DCA98F54923848 /* RestTimerWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 36C256B51EDB61AE9C64791B /* RestTimerWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		6F29D1005B9063E7168CDF87 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A7672BB79779E6E70979594 /* SwiftUI.framework */; };
+		7B60A6DD997582BCD462E20C /* AppWidgetPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAEC62DD6CE2B0978DE4775B /* AppWidgetPlugin.swift */; };
+		80948397BA755767D45C05FB /* HomeWidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE450428D7E7778A93048785 /* HomeWidgetData.swift */; };
 		83F3AD9BB4699D9907173DE3 /* RestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6BEFB1408CBC8C8150528CC /* RestActivityAttributes.swift */; };
 		9138AB5BBD62F9D00A149A22 /* AppHapticsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61E9D516F63162DBD4FA9053 /* AppHapticsPlugin.swift */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
@@ -71,6 +76,7 @@
 		5A7672BB79779E6E70979594 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
 		61E9D516F63162DBD4FA9053 /* AppHapticsPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppHapticsPlugin.swift; sourceTree = "<group>"; };
 		6212EE87699ADDDD453058EA /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/WidgetKit.framework; sourceTree = DEVELOPER_DIR; };
+		6719E4583EC9A7D05101BD4B /* GoogleService-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		6CB3E7CFCC1F85068165595E /* AppHealthPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppHealthPlugin.swift; sourceTree = "<group>"; };
 		70AF5576758A9C5BCFB465AB /* RestActivityPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestActivityPlugin.swift; sourceTree = "<group>"; };
 		74AACE1464BD985D5955A486 /* AppViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppViewController.swift; sourceTree = "<group>"; };
@@ -78,7 +84,10 @@
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		A6BEFB1408CBC8C8150528CC /* RestActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestActivityAttributes.swift; sourceTree = "<group>"; };
+		BAEC62DD6CE2B0978DE4775B /* AppWidgetPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppWidgetPlugin.swift; sourceTree = "<group>"; };
+		C722CF406C3F3475A975D6AB /* HomeWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeWidget.swift; sourceTree = "<group>"; };
 		CA3D7CA9722A577CB3340249 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		DE450428D7E7778A93048785 /* HomeWidgetData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeWidgetData.swift; sourceTree = "<group>"; };
 		FC57CE1CAA308D265794F505 /* RestTimerWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestTimerWidget.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -111,6 +120,7 @@
 				FC57CE1CAA308D265794F505 /* RestTimerWidget.swift */,
 				CA3D7CA9722A577CB3340249 /* Info.plist */,
 				427862EE03AC581FDDB06FFA /* RestTimerWidget.entitlements */,
+				C722CF406C3F3475A975D6AB /* HomeWidget.swift */,
 			);
 			path = RestTimerWidget;
 			sourceTree = "<group>";
@@ -153,6 +163,8 @@
 				61E9D516F63162DBD4FA9053 /* AppHapticsPlugin.swift */,
 				6CB3E7CFCC1F85068165595E /* AppHealthPlugin.swift */,
 				0E77F4452E23147CF036780E /* App.entitlements */,
+				BAEC62DD6CE2B0978DE4775B /* AppWidgetPlugin.swift */,
+				6719E4583EC9A7D05101BD4B /* GoogleService-Info.plist */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -161,6 +173,7 @@
 			isa = PBXGroup;
 			children = (
 				A6BEFB1408CBC8C8150528CC /* RestActivityAttributes.swift */,
+				DE450428D7E7778A93048785 /* HomeWidgetData.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -195,6 +208,7 @@
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
 				F89C91CBCF4C4B010F5CF248 /* Embed Foundation Extensions */,
+				0840FB38DBB14CF24BA21484 /* Upload symbols to Crashlytics */,
 			);
 			buildRules = (
 			);
@@ -276,6 +290,7 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				61B2B7BEE75E218BDB4E3BF9 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -287,6 +302,33 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		0840FB38DBB14CF24BA21484 /* Upload symbols to Crashlytics */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+			);
+			name = "Upload symbols to Crashlytics";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ -f \"${SRCROOT}/App/GoogleService-Info.plist\" ]; then\n  \"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		504EC3001FED79650016851F /* Sources */ = {
@@ -300,6 +342,8 @@
 				83F3AD9BB4699D9907173DE3 /* RestActivityAttributes.swift in Sources */,
 				9138AB5BBD62F9D00A149A22 /* AppHapticsPlugin.swift in Sources */,
 				4C685F54B57105816D7A6E09 /* AppHealthPlugin.swift in Sources */,
+				7B60A6DD997582BCD462E20C /* AppWidgetPlugin.swift in Sources */,
+				4AC5329E7FC9833AF102BFCA /* HomeWidgetData.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -309,6 +353,8 @@
 			files = (
 				53A04E56D03A94BDF0840533 /* RestTimerWidget.swift in Sources */,
 				AFBD26FC26040CCD43FE06FE /* RestActivityAttributes.swift in Sources */,
+				80948397BA755767D45C05FB /* HomeWidgetData.swift in Sources */,
+				65B32491BF5DCF88EBD224A4 /* HomeWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -525,6 +571,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -548,6 +595,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

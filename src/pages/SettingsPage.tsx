@@ -1,19 +1,29 @@
-import { ArrowLeft, Download, LogOut, Upload } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { ArrowLeft, ChevronRight, Download, LogOut, Upload } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { SignInButtons } from '../auth/SignInButtons';
 import { Avatar } from '../components/Avatar';
 import { useFeedback } from '../components/Feedback';
+import { NotificationChoice } from '../components/NotificationChoice';
+import { ProfileWindow } from '../components/ProfileWindow';
+import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
 import { RestLength } from '../components/RestLength';
 import { checkSnapshot } from '../core/backup';
+import { anyNotificationOn } from '../core/notifications';
+import { formatHeight } from '../core/body';
+import { formatWeight } from '../core/units';
 import { pluralize } from '../core/format';
-import { DEFAULT_REST_SECONDS, type ThemePreference, type WeightUnit } from '../core/types';
+import { DEFAULT_REST_SECONDS, type NotificationSettings, type ThemePreference, type WeightUnit } from '../core/types';
 import { repo } from '../data';
 import { useSettings } from '../hooks/settings';
+import { useAccountUser } from '../hooks/useAccount';
 import { useSessions } from '../hooks/useRepo';
 import { appleHealthOn, healthSupported, healthWorkouts, saveAllToAppleHealth, setAppleHealth } from '../native/health';
 import { canGoBack } from '../utils/history';
+import { askNotificationPermission, notificationsAllowed } from '../native/notifications';
+import { isNative, SITE_URL } from '../native/platform';
+import { APP_NAME, HOME_PATH } from '../config';
 
 /** iPhone app only: save finished workouts to Apple Health (per phone, since Health permission is). */
 function AppleHealthCard() {
@@ -105,7 +115,7 @@ export function SettingsPage() {
   return (
     <>
       {/* In the app Settings is opened from the account button, not a tab, so it has a way back. */}
-      <button className="back-link app-only" onClick={() => (canGoBack() ? navigate(-1) : navigate('/', { replace: true }))}>
+      <button className="back-link app-only" onClick={() => (canGoBack() ? navigate(-1) : navigate(HOME_PATH, { replace: true }))}>
         <ArrowLeft size={15} /> Back
       </button>
       <h1 className="title">Settings</h1>
@@ -113,6 +123,7 @@ export function SettingsPage() {
       <div className="stack" style={{ marginTop: 24, maxWidth: 680 }}>
         {auth.status === 'signed-in' && <AccountCard />}
         {auth.status === 'local' && <SignInCard />}
+        <ProfileCard />
 
         <div className="card">
           <div className="spread">
@@ -176,6 +187,8 @@ export function SettingsPage() {
             />
           </div>
         </div>
+
+        <NotificationsCard />
 
         {healthSupported && <AppleHealthCard />}
 
@@ -250,8 +263,50 @@ export function SettingsPage() {
           {status && <div className="small" style={{ marginTop: 12 }}>{status}</div>}
         </div>
 
+        <PrivacyCard />
       </div>
     </>
+  );
+}
+
+/** The privacy policy (a static page, public/privacy.html), and deleting the account. */
+function PrivacyCard() {
+  const { status, user, deleteAccount } = useAuth();
+  const [deleting, setDeleting] = useState(false);
+  // In the iPhone app a link would replace the app in its web view, so it opens in Safari instead.
+  const policy = isNative ? `${SITE_URL}/privacy` : '/privacy';
+  return (
+    <div className="card">
+      <div className="spread">
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>Privacy</div>
+          <div className="muted small">What’s stored, where, and how to delete it.</div>
+        </div>
+        <a className="btn btn-ghost btn-sm" href={policy} target="_blank" rel="noopener">
+          Privacy policy
+        </a>
+      </div>
+      {status === 'signed-in' && (
+        <div className="spread" style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--card-border)' }}>
+          <div className="muted small" style={{ flex: 1, minWidth: 0 }}>
+            Deletes your account and all its data.
+          </div>
+          <button className="btn btn-danger btn-sm" onClick={() => setDeleting(true)}>
+            Delete account
+          </button>
+        </div>
+      )}
+      {deleting && (
+        <DeleteAccountDialog
+          email={user?.email ?? null}
+          onClose={() => setDeleting(false)}
+          onDelete={() => {
+            setDeleting(false);
+            void deleteAccount();
+          }}
+        />
+      )}
+    </div>
   );
 }
 
@@ -276,8 +331,59 @@ function SignInCard() {
   );
 }
 
+/** Settings → Notifications: All, None or Choose (core/notifications.ts). Sent by the iPhone app only. */
+function NotificationsCard() {
+  const { settings, update } = useSettings();
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+  useEffect(() => {
+    void notificationsAllowed().then(setAllowed);
+  }, []);
+  // Not chosen yet: shown as what happens now (rest alerts only).
+  const value: NotificationSettings = settings.notifications ?? { mode: 'choose', kinds: { rest: true } };
+  const change = async (next: NotificationSettings) => {
+    update({ notifications: next });
+    if (isNative && anyNotificationOn(next)) setAllowed(await askNotificationPermission());
+  };
+  return (
+    <div className="card">
+      <div style={{ fontWeight: 600, fontSize: 15 }}>Notifications</div>
+      <div className="muted small" style={{ marginBottom: 12 }}>
+        {isNative ? 'What the app may tell you, even when it’s closed.' : 'Sent by the iPhone app; the choice is shared with it.'}
+      </div>
+      <NotificationChoice value={value} onChange={(next) => void change(next)} />
+      {isNative && allowed === false && anyNotificationOn(value) && (
+        <div className="small" style={{ marginTop: 10, color: 'var(--danger)' }}>
+          Notifications are turned off for {APP_NAME} in the iPhone’s Settings, so none will show.
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A quiet way into the profile: who you are, your height and body weight. */
+function ProfileCard() {
+  const { settings } = useSettings();
+  const [open, setOpen] = useState(false);
+  const latest = settings.bodyWeights?.at(-1);
+  const height = formatHeight(settings.profile?.heightCm, settings.unit);
+  const facts = [height, latest ? `${formatWeight(latest.kg, settings.unit)} ${settings.unit}` : ''].filter(Boolean).join(' · ');
+  return (
+    <>
+      <button className="card settings-link" onClick={() => setOpen(true)}>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontWeight: 600, fontSize: 15 }}>Profile</span>
+          <span className="muted small">{facts || 'Name, photo, height and body weight'}</span>
+        </span>
+        <ChevronRight size={18} className="muted" />
+      </button>
+      {open && <ProfileWindow onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
 function AccountCard() {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
+  const user = useAccountUser();
   if (!user) return null;
   return (
     <div className="card">

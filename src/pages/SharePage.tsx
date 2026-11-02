@@ -2,7 +2,7 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useFeedback } from '../components/Feedback';
-import { PLAN_PATH } from '../config';
+import { HOME_PATH, PLAN_PATH } from '../config';
 import { pluralize } from '../core/format';
 import { decodeShare } from '../core/share';
 import { WEEKDAYS } from '../core/stats';
@@ -42,7 +42,7 @@ export function SharePage() {
 
   return (
     <div className="narrow">
-      <Link to="/" className="back-link">
+      <Link to={HOME_PATH} className="back-link">
         <ArrowLeft size={15} /> Home
       </Link>
       <span className="muted small">Shared {payload.routine ? 'routine' : 'workout'}</span>
@@ -78,7 +78,7 @@ export function SharePage() {
         <button className="btn btn-primary" onClick={add} disabled={busy}>
           <Plus size={15} /> {busy ? 'Adding…' : 'Add to my workouts'}
         </button>
-        <Link to="/" className="btn btn-ghost">
+        <Link to={HOME_PATH} className="btn btn-ghost">
           Not now
         </Link>
       </div>

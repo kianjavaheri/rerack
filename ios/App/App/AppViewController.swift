@@ -22,6 +22,7 @@ class AppViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(RestActivityPlugin())
         bridge?.registerPluginInstance(AppHapticsPlugin())
         bridge?.registerPluginInstance(AppHealthPlugin())
+        bridge?.registerPluginInstance(AppWidgetPlugin())
     }
 
     override func viewDidLoad() {

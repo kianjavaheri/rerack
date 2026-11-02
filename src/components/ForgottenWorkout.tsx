@@ -9,6 +9,7 @@ import { repo } from '../data';
 import { saveToAppleHealth } from '../native/health';
 import { useSessions } from '../hooks/useRepo';
 import { Modal } from './Modal';
+import { HOME_PATH } from '../config';
 
 /**
  * Asks about a workout that's been left open with no changes for 3 hours: finish it at the last change (so the
@@ -47,13 +48,13 @@ export function ForgottenWorkoutPrompt() {
     const finished = finalizeSession(live ? { ...s, finishedAt: lastAt } : s);
     await repo.saveSession(finished);
     saveToAppleHealth(finished);
-    leavePage('/');
+    leavePage(HOME_PATH);
   };
   const discard = async () => {
     // A finished workout picked back up goes back to how it was, rather than deleting what was logged before.
     if (session.resumedFrom) await repo.saveSession(cancelResume(session));
     else await repo.deleteSession(session.id);
-    leavePage('/');
+    leavePage(HOME_PATH);
   };
 
   return (

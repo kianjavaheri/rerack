@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useFeedback } from '../components/Feedback';
 import { localRepo, repo, setActiveRepository } from '../data';
+import { APP_USER_KEY, HOME_PATH } from '../config';
 import { firebaseConfigured } from './config';
 import { LoginScreen } from './LoginScreen';
 import { MigrationPrompt } from './MigrationPrompt';
@@ -27,6 +28,8 @@ interface AuthContextValue {
   error: string | null;
   signIn: (provider: SignInProvider) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Deletes the account and all its data, after signing in again to confirm (Settings). */
+  deleteAccount: () => Promise<void>;
   /** From the sign-in screen: use the app on this device only. */
   continueWithoutAccount: () => void;
 }
@@ -85,7 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const { confirm } = useFeedback();
+  const { confirm, notify } = useFeedback();
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!firebaseConfigured || local) return;
@@ -208,18 +212,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     await session.signOutAndClear();
     // The cleared Firestore instance can't be reused; start fresh on the sign-in screen.
+    window.location.replace(HOME_PATH);
+  };
+
+  const deleteAccount = async () => {
+    const session = await loadSession();
+    // Queued edits go to the server first, so the deletion removes them too instead of racing them.
+    await repo.flush?.();
+    setDeleting(true);
+    try {
+      if ((await session.deleteAccount()) === 'cancelled') {
+        setDeleting(false);
+        return;
+      }
+    } catch (err) {
+      console.error(err);
+      setDeleting(false);
+      notify(err instanceof Error && !('code' in err) ? err.message : 'Couldn’t delete the account. Check your connection and try again.');
+      return;
+    }
+    // Back to the website's landing page: this browser no longer has an account to open.
+    try {
+      localStorage.removeItem(APP_USER_KEY);
+    } catch {
+      // Storage unavailable: nothing to clear.
+    }
     window.location.replace('/');
   };
 
   let content: ReactNode = children;
-  if (signingOut) content = <Splash message="Signing out…" immediate />;
+  if (deleting) content = <Splash message="Deleting your account…" immediate />;
+  else if (signingOut) content = <Splash message="Signing out…" immediate />;
   else if (status === 'loading') content = <Splash />;
   else if (status === 'signed-out') content = <LoginScreen onSignIn={signIn} onSkip={continueWithoutAccount} error={error} />;
 
   return (
-    <AuthContext.Provider value={{ status, user, error, signIn, signOut, continueWithoutAccount }}>
+    <AuthContext.Provider value={{ status, user, error, signIn, signOut, deleteAccount, continueWithoutAccount }}>
       {content}
-      {status === 'signed-in' && user && !signingOut && <MigrationPrompt uid={user.uid} />}
+      {status === 'signed-in' && user && !signingOut && !deleting && <MigrationPrompt uid={user.uid} />}
     </AuthContext.Provider>
   );
 }

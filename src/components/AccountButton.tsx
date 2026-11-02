@@ -1,7 +1,7 @@
 import { Settings } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider';
+import { useAccountUser } from '../hooks/useAccount';
 import { Avatar } from './Avatar';
 
 /**
@@ -10,7 +10,7 @@ import { Avatar } from './Avatar';
  * the page. Hidden on the web, where the top bar has the account menu.
  */
 export function AccountButton() {
-  const { user } = useAuth();
+  const user = useAccountUser();
   return (
     <Link to="/settings" className="account-btn" aria-label={user ? 'Account' : 'Settings'} title={user ? 'Account' : 'Settings'}>
       {user ? <Avatar user={user} size={32} /> : <Settings size={20} aria-hidden />}

@@ -136,20 +136,20 @@ export function entryFinishedAt(entry: SessionEntry): number | null {
 }
 
 /**
- * Exercises you've started first, in the order you started them (their first set checked off), then the untouched
- * ones as they were; a superset moves as one. So doing things out of order keeps the list in the order they were
- * done: finish exercise 1, then start exercise 3, and 3 moves to second. Sets checked before times were kept count as
- * the earliest.
+ * The order things were done in, so doing them out of order never means scrolling around: finished exercises first,
+ * by when each was finished; then ones under way, by when each was started (its first set checked off); then the
+ * untouched ones as they were. A superset moves as one. So: start 2, then 4 → 2, 4; finish 4 while 2 isn't → 4, 2.
+ * Sets checked before times were kept count as the earliest.
  */
-export function orderByStarted(entries: SessionEntry[]): SessionEntry[] {
+export function orderByProgress(entries: SessionEntry[]): SessionEntry[] {
   const groups = supersetGroups(entries).map((g) => g.map((x) => x.item));
-  const startedAt = (group: SessionEntry[]) => {
-    const times = group.flatMap((e) => e.sets.filter((s) => s.done).map((s) => (s.doneAt ? Date.parse(s.doneAt) : 0)));
-    return times.length ? Math.min(...times) : null;
-  };
-  const started = groups.filter((g) => startedAt(g) !== null).sort((a, b) => startedAt(a)! - startedAt(b)!);
-  const rest = groups.filter((g) => startedAt(g) === null);
-  return [...started, ...rest].flat();
+  const times = (group: SessionEntry[]) => group.flatMap((e) => e.sets.filter((s) => s.done).map((s) => (s.doneAt ? Date.parse(s.doneAt) : 0)));
+  const finishedAt = (group: SessionEntry[]) => (group.every(isEntryDone) ? Math.max(...times(group)) : null);
+  const startedAt = (group: SessionEntry[]) => (times(group).length ? Math.min(...times(group)) : null);
+  const finished = groups.filter((g) => finishedAt(g) !== null).sort((a, b) => finishedAt(a)! - finishedAt(b)!);
+  const started = groups.filter((g) => finishedAt(g) === null && startedAt(g) !== null).sort((a, b) => startedAt(a)! - startedAt(b)!);
+  const untouched = groups.filter((g) => startedAt(g) === null);
+  return [...finished, ...started, ...untouched].flat();
 }
 
 /**
@@ -179,7 +179,8 @@ export function currentSet(session: Session): { entry: SessionEntry; label: stri
     const next = entry.sets.findIndex((x) => !x.done);
     if (next < 0) continue;
     if (entry.sets[next].warmup) return { entry, label: 'Warm-up' };
-    const working = entry.sets.filter((x) => !x.warmup);
+    if (entry.sets[next].drop) return { entry, label: 'Drop set' };
+    const working = entry.sets.filter((x) => !x.warmup && !x.drop);
     return { entry, label: `Set ${working.indexOf(entry.sets[next]) + 1} of ${working.length}` };
   }
   return null;

@@ -1,7 +1,7 @@
 import { Disc3, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { toLocalInput } from '../core/format';
-import { isBarbellExercise } from '../core/plates';
+import { barWeight, isBarbellExercise } from '../core/plates';
 import { emptySet } from '../core/sessions';
 import type { Exercise, ID, SetLog, WeightUnit } from '../core/types';
 import { removeLoggedNumbers, saveLoggedNumbers } from '../data/logEntry';
@@ -113,6 +113,7 @@ export function LogEntryForm({
                   emptyPlaceholder={bodyweight ? 'BW' : '0'}
                   unit={unit}
                   perSide={barbell && perSide}
+                  bar={barWeight(exercise, unit)}
                   onChange={(weightKg) => setRow(row.id, { weightKg })}
                 />
                 <button className="icon-btn" disabled={rows.length === 1} onClick={() => setRows((list) => list.filter((r) => r.id !== row.id))} aria-label={`Remove set ${i + 1}`}>

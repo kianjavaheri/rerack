@@ -6,31 +6,35 @@ import { DateTimeFields } from '../components/DateTimeFields';
 import { ExercisePicker } from '../components/ExercisePicker';
 import { ExerciseRest } from '../components/ExerciseRest';
 import { useFeedback } from '../components/Feedback';
-import { DEFAULT_SETS } from '../config';
+import { DEFAULT_SETS, HOME_PATH } from '../config';
 import { NotFound } from '../components/NotFound';
 import { ExerciseNotepad, NotesButton, WorkoutNotepad } from '../components/Notes';
 import { NumericInput } from '../components/NumericInput';
 import { ExercisePrevious, PreviousButton, WorkoutPrevious } from '../components/PreviousLog';
 import { formatRest, RestTimer } from '../components/RestTimer';
-import { SetMenu } from '../components/SetMenu';
+import { SetMenu, type SetKind } from '../components/SetMenu';
 import { SupersetButton, SupersetPill, usePills } from '../components/SupersetLink';
 import { PageSkeleton } from '../components/Skeleton';
 import { formatDuration, relativeDay } from '../core/format';
 import { now } from '../core/ids';
 import { hasNotesOrLinks } from '../core/links';
-import { canResume, emptySet, entryFinishedAt, finalizeSession, isEntryDone, isImportedSession, newEntry, orderByStarted, resumeSession, sessionDurationMinutes } from '../core/sessions';
+import { canResume, emptySet, entryFinishedAt, finalizeSession, isEntryDone, isImportedSession, newEntry, orderByProgress, resumeSession, sessionDurationMinutes } from '../core/sessions';
 import { exerciseLog, exercisesLog, isCompletedSet, lastPerformance, lastPerformanceWithDate, sessionSummary, type PastPerformance } from '../core/stats';
 import { groupBounds, leaveSuperset, moveIntoSuperset, moveUnlinked, placeAfter, removeUnlinked, restoreLinks, restsAfter, supersetGroups, supersetWith } from '../core/supersets';
 import { DEFAULT_REST_SECONDS, restSecondsFor, type Exercise, type Session, type SessionEntry, type SetLog, type WeightUnit } from '../core/types';
-import { isBarbellExercise, platesLabel } from '../core/plates';
+import { barWeight, isBarbellExercise, platesLabel } from '../core/plates';
 import { suggestedWeightKg } from '../core/progression';
-import { formatWeight } from '../core/units';
+import { formatWeight, toKg } from '../core/units';
 import { repo } from '../data';
 import { removeFromAppleHealth, saveToAppleHealth, syncToAppleHealth } from '../native/health';
 import { useSettings } from '../hooks/settings';
 import { useDragReorder } from '../hooks/useDragReorder';
 import { useSlotFlip } from '../hooks/useSlotFlip';
 import { ExercisePhotos, ExerciseThumb, hasMedia } from '../components/ExercisePhoto';
+import { DoneBurst } from '../components/DoneBurst';
+import { openWorkoutSummary } from '../components/SummaryWindow';
+import { WorkoutSummary } from '../components/WorkoutSummary';
+import { workoutSummary } from '../core/summary';
 import { WeightInput } from '../components/WeightInput';
 import { useExerciseMedia } from '../hooks/useCatalog';
 import { useEditable } from '../hooks/useEditable';
@@ -54,6 +58,9 @@ export function SessionPage() {
   const [supersetFor, setSupersetFor] = useState<string | null>(null);
   /** Slides exercises to their new places when they go into or out of a superset. */
   const flip = useSlotFlip();
+  /** Exercises finished this visit: each one plays the completion burst (keyed by the count). */
+  const [bursts, setBursts] = useState(0);
+  const [burstShown, setBurstShown] = useState(0);
   /**
    * Where an exercise pulled into a superset came from (the id of the one before it, null if first), so taking it out
    * puts it back there. Forgotten once it's moved by hand.
@@ -178,8 +185,10 @@ export function SessionPage() {
       finishing.current = false;
     }
     saveToAppleHealth(finished);
-    // Home, where it now shows under Recent workouts.
-    navigate('/');
+    // The summary as a page over everything, with the celebration; closing it leaves the finished workout (in place of
+    // the live page, so Back skips that).
+    openWorkoutSummary(finished.id, true);
+    navigate(`/session/${finished.id}`, { replace: true });
   };
 
   // Deletes at once and offers Undo instead of asking first.
@@ -198,6 +207,7 @@ export function SessionPage() {
 
   return (
     <div className="narrow">
+      {bursts > burstShown && <DoneBurst key={bursts} onDone={() => setBurstShown(bursts)} />}
       <div className="spread" style={{ marginBottom: 14 }}>
         {/* Back to wherever this was opened from (heatmap, Analytics, history…), else a sensible default. */}
         {canGoBack() ? (
@@ -205,7 +215,7 @@ export function SessionPage() {
             <ArrowLeft size={15} /> Back
           </button>
         ) : (
-          <Link to={inProgress ? '/' : '/history'} className="back-link" style={{ margin: 0 }}>
+          <Link to={inProgress ? HOME_PATH : '/history'} className="back-link" style={{ margin: 0 }}>
             <ArrowLeft size={15} /> {inProgress ? 'Home' : 'History'}
           </Link>
         )}
@@ -262,6 +272,14 @@ export function SessionPage() {
         <PreviousButton label={`Last times: ${session.name}`} onClick={() => setPrevious('workout')} />
       </div>
       {template && workoutNotesOpen && <WorkoutNotepad key={template.id} workout={template} />}
+      {!inProgress && sessions && summary.sets > 0 && (
+        <WorkoutSummary
+          summary={workoutSummary(session, sessions)}
+          exerciseById={exerciseById}
+          unit={settings.unit}
+          onOpen={() => openWorkoutSummary(session.id)}
+        />
+      )}
       {(!live || !inProgress) && (
         <div style={{ marginTop: 12 }}>
           <DateTimeFields
@@ -355,12 +373,13 @@ export function SessionPage() {
                   onSuperset={() => toggleSuperset(entry)}
                   onTogglePerSide={() => togglePerSide(entry)}
                   showRest={inProgress && live && restOn}
-                  onSetDone={() => {
+                  onSetDone={(finished) => {
                     if (restsAfter(session.entries, i)) startRest(entry.exerciseId);
-                    // Starting an exercise (or superset) moves it up after the ones already started (orderByStarted).
                     if (!inProgress) return;
+                    if (finished) setBursts((n) => n + 1);
+                    // Finished ones first, then ones under way, then untouched (orderByProgress).
                     update((s) => {
-                      const entries = orderByStarted(s.entries);
+                      const entries = orderByProgress(s.entries);
                       if (entries.every((e, k) => e.id === s.entries[k].id)) return s;
                       flip();
                       return { ...s, entries };
@@ -504,7 +523,8 @@ interface EntryCardProps {
   onSuperset: () => void;
   /** A set was just checked off (starts the rest timer). */
   /** A set was checked off. */
-  onSetDone: () => void;
+  /** A set was checked off; `finished` when it was the exercise's last one left. */
+  onSetDone: (finished: boolean) => void;
   onTogglePerSide: () => void;
   /** "Go up" weight for this workout (kg), when last time hit the top of the rep range on every set. */
   suggestionKg: number | null;
@@ -523,19 +543,25 @@ function EntryCard({ handle, entry, exercise, last, unit, isFirst, isLast, onCha
   const setSet = (setId: string, patch: Partial<SetLog>) =>
     onChange((e) => ({ ...e, sets: e.sets.map((s) => (s.id === setId ? { ...s, ...patch } : s)) }));
 
-  // Working-set number per row (warm-ups don't count), which is also how rows line up with last time.
+  const kindOf = (set: SetLog): SetKind => (set.warmup ? 'warmup' : set.drop ? 'drop' : 'working');
+  // Which of last time's sets each row lines up with (warm-ups don't count; drop sets do, since they're logged too).
   const working = entry.sets.reduce<number[]>((acc, set) => [...acc, set.warmup ? -1 : acc.filter((n) => n >= 0).length], []);
-  const label = (i: number) => (working[i] < 0 ? 'Warm-up' : String(working[i] + 1));
+  // The number shown: straight sets only (1, 2, D, 3).
+  const numbers = entry.sets.reduce<number[]>((acc, set) => [...acc, set.warmup || set.drop ? -1 : acc.filter((n) => n >= 0).length], []);
+  const label = (i: number) => (entry.sets[i].warmup ? 'Warm-up' : entry.sets[i].drop ? 'Drop set' : String(numbers[i] + 1));
   const barbell = isBarbellExercise(exercise);
   const perSide = barbell && !!entry.perSide;
+  const bar = barWeight(exercise, unit);
+  // The bar belongs to the exercise, so a 35 lb bar stays for it in every workout.
+  const setBar = (weight: number) => exercise && void repo.saveExercise({ ...exercise, barKg: weight === barWeight(undefined, unit) ? undefined : toKg(weight, unit), updatedAt: now() });
 
   /**
    * Suggested values for set i (its placeholders, and what checking it off empty fills in): what you did in the set
    * above this session, once anything's in it (11 × 10 in set 1 suggests 11 × 10 for set 2); else the same working set
-   * last time. A warm-up only follows a warm-up above it, a working set a working one.
+   * last time. A warm-up only follows a warm-up above it, a drop set a drop set, a working set a working one.
    */
   const hint = (i: number): Pick<SetLog, 'weightKg' | 'reps'> | undefined => {
-    const above = entry.sets.slice(0, i).findLast((s) => !!s.warmup === !!entry.sets[i].warmup);
+    const above = entry.sets.slice(0, i).findLast((s) => kindOf(s) === kindOf(entry.sets[i]));
     const filled = above && (above.reps != null || above.weightKg != null) ? above : undefined;
     const before = working[i] < 0 ? undefined : (previous[working[i]] ?? previous.at(-1));
     if (!filled && !before) return undefined;
@@ -552,15 +578,15 @@ function EntryCard({ handle, entry, exercise, last, unit, isFirst, isLast, onCha
     const weightKg = set.weightKg ?? h?.weightKg ?? null;
     if (!reps) return; // nothing to complete yet
     setSet(set.id, { done: true, reps, weightKg, doneAt: new Date().toISOString() });
-    onSetDone();
+    onSetDone(entry.sets.every((s) => s.id === set.id || s.done));
   };
   const finishedAt = entryFinishedAt(entry);
 
   // "Go up" stays until the suggested weight is filled into every working set still to do.
-  const toDo = entry.sets.filter((s) => !s.done && !s.warmup);
+  const toDo = entry.sets.filter((s) => !s.done && !s.warmup && !s.drop);
   const showSuggestion = suggestionKg != null && toDo.some((s) => s.weightKg !== suggestionKg);
   const applySuggestion = () =>
-    onChange((e) => ({ ...e, sets: e.sets.map((s) => (!s.done && !s.warmup ? { ...s, weightKg: suggestionKg } : s)) }));
+    onChange((e) => ({ ...e, sets: e.sets.map((s) => (!s.done && !s.warmup && !s.drop ? { ...s, weightKg: suggestionKg } : s)) }));
 
   const addSet = () =>
     onChange((e) => {
@@ -667,10 +693,11 @@ function EntryCard({ handle, entry, exercise, last, unit, isFirst, isLast, onCha
             <div key={set.id} className={`set-row${set.done ? ' done' : ''}`} style={{ display: 'contents' }}>
               <SetMenu
                 label={label(i)}
-                warmup={!!set.warmup}
-                plates={barbell && shownWeight != null ? platesLabel(Number(formatWeight(shownWeight, unit)), unit) : null}
+                kind={kindOf(set)}
+                plates={barbell && shownWeight != null ? platesLabel(Number(formatWeight(shownWeight, unit)), unit, bar) : null}
                 weightText={shownWeight != null ? `${formatWeight(shownWeight, unit)} ${unit}` : ''}
-                onToggleWarmup={() => setSet(set.id, { warmup: !set.warmup })}
+                bar={barbell ? { weight: bar, unit, onChange: setBar } : undefined}
+                onKind={(kind) => setSet(set.id, { warmup: kind === 'warmup' || undefined, drop: kind === 'drop' || undefined })}
                 onDelete={() => onChange((e) => ({ ...e, sets: e.sets.filter((s) => s.id !== set.id) }))}
               />
               <NumericInput
@@ -690,6 +717,7 @@ function EntryCard({ handle, entry, exercise, last, unit, isFirst, isLast, onCha
                 emptyPlaceholder={bodyweight ? 'BW' : '0'}
                 unit={unit}
                 perSide={perSide}
+                bar={bar}
                 onChange={(weightKg) => setSet(set.id, { weightKg })}
               />
               <button

@@ -16,6 +16,8 @@ const config: CapacitorConfig = {
     contentInset: 'never',
     backgroundColor: '#0f1011',
   },
+  // The Crashlytics plugin's own advice, to avoid a SwiftPM package identity clash with the Firebase SDK.
+  experimental: { ios: { spm: { packageOptions: { '@capacitor-firebase/crashlytics': { symlink: true } } } } },
   plugins: {
     SocialLogin: { providers: { google: true, facebook: false, apple: true, twitter: false } },
     LocalNotifications: { presentationOptions: ['sound', 'banner'] },

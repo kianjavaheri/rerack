@@ -31,6 +31,22 @@ cache). `registerType: 'prompt'` with no UI: a new version waits until the app i
 mid-workout. `/__/` (Firebase Hosting's sign-in handler) is excluded from the navigation fallback — keep it that way.
 The service worker only exists in builds; test it with the `preview-build` launch config.
 
+**Website landing page and the app share `index.html`.** The app's Home is `/home` (`HOME_PATH` in `src/config.ts`);
+`/` on the website is a landing page. The inline script in `index.html`'s head decides before anything loads: on the
+web (not the iPhone app, not the home-screen web app), `/` for a browser that has never used the app, and `/about`
+for anyone, adds `html.landing`; then a script at the end of `<body>` replaces `#root` with `<template id="landing">`
+and `src/main.tsx` doesn't import the app at all (`src/boot.tsx` is the app's real start, loaded dynamically, with
+`index.css`). Otherwise `/` is `replaceState`d to `/home`, and the router's index route also redirects there (the
+iPhone app starts at `/`). "Used the app" is localStorage `rerack:app-user` (`APP_USER_KEY`), set by Layout once
+past sign-in (or local mode); deleting the account clears it and goes to `/`. So no hosting or service-worker
+changes: `/about` and every app path fall back to the same `index.html`. Landing styles: `src/landing/landing.css`,
+linked from `index.html` for every page and scoped to `html.landing`. Screenshots: `public/landing/*.webp`
+(780 x 1594, the app at 390 x 797 dark with demo data, drawn under a fake status bar in CSS phone frames; excluded
+from the precache); `public/landing/og.png` is the link preview (`node scripts/landing-og.mjs`). To retake shots use
+the `web-shots` launch config (:5176, its own origin, so loading demo data there doesn't touch `web-local`'s), load
+demo data, `standalone` class, viewport 390 x 797, finish animations before each capture. The sign-in screen links
+back with "What's Rerack?" (`.web-only`, hidden when installed). The PWA manifest's `start_url` is `/home`.
+
 There is no test suite. Verify changes in the browser; in dev, **Settings → Load demo data** (or importing
 `src/data/demo.ts` and calling `repo.importSnapshot(demoSnapshot())`) gives ~10 weeks of history to look at. When
 driving `repo` from the browser console after hot reloads, import the exact URL the app uses
@@ -38,7 +54,7 @@ driving `repo` from the browser console after hot reloads, import the exact URL 
 `import('/src/data/index.ts')` can be a second instance whose writes reach IndexedDB but never notify the UI.
 `.claude/launch.json`: `web` (:5173, real Firebase → sign-in), `web-local` (:5175, Firebase key blanked → local-only, no
 sign-in; use this for UI checks), `preview-build` (:4173, built app + service worker), `firebase-emulators`,
-`web-emulator`. For phone layouts: resize to mobile and add the `standalone` class to `<html>` (bottom tabs, swipes).
+`web-emulator`, `web-shots` (:5176, like `web-local` on its own origin, for the landing page's screenshots). For phone layouts: resize to mobile and add the `standalone` class to `<html>` (bottom tabs, swipes).
 Touch gestures can be driven with `new Touch(...)` + `TouchEvent`. When the browser pane is hidden,
 requestAnimationFrame, CSS animations and timers are paused/throttled, so only check end states there.
 
@@ -102,6 +118,25 @@ confirm them (asks before discarding if offline), then `signOutAndClear()` signs
 offline cache and reloads to `/`. Without Firebase config, `useAuth().status === 'disabled'`: no gate, local-only data —
 handy for UI work.
 
+**Deleting the account** (Settings → Privacy card → Delete account, App Review requires it; first
+`components/DeleteAccountDialog.tsx`, where "delete my account" must be typed, like GitHub): `AuthProvider.deleteAccount`
+flushes queued writes, covers the app ("Deleting your account…"), then `session.ts` `deleteAccount` re-authenticates
+with the account's provider (Apple first if linked; native sheets in the app via `appleSheet`/`googleSheet`, popups on
+the web; closing it cancels with nothing deleted), batch-deletes everything under `users/{uid}`, revokes Sign in with
+Apple (web: `revokeAccessToken`; app: the sheet's authorization code to `accounts:revokeToken` with `tokenType: CODE`,
+like the iOS SDK), `deleteUser`, clears the offline cache and reloads. The data and user deletion were checked on the
+emulators; the re-auth sheets/popups weren't (the browser pane can't do popups). **Privacy policy**:
+`public/privacy.html`, a static page outside the app (served at `/privacy` by a hosting rewrite, kept out of the service
+worker's navigation fallback; the App Store privacy URL is `SITE_URL/privacy`), linked from the same card (opens in
+Safari from the app). Keep it in step with what the app collects.
+
+**Crash reporting**: Firebase Crashlytics in the iPhone app only (`@capacitor-firebase/crashlytics`, pinned; SPM
+`symlink` option in `capacitor.config.ts` as its README says). The plugin configures Firebase itself and skips it when
+`ios/App/App/GoogleService-Info.plist` is missing (download it from the Firebase console's iOS app, then re-run
+`scripts/ios-setup-project.rb` to add it to the target and to the dSYM upload phase's inputs). `native/crashes.ts`
+(`reportCrashes`, from `main.tsx`) sends uncaught JS errors as non-fatal reports with parsed Safari stack frames, deduped.
+No user id or app data is attached. The web has none (Crashlytics has no web SDK).
+
 **iPhone app.** Same web build in a Capacitor shell; see the **iPhone app** section.
 
 **Firebase is lazy.** `auth/config.ts` reads the env vars and must not import the SDK. All SDK usage lives in
@@ -120,9 +155,10 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   SessionPage's EntryCard; also what checking it off empty fills in) are the set above this session once anything's
   in it (11 × 10 in set 1 suggests 11 × 10), else last time's same working set. Checking a set stamps
   `SetLog.doneAt` (cleared when unchecked): an exercise's finish time (`entryFinishedAt`, shown as "Done 5:12 PM"),
-  and starting one (its first set checked) moves it up after the ones already started, in the order they were
-  started (`orderByStarted`: finish 1, start 3, and 3 is second; a superset moves as one; in progress only, saved,
-  cards slide via `useSlotFlip`).
+  and the list keeps the order things were done in (`orderByProgress`): finished exercises first by finish time, then
+  ones under way by start time (first set checked), then untouched ones (start 2, then 4 → 2, 4; finish 4 → 4, 2; a
+  superset moves as one; in progress only, saved, cards slide via `useSlotFlip`). Finishing one plays
+  `components/DoneBurst.tsx` (a rainbow circle whose check draws itself, a ring, two haptic taps; pointer-events none).
   `lastPerformanceWithDate` takes options: `before` (the session's own start, so back-dated logs look further back),
   `occurrence` (same exercise twice in a workout) and prefers real sessions over imported ones. The ✓ "done" flag drives
   progress while logging: an exercise is done when every set is checked (`isEntryDone`), shown as "2/5 exercises" in the
@@ -168,7 +204,9 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   are `noPhotos`), loaded from jsDelivr pinned to one dataset commit (`exercisePhotos` in `data/catalog.ts`; too many
   to bundle) and kept by the service worker once seen. `components/ExercisePhoto.tsx`: `ExerciseThumb` in the picker
   rows and on exercise cards (session, workout editor; a dumbbell when there's no photo or it fails), and tapping it
-  opens `ExercisePhotos`, which alternates the two. Which entry's photos: `photoIdFor` (the exercise's `catalogId`,
+  opens `ExercisePhotos`, which alternates the two, with what it works and step-by-step instructions below
+  (`loadExerciseInfo`: free-exercise-db's own `<id>.json` on jsDelivr, fetched on open, cached by the service worker;
+  `ExerciseMedia.infoId` carries the library id even while the GIF is shown). Which entry's photos: `photoIdFor` (the exercise's `catalogId`,
   else the starter exercise's entry from `STARTER_CATALOG_IDS` in `data/seed.ts`, else a library exercise of the same
   name), display only. Starters are created linked now; older ones weren't.
   **Beta only:** `USE_ANATOMICAL` (`data/catalog.ts`) shows ExerciseDB's free V1 anatomical GIFs (3D figure, working
@@ -222,7 +260,7 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
 ## Naming / routes (user-facing names differ from early code names)
 
 - Nav: **Home | Workouts | Analytics | Log**, then the avatar account menu (Settings, Sign out) — or a gear icon in
-  local-only mode — and the Light/Dark toggle. Home's orbs: Check in, Workouts, Analytics, Log. The favicon link in `index.html` carries `?v=`: bump it when the icon changes (browsers cache favicons on their own).
+  local-only mode — and the Light/Dark toggle. Home is `/home` (`/` is the website's landing page). Home's orbs: Check in, Workouts, Analytics, Log. The favicon link in `index.html` carries `?v=`: bump it when the icon changes (browsers cache favicons on their own).
 - Opened from the home screen (`html.standalone`, set by the inline script in `index.html` from
   `display-mode: standalone` / `navigator.standalone`), the top nav and Home's orbs are hidden and a floating bottom
   tab bar (`.tabbar`, Clock-app style, icons only, liquid glass) shows Home, Workouts,
@@ -237,7 +275,14 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   `/edit/workouts/:id`, `/edit/routines/:id`, `/edit/exercises`, `/edit/import` and return to it.
 - What you've logged lives on Home: **Recent workouts** (the last 4, `RecentWorkouts` in `WorkoutLogPage.tsx`) under
   Activity, with "See all" → `/history` (`HistoryPage`: every session by month, a sub-page with Back and edge swipe).
-  Finishing a workout returns to Home; a finished session's Back/Done goes to History.
+  Finishing a workout opens its summary as a page of its own over the app (`components/SummaryWindow.tsx`,
+  `openWorkoutSummary(id, celebrate)`, rendered once in Layout so it doesn't depend on which copy of SessionPage is
+  mounted; the intro's window classes): the rainbow check pops and draws itself, rings, sparks, "Workout done" and
+  three haptic taps, then the summary; × or Done closes it onto the finished workout (which replaced the live page).
+  Every finished session with sets shows `components/WorkoutSummary.tsx` at the top (`core/summary.ts`
+  `workoutSummary`: time/sets/volume vs the last time that workout was done, each exercise's sets and
+  up/down/same/new by best e1RM, or reps for bodyweight), so History has it for all; its expand button opens the page
+  again (no celebration). A finished session's Back/Done goes back, else to History.
 - A logged session is `/session/:id`; check-in is `/check-in`. Use "Cancel workout" (not "Stop") for discarding an
   in-progress session — `components/CancelWorkoutButton.tsx` uses an in-app dialog, not `confirm()`; from the
   workout's page it returns to Check in.
@@ -251,8 +296,12 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   date fields: just Date and Time, no Today/Yesterday shortcuts, a new log starting at now) and no "tap the check" hint; the Live / Done badge sits right after the name (`.session-name` grows
   with the text). Under each exercise's name: a white **Last** pill (info icon; it was "Previous" with a rewind
   icon, which read as an action) and its rest length.
-- **During a workout**: the set number is a menu (`SetMenu`: warm-up, plates per side via `core/plates.ts` for barbell
-  lifts, delete). Checking a set starts the rest timer (`Session.restEndsAt`, length `Settings.restSeconds`, default
+- **During a workout**: the set number is a menu, drawn as a small rounded button with a chevron under the number
+  (a plain number didn't read as tappable) (`SetMenu`: warm-up, drop set, plates per side via `core/plates.ts`
+  for barbell lifts with a Bar picker, delete). **Drop sets** (`SetLog.drop`) count like working sets everywhere
+  (stats, records, Last) but show "D" and take no set number (1, D, 2); they still line up with last time's sets by
+  position, and "Go up" skips them. **Bar weight** is per exercise (`Exercise.barKg`, unset = 45 lb / 20 kg;
+  `barWeight`), used by the plate list and Per side entry (`WeightInput`'s `bar`). Checking a set starts the rest timer (`Session.restEndsAt`, length `Settings.restSeconds`, default
   120 s; any length up to 60:00, typed as minutes and seconds in Settings; 0 = only by hand). `Settings.restTimer === false` (the switch in Settings) turns it off entirely: no bar, no rest
 chips, nothing starts, nothing on the lock screen. Each exercise can have
 its own (`Exercise.restSeconds`, set from the rest chip under its name, `components/ExerciseRest.tsx`; same in every
@@ -283,7 +332,8 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   routine; picking another routine or workout lasts (per device) until the followed routine changes. Each exercise shows sets, reps and weight from the last day it was
   done (`exerciseDays` in `core/activity.ts`). Its date (rainbow text) opens `DayCalendar` with every day it was done
   highlighted; picking one shows that day (date turns solid rainbow). Columns are fixed widths so the tables line up.
-  A "Not done" row has a gray **+ Add** spanning Weight and Date, and a gray "No date" one is tappable:
+  A row not done yet says so under the exercise's name and has a gray **+ Add** across every column, and a gray
+  "No date" one is tappable:
   `components/LogEntryForm.tsx` has a row per set (starting from the slot's `targetSets`; own reps and weight, an empty
   row copies the one above as placeholders; every set needs both, weight optional only for bodyweight), Per side for
   barbell lifts (saved on the entry, so it carries to the next session) and an optional date (iOS draws today in an
@@ -327,6 +377,25 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   opens the editor; press and hold for the menu. Small checked circles use `--rainbow-dot` (a plain diagonal sweep).
   A gradient over a transparent border must be `border-box`: it's otherwise sized inside the border and repeats under
   it, which showed as a square in the circle.
+- **Notifications** (`core/notifications.ts`, `Settings.notifications`: mode All / None / Choose + per-kind switches,
+  reminder time; missing = not chosen = rest alerts only, as before). Kinds: `rest` ("Rest over", `native/rest.ts`),
+  `reminders` (the followed routine's planned days, next 14, at `reminderAt`, default 17:00; today's dropped once
+  done; `reminderPlan`), `open` ("Still working out?" 3 h after an open live workout's last change,
+  `openWorkoutAlert`). `native/notifications.ts` `useScheduledNotifications` (Layout) cancels and reschedules ids
+  2 and 100–113 whenever the plan changes, never prompting; permission is asked by Settings' card and the intro's
+  Notifications step (after the routine/program, before "You're set"; Later skips it). Local notifications only, so
+  the web just stores the choice.
+- **Profile** (Settings → Profile card → `components/ProfileWindow.tsx`; deliberately only there): name and photo
+  (`Settings.profile`; photo is a 256 px JPEG data URL from `utils/image.ts` `squarePhoto`, so it syncs with settings)
+  override the sign-in's everywhere through `hooks/useAccount.ts` (`useAccountUser` for avatars and menus,
+  `useFirstName` for greetings); height (ft/in with lb, cm with kg); body weight log `Settings.bodyWeights` (one per
+  day, `core/body.ts`) with a chart and 30-day change.
+- **Programs** (`data/programs.ts` `PROGRAMS`, generic names only: Beginner Strength, Full Body Starter, Upper / Lower,
+  Push / Pull / Legs, Body Part Split): slots by friendly name + library id + sets × reps, weekdays or `rotateEvery`.
+  `addProgram` builds a share payload and goes through `addShared` (reuses your exercises by library id or name),
+  returns what it made; `removeProgram` is its Undo. `components/Programs.tsx` `ProgramList` (cards that open to
+  show workouts and exercises, "Use this program") is in the intro's routine step and Workouts' **Programs** window
+  (also linked from the empty routines box); using one follows it.
 - **First-run intro** (`components/Intro.tsx`, mounted in Layout as `IntroGate`): its own window (full screen on a
   phone, a panel on wide screens; `.intro`, z 90, under dialogs). Explains routine → workout → exercise (a diagram
   with one colour per level, `--lvl-*`), then step 1 names the routine (presets Push / Pull / Legs, Upper / Lower,
@@ -354,7 +423,9 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   - The tab pages are drawn by `components/TabPager.tsx` (from `TAB_PAGES` in `pages/tabPages.tsx`), not the router's
     Outlet; App's routes for those paths have `element={null}`. The current tab's neighbours are drawn in idle time
     and, like every tab page once drawn, never unmounted; parked off screen as `.swipe-peek` (fixed, at
-    `--pager-top/left/width`), all keyed by path so React keeps each page when its role changes. Finishing a swipe
+    `--pager-top/left/width`), all keyed by path so React keeps each page when its role changes. A parked page clips
+    its overflow, so it's the scroller its sticky children measure from: the live workout's rest bar is made
+    non-sticky there (`main.swipe-peek .rest-timer`), else it sat a status bar's height too low until it was current. Finishing a swipe
     only swaps which page is current: nothing is rebuilt. Dropping the tab just left (and rebuilding it when idle,
     mid next swipe) caused freezes.
   - A drag moves the page, the neighbour and the tab bar highlight (`--i` on `.tab-indicator`) once per frame
@@ -479,6 +550,18 @@ MARKETING_VERSION / CURRENT_PROJECT_VERSION.
   `VITE_GOOGLE_WEB_CLIENT_ID` in `.env.local` (already set); `scripts/ios-google-scheme.mjs` writes the return URL
   scheme into Info.plist. Auth uses `initializeAuth` with IndexedDB persistence (getAuth's popup/redirect iframe
   hangs in the web view).
+- Home-screen widget ("Up next", small and medium; `ios/App/RestTimerWidget/HomeWidget.swift`, in the same extension
+  bundle as the Live Activity, sharing its `Palette` and `LogoMark`): the followed routine's next workout and when
+  (Today / Tomorrow / weekday; today's is skipped once trained), and on medium this week Monday–Sunday (done = filled
+  sweep with a check, planned = ring, missed = faint ring, rest = dot) with "2 of 4 done". `native/widget.ts`
+  (`useHomeWidget`, Layout) sends 14 days from this Monday (planned names via `scheduledOn`, trained via `doneOn`) to
+  `AppWidgetPlugin.swift`, which stores `HomeWidgetData` (`ios/App/Shared/HomeWidgetData.swift`, both targets) in the
+  app group's UserDefaults and reloads the timeline only when it changed. The widget works out the day itself, with an
+  entry at each midnight, so it stays right while the app is closed (trained-today only updates when the app runs).
+  Follows the system light/dark, not the app's setting. Tapping it opens `rerack://check-in` (`widgetURL`; the scheme
+  is written into Info.plist by `scripts/ios-google-scheme.mjs` with Google's): `native/links.ts` `useAppLinks`
+  (Layout, `@capacitor/app` launch URL + `appUrlOpen`, waits for the sessions) goes to the open workout, else Check in.
+  Compile-checked only.
 - Apple Health: `native/health.ts` → `AppHealthPlugin.swift` saves a finished workout (with a duration) as
   strength training, tagged with the session id (`HKMetadataKeyExternalUUID`) so finishing again replaces it and
   deleting removes it (even with saving turned off). Calls run one at a time (two saves at once would each add one);

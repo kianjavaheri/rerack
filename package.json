@@ -16,6 +16,7 @@
     "ios:live": "sh scripts/ios-live.sh"
   },
   "dependencies": {
+    "@capacitor-firebase/crashlytics": "^8.5.2",
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.3",
     "@capacitor/ios": "^8.5.3",

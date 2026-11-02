@@ -7,7 +7,7 @@ import { TrainingHeatmap } from '../components/TrainingHeatmap';
 import { WeekStrip } from '../components/WeekStrip';
 import { RecentWorkouts } from './WorkoutLogPage';
 import { PageSkeleton } from '../components/Skeleton';
-import { useAuth } from '../auth/AuthProvider';
+import { useFirstName } from '../hooks/useAccount';
 import { PLAN_PATH } from '../config';
 import { dailyActivity, dayKey, plannedThisWeek, weekSoFar } from '../core/activity';
 import { formatTime, pluralize, upcomingDay } from '../core/format';
@@ -48,7 +48,7 @@ function greeting(date: Date) {
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const firstName = useFirstName();
   const sessions = useSessions();
   const routines = useRoutines();
   const workouts = useWorkouts();
@@ -77,7 +77,6 @@ export function HomePage() {
   };
 
   const today = new Date();
-  const firstName = user?.name?.trim().split(/\s+/)[0];
 
   return (
     <>

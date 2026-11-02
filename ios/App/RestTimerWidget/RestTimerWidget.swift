@@ -4,7 +4,7 @@ import WidgetKit
 
 /// Colours from src/index.css, so the lock screen matches the app's theme: dark is the warm sweep (orange to red) on
 /// near-black, light the blue one (indigo to sky) on the light grey page.
-private struct Palette {
+struct Palette {
     let background: Color
     let text: Color
     let muted: Color
@@ -24,7 +24,7 @@ private struct Palette {
     var gradient: LinearGradient { LinearGradient(colors: sweep, startPoint: .leading, endPoint: .trailing) }
 }
 
-private func rgb(_ hex: Int) -> Color {
+func rgb(_ hex: Int) -> Color {
     Color(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
 }
 
@@ -32,6 +32,7 @@ private func rgb(_ hex: Int) -> Color {
 struct RestTimerWidgetBundle: WidgetBundle {
     var body: some Widget {
         RestTimerLiveActivity()
+        HomeWidget()
     }
 }
 
@@ -228,7 +229,7 @@ private struct RestBar: View {
 
 /// The app's mark (public/app-icon.svg) as a shape: the barbell, an r on the left (arm at the top) and an upside-down r
 /// on the right (foot at the bottom). Drawn from the icon's 1024-unit coordinates, scaled to fit.
-private struct LogoMark: Shape {
+struct LogoMark: Shape {
     func path(in rect: CGRect) -> Path {
         // The mark spans x 176…848 and y 296…728 in the icon (the letters' 80-unit strokes reach 40 further up and down).
         let box = CGRect(x: 176, y: 256, width: 672, height: 512)

@@ -41,12 +41,13 @@ const enqueue = (task: () => Promise<void>) => {
   queue = queue.then(task).catch((err) => console.warn('Lock screen (native):', err));
 };
 
-function show(activity: WorkoutActivity) {
+/** `alert`: whether "Rest over" may be sent (Settings → Notifications). */
+function show(activity: WorkoutActivity, alert: boolean) {
   enqueue(async () => {
     // Its own try: the notification below must still be scheduled if the lock-screen view can't be shown.
     await RestActivity.start(activity).catch((err) => console.warn('Lock screen workout:', err));
     await LocalNotifications.cancel({ notifications: [{ id: NOTIFICATION_ID }] });
-    if (activity.restEndsAt <= Date.now()) return;
+    if (activity.restEndsAt <= Date.now() || !alert) return;
     let permission = await LocalNotifications.checkPermissions();
     if (permission.display.startsWith('prompt')) permission = await LocalNotifications.requestPermissions();
     if (permission.display !== 'granted') return;
@@ -84,6 +85,7 @@ export function useNativeRestTimer(
   restOn: boolean,
   dark: boolean,
   pictureOf: (exerciseId: string) => string | undefined,
+  restAlert: boolean,
 ) {
   const loading = open === undefined || exercises === undefined;
   const live = !!open && open.live !== false && !open.finishedAt;
@@ -116,7 +118,7 @@ export function useNativeRestTimer(
       clearTimeout(buzz);
       const left = at - Date.now();
       const resting = left > -OVER_SHOWN_MS && at > 0;
-      show({ workoutName: name, startedAt, exercise, detail, restEndsAt: resting ? at : 0, dark, image });
+      show({ workoutName: name, startedAt, exercise, detail, restEndsAt: resting ? at : 0, dark, image }, restAlert);
       if (left > 0) {
         // With the app open, the end of the rest is felt too (the notification covers a locked phone).
         buzz = setTimeout(() => document.visibilityState === 'visible' && hapticAlert(), left);
@@ -129,5 +131,5 @@ export function useNativeRestTimer(
       clearTimeout(timer);
       clearTimeout(buzz);
     };
-  }, [loading, live, endsAt, name, startedAt, exercise, detail, dark, image]);
+  }, [loading, live, endsAt, name, startedAt, exercise, detail, dark, image, restAlert]);
 }

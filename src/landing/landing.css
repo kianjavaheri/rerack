@@ -1,0 +1,384 @@
+/* The website's landing page (the <template id="landing"> in index.html), shown at / to new visitors and at /about.
+   Linked from index.html for every page, so everything is scoped to html.landing and the app never sees it. Same look
+   as the app: Google Sans Flex, near-black (dark) or soft grey (light), the logo's rainbow as the accent; the
+   screenshots are of the dark app, in phone frames that are dark in both themes. */
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,300..800&display=swap');
+
+html.landing {
+  --lp-bg: #f2f1f6;
+  --lp-text: #0b0b0c;
+  --lp-muted: #5f6168;
+  --lp-line: #0000001a;
+  --lp-card: #ffffff;
+  --lp-btn: #0b0b0c;
+  --lp-on-btn: #fff;
+  --lp-ink: linear-gradient(100deg, #3d4ad0, #2563cf 30%, #1a78c4 60%, #1488bb);
+  --lp-glow-1: #6f7cff;
+  --lp-glow-2: #43bbed;
+  --lp-gutter: clamp(16px, 5vw, 40px);
+  background: var(--lp-bg);
+  color-scheme: light;
+}
+html.landing[data-theme='dark'] {
+  --lp-bg: #08090a;
+  --lp-text: #f7f8f8;
+  --lp-muted: #8a8f98;
+  --lp-line: #ffffff14;
+  --lp-card: #121315;
+  --lp-btn: #f7f8f8;
+  --lp-on-btn: #08090a;
+  --lp-ink: linear-gradient(100deg, #f58a5c, #f28f82 35%, #ef6266 70%, #ea5560);
+  --lp-glow-1: #ed7543;
+  --lp-glow-2: #d93a45;
+  color-scheme: dark;
+}
+
+html.landing body {
+  margin: 0;
+  background: var(--lp-bg);
+  color: var(--lp-text);
+  font-family: 'Google Sans Flex', system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+html.landing *,
+html.landing *::before,
+html.landing *::after {
+  box-sizing: border-box;
+}
+
+.lp {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 var(--lp-gutter);
+}
+.lp a {
+  color: inherit;
+}
+.lp h1,
+.lp h2,
+.lp h3 {
+  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+/* Top bar */
+.lp-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(18px, env(safe-area-inset-top)) 0 18px;
+}
+.lp-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 19px;
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+
+/* Buttons */
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 999px;
+  background: var(--lp-btn);
+  color: var(--lp-on-btn) !important;
+  font-weight: 600;
+  font-size: 16px;
+  text-decoration: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.lp-btn:hover {
+  opacity: 0.88;
+}
+.lp-btn:active {
+  transform: scale(0.97);
+}
+.lp-btn.small {
+  height: 38px;
+  padding: 0 18px;
+  font-size: 14px;
+}
+.lp-link {
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--lp-ink);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+.lp-link::after {
+  content: ' →';
+}
+
+/* Hero */
+.lp-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: center;
+  gap: 48px;
+  padding: 48px 0 72px;
+}
+.lp-kicker {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--lp-ink);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 14px;
+}
+.lp-hero h1 {
+  font-size: clamp(40px, 6vw, 68px);
+  font-weight: 750;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+.lp-lead {
+  font-size: clamp(17px, 1.6vw, 19px);
+  color: var(--lp-muted);
+  max-width: 34em;
+  margin: 22px 0 30px;
+}
+.lp-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.lp-note {
+  margin: 22px 0 0;
+  font-size: 14px;
+  color: var(--lp-muted);
+}
+
+/* Phones: a dark frame with the screenshot under a drawn status bar (the screenshots are 390 x 797, the screen
+   390 x 844). Sized in container units so the status bar scales with the phone. */
+.lp-shot {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+.lp-shot::before {
+  /* A soft glow of the accent behind each phone. */
+  content: '';
+  position: absolute;
+  inset: 10% 0;
+  background: radial-gradient(closest-side, var(--lp-glow-1), transparent), radial-gradient(closest-side at 70% 70%, var(--lp-glow-2), transparent);
+  opacity: 0.32;
+  filter: blur(40px);
+  z-index: 0;
+}
+.lp-phone {
+  position: relative;
+  z-index: 1;
+  width: min(320px, 76vw);
+  padding: 10px;
+  border-radius: 54px;
+  background: linear-gradient(160deg, #2c2d31, #121315 60%);
+  box-shadow: inset 0 0 0 1.5px #ffffff1f, 0 30px 70px #00000059, 0 8px 20px #00000040;
+}
+.lp-screen {
+  container-type: inline-size;
+  aspect-ratio: 390 / 844;
+  border-radius: 44px;
+  overflow: hidden;
+  background: #0f1011;
+  display: flex;
+  flex-direction: column;
+}
+.lp-status {
+  flex: 0 0 auto;
+  height: 12.1cqw;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5cqw 7cqw 0 9cqw;
+  color: #fff;
+  font-weight: 600;
+  font-size: 4.3cqw;
+  position: relative;
+}
+.lp-status i {
+  /* The Dynamic Island. */
+  position: absolute;
+  left: 50%;
+  top: 2.8cqw;
+  width: 31cqw;
+  height: 9cqw;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: #000;
+}
+.lp-status svg {
+  width: 17cqw;
+  height: 3.2cqw;
+  fill: currentColor;
+}
+.lp-screen img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Features: text beside a phone, alternating sides. */
+.lp-feature {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 56px;
+  padding: 56px 0;
+}
+.lp-feature.flip .lp-copy {
+  order: 2;
+}
+.lp-feature h2,
+.lp-extras h2,
+.lp-cta h2 {
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 700;
+}
+.lp-feature p {
+  font-size: 18px;
+  color: var(--lp-muted);
+  max-width: 30em;
+  margin: 18px 0 0;
+}
+
+/* The small things */
+.lp-extras {
+  padding: 72px 0 24px;
+}
+.lp-extras-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 32px;
+}
+.lp-extra {
+  background: var(--lp-card);
+  border: 1px solid var(--lp-line);
+  border-radius: 24px;
+  padding: 24px;
+}
+.lp-extra svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: var(--lp-glow-1);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.lp-extra h3 {
+  font-size: 18px;
+  font-weight: 650;
+  margin: 14px 0 6px;
+}
+.lp-extra p {
+  margin: 0;
+  color: var(--lp-muted);
+  font-size: 15px;
+}
+
+/* Last call */
+.lp-cta {
+  text-align: center;
+  padding: 96px 0;
+}
+.lp-cta p {
+  color: var(--lp-muted);
+  font-size: 18px;
+  margin: 14px 0 28px;
+}
+
+.lp-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 28px 0 max(28px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--lp-line);
+  color: var(--lp-muted);
+  font-size: 14px;
+}
+.lp-foot nav {
+  display: flex;
+  gap: 20px;
+}
+.lp-foot a {
+  text-decoration: none;
+}
+.lp-foot a:hover {
+  color: var(--lp-text);
+}
+
+/* Each part rises in as it comes into view (the script in index.html adds .in). */
+.lp-feature,
+.lp-extra,
+.lp-cta {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lp-feature.in,
+.lp-extra.in,
+.lp-cta.in {
+  opacity: 1;
+  transform: none;
+}
+.lp-extra:nth-child(3n + 2) {
+  transition-delay: 0.08s;
+}
+.lp-extra:nth-child(3n + 3) {
+  transition-delay: 0.16s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-feature,
+  .lp-extra,
+  .lp-cta {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Phones and narrow windows: one column, the words first. */
+@media (max-width: 820px) {
+  .lp-hero,
+  .lp-feature {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 36px;
+  }
+  .lp-hero {
+    padding: 24px 0 40px;
+  }
+  .lp-feature {
+    padding: 40px 0;
+  }
+  .lp-feature.flip .lp-copy {
+    order: 0;
+  }
+  .lp-extras-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lp-cta {
+    padding: 64px 0;
+  }
+}
+@media (min-width: 821px) and (max-width: 980px) {
+  .lp-extras-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

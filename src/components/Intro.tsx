@@ -1,17 +1,23 @@
 import { ArrowLeft, ArrowRight, Check, ChevronRight, NotebookPen, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider';
-import { APP_NAME } from '../config';
+import { APP_NAME, HOME_PATH } from '../config';
 import { newId, now } from '../core/ids';
 import { uniqueName } from '../core/plan';
 import { followedRoutine } from '../core/stats';
-import type { ID, Routine } from '../core/types';
+import { anyNotificationOn } from '../core/notifications';
+import type { ID, NotificationSettings, Routine } from '../core/types';
+import { askNotificationPermission } from '../native/notifications';
+import { isNative } from '../native/platform';
 import { repo } from '../data';
 import { saveNewWorkout } from '../data/newWorkout';
+import { addProgram, type Program } from '../data/programs';
 import { useSettings } from '../hooks/settings';
+import { useFirstName } from '../hooks/useAccount';
 import { useRoutines, useSessions, useWorkouts } from '../hooks/useRepo';
 import type { GridItem } from './ExerciseGrid';
+import { NotificationChoice } from './NotificationChoice';
+import { ProgramList } from './Programs';
 import { togglePicked, WorkoutFields } from './NewWorkout';
 
 /**
@@ -44,7 +50,7 @@ const PRESETS = [
   { name: 'Full Body', workouts: ['Full Body A', 'Full Body B'] },
 ];
 
-type Step = 'welcome' | 'routine' | 'workout' | 'more' | 'done';
+type Step = 'welcome' | 'routine' | 'workout' | 'more' | 'notify' | 'done';
 
 /**
  * The first-run window: what a routine, a workout and an exercise are (a routine holds workouts, a workout holds
@@ -53,7 +59,6 @@ type Step = 'welcome' | 'routine' | 'workout' | 'more' | 'done';
  */
 function Intro() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { settings, update } = useSettings();
   const [step, setStep] = useState<Step>('welcome');
   const [routineName, setRoutineName] = useState('');
@@ -64,6 +69,9 @@ function Intro() {
   const [workoutName, setWorkoutName] = useState('');
   const [picked, setPicked] = useState<GridItem[]>([]);
   const [busy, setBusy] = useState(false);
+  const [addingProgram, setAddingProgram] = useState<string | null>(null);
+  /** The notifications step's choice, saved on Continue (Later leaves it for Settings). */
+  const [notify, setNotify] = useState<NotificationSettings>({ mode: 'all' });
 
   // A window of its own: the page behind doesn't scroll.
   useEffect(() => {
@@ -79,7 +87,7 @@ function Intro() {
     document.querySelector('.intro-body')?.scrollTo({ top: 0 });
   }, [step]);
 
-  const firstName = user?.name?.trim().split(/\s+/)[0];
+  const firstName = useFirstName();
   const nextPlanned = planned[saved.length];
 
   const finish = () => update({ introDone: true });
@@ -126,9 +134,25 @@ function Intro() {
     }
   };
 
+  // A ready-made program instead of building one: it's added whole (and followed), and the intro is done.
+  const startProgram = async (program: Program) => {
+    if (addingProgram) return;
+    setAddingProgram(program.id);
+    try {
+      const { routineId: id, workoutIds } = await addProgram(program);
+      update({ activeRoutineId: id });
+      setRoutineId(id);
+      setRoutineName(program.name);
+      setSaved(workoutIds.map((wid, i) => ({ id: wid, name: program.workouts[i].name, count: program.workouts[i].exercises.length })));
+      setStep('notify');
+    } finally {
+      setAddingProgram(null);
+    }
+  };
+
   const close = () => {
     finish();
-    if (saved.length) navigate('/');
+    if (saved.length) navigate(HOME_PATH);
   };
 
   // A plan already written down in a notes app: Import from notes turns it into workouts (and a routine) instead.
@@ -219,6 +243,11 @@ function Intro() {
                 </span>
                 <ChevronRight size={18} className="muted" />
               </button>
+              <h2 className="intro-subhead">Or start from a program</h2>
+              <p className="muted small" style={{ margin: '0 0 10px' }}>
+                Workouts with exercises, sets and reps already in. You can change anything later.
+              </p>
+              <ProgramList onUse={(p) => void startProgram(p)} busy={addingProgram} />
             </>
           )}
 
@@ -252,6 +281,20 @@ function Intro() {
                   ? `Next in ${routineName} is ${nextPlanned}. Add it now, or later from Workouts.`
                   : 'Most routines have two to four workouts. Add another now, or later from Workouts.'}
               </p>
+            </>
+          )}
+
+          {step === 'notify' && (
+            <>
+              <h1 className="title">Notifications</h1>
+              <p className="intro-lead">
+                {isNative
+                  ? 'Pick what the app may tell you. You can change this any time in Settings.'
+                  : 'They come from the iPhone app. Pick what it may send; you can change this any time in Settings.'}
+              </p>
+              <div className="card" style={{ marginTop: 16 }}>
+                <NotificationChoice value={notify} onChange={setNotify} />
+              </div>
             </>
           )}
 
@@ -296,11 +339,28 @@ function Intro() {
           )}
           {step === 'more' && (
             <>
-              <button className="btn btn-ghost" onClick={() => setStep('done')}>
+              <button className="btn btn-ghost" onClick={() => setStep('notify')}>
                 I’m done
               </button>
               <button className="btn btn-primary" onClick={startWorkout}>
                 {nextPlanned ? `Add ${nextPlanned}` : 'Add another'}
+              </button>
+            </>
+          )}
+          {step === 'notify' && (
+            <>
+              <button className="btn btn-ghost" onClick={() => setStep('done')}>
+                Later
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  update({ notifications: notify });
+                  if (anyNotificationOn(notify)) void askNotificationPermission();
+                  setStep('done');
+                }}
+              >
+                Continue <ArrowRight size={15} />
               </button>
             </>
           )}
@@ -311,7 +371,7 @@ function Intro() {
                 className="btn btn-primary"
                 onClick={() => {
                   finish();
-                  navigate('/');
+                  navigate(HOME_PATH);
                 }}
               >
                 Let’s go

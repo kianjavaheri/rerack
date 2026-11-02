@@ -2,7 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthProvider';
 import { FeedbackProvider } from './components/Feedback';
 import { Layout } from './components/Layout';
-import { PLAN_PATH } from './config';
+import { HOME_PATH, PLAN_PATH } from './config';
 import { SettingsProvider } from './hooks/settings';
 import { ExercisesPage } from './pages/ExercisesPage';
 import { ImportPage } from './pages/ImportPage';
@@ -22,7 +22,9 @@ export function App() {
           <Routes>
             <Route element={<Layout />}>
               {/* The bottom-tab pages are drawn by Layout's TabPager (pages/tabPages.tsx); these only match their URLs. */}
-              <Route index element={null} />
+              {/* `/` is the website's landing page; reaching it in the app (iPhone, home-screen web app) means Home. */}
+              <Route index element={<Navigate to={HOME_PATH} replace />} />
+              <Route path="home" element={null} />
               <Route path="workouts" element={null} />
               <Route path="edit" element={<Navigate to={PLAN_PATH} replace />} />
               <Route path="edit/workouts/:id" element={<WorkoutEditorPage />} />
@@ -36,7 +38,7 @@ export function App() {
               <Route path="analytics" element={null} />
               <Route path="log" element={null} />
               <Route path="settings" element={<SettingsPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to={HOME_PATH} replace />} />
             </Route>
           </Routes>
         </BrowserRouter>

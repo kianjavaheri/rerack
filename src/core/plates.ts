@@ -3,15 +3,23 @@ import { fromKg, toKg } from './units';
 
 /** Standard bar and plates per unit. */
 const BAR: Record<WeightUnit, number> = { lb: 45, kg: 20 };
+/** Bars offered in the set menu: Olympic, women's, EZ/fixed, technique. */
+export const BAR_CHOICES: Record<WeightUnit, number[]> = { lb: [45, 35, 25, 15], kg: [20, 15, 10, 7] };
+
+/** What this exercise's bar weighs in the display unit (`Exercise.barKg`, else the standard bar). */
+export function barWeight(exercise: Exercise | undefined, unit: WeightUnit): number {
+  if (exercise?.barKg == null) return BAR[unit];
+  return Math.round(fromKg(exercise.barKg, unit) * 10) / 10;
+}
 const PLATES: Record<WeightUnit, number[]> = { lb: [45, 35, 25, 10, 5, 2.5], kg: [25, 20, 15, 10, 5, 2.5, 1.25] };
 
 /**
  * Plates for each side of the bar to make `total` (in the display unit), heaviest first. `exact` is false when
  * standard plates can't make it exactly (the rest is left off). Null below the bar's own weight.
  */
-export function platesPerSide(total: number, unit: WeightUnit): { plates: number[]; exact: boolean } | null {
-  if (!(total >= BAR[unit])) return null;
-  let side = (total - BAR[unit]) / 2;
+export function platesPerSide(total: number, unit: WeightUnit, bar = BAR[unit]): { plates: number[]; exact: boolean } | null {
+  if (!(total >= bar)) return null;
+  let side = (total - bar) / 2;
   const plates: number[] = [];
   for (const plate of PLATES[unit]) {
     while (side >= plate - 1e-9) {
@@ -23,11 +31,11 @@ export function platesPerSide(total: number, unit: WeightUnit): { plates: number
 }
 
 /** Readable plate list for a set, e.g. "45 + 25 per side", or null when it doesn't apply. */
-export function platesLabel(total: number | null, unit: WeightUnit): string | null {
+export function platesLabel(total: number | null, unit: WeightUnit, bar = BAR[unit]): string | null {
   if (total == null) return null;
-  const result = platesPerSide(total, unit);
+  const result = platesPerSide(total, unit, bar);
   if (!result) return null;
-  if (result.plates.length === 0) return `Just the ${BAR[unit]} ${unit} bar`;
+  if (result.plates.length === 0) return `Just the ${bar} ${unit} bar`;
   return `${result.exact ? '' : '≈ '}${result.plates.join(' + ')} per side`;
 }
 
@@ -36,15 +44,15 @@ export function platesLabel(total: number | null, unit: WeightUnit): string | nu
  * bar) is what's stored, so history, charts and records never change meaning: 35 lb a side is 115 lb. A total lighter
  * than the bar shows as 0.
  */
-export function formatPerSide(kg: number | null, unit: WeightUnit): string {
+export function formatPerSide(kg: number | null, unit: WeightUnit, bar = BAR[unit]): string {
   if (kg == null) return '';
   const total = Math.round(fromKg(kg, unit) * 10) / 10;
-  return String(Math.max(0, Math.round(((total - BAR[unit]) / 2) * 100) / 100));
+  return String(Math.max(0, Math.round(((total - bar) / 2) * 100) / 100));
 }
 
-export function parsePerSide(text: string, unit: WeightUnit): number | null {
+export function parsePerSide(text: string, unit: WeightUnit, bar = BAR[unit]): number | null {
   const side = parseFloat(text);
-  return Number.isFinite(side) && side >= 0 ? toKg(side * 2 + BAR[unit], unit) : null;
+  return Number.isFinite(side) && side >= 0 ? toKg(side * 2 + bar, unit) : null;
 }
 
 /** Whether to offer the plate calculator: library barbell exercises, or names that clearly mean a barbell lift. */

@@ -15,7 +15,8 @@ export default defineConfig({
       manifest: {
         name: 'Rerack',
         short_name: 'Rerack',
-        start_url: '/',
+        // The app's Home: `/` is the website's landing page (installs from before still start there and are sent on).
+        start_url: '/home',
         display: 'standalone',
         background_color: '#0f1011',
         theme_color: '#0f1011',
@@ -28,8 +29,11 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,json}'],
-        // Firebase Hosting serves the Google sign-in handler under /__/ — never answer it from the cache.
-        navigateFallbackDenylist: [/^\/__\//],
+        // The landing page's pictures aren't part of the app (and the share preview is big).
+        globIgnores: ['landing/**'],
+        // Firebase Hosting serves the Google sign-in handler under /__/ — never answer it from the cache. /privacy is the
+        // static privacy policy (public/privacy.html), not an app page.
+        navigateFallbackDenylist: [/^\/__\//, /^\/privacy/],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com',

@@ -29,6 +29,8 @@ export interface Exercise {
    * Settings (`restSecondsFor`).
    */
   restSeconds?: number;
+  /** Barbell lifts: what the bar weighs, in kg (a 35 lb or EZ bar). Missing: the standard 45 lb / 20 kg (`barWeight`). */
+  barKg?: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   /** Soft delete so historic sessions keep their references. */
@@ -81,6 +83,11 @@ export interface SetLog {
   done: boolean;
   /** A warm-up set: shown and checked off like any set, but left out of stats, "Previous" and totals. */
   warmup?: boolean;
+  /**
+   * A drop set: straight after the set above at a lower weight. Counts like any working set (stats, records, totals)
+   * but shows as "D" and doesn't take a set number.
+   */
+  drop?: boolean;
   /** When it was checked off (cleared when unchecked): which exercise you're on, and when an exercise was finished. */
   doneAt?: Timestamp;
 }
@@ -156,6 +163,35 @@ export interface Settings {
   weightSuggestions?: boolean;
   /** The first-run intro (components/Intro.tsx) was finished or skipped. Synced, so it shows once per account. */
   introDone?: boolean;
+  /** What you've told the app about yourself (Settings → Profile). Name and photo override the sign-in's. */
+  profile?: Profile;
+  /** Body weight over time, oldest first, one per day (`core/body.ts`). */
+  bodyWeights?: BodyWeight[];
+  /** Which notifications the app may send (`core/notifications.ts`). Missing: not chosen yet (rest alerts only). */
+  notifications?: NotificationSettings;
+}
+
+export type NotificationKind = 'rest' | 'reminders' | 'open';
+
+export interface NotificationSettings {
+  mode: 'all' | 'none' | 'choose';
+  /** With `choose`: which kinds are on (missing = off). */
+  kinds?: Partial<Record<NotificationKind, boolean>>;
+  /** Workout reminders' time of day, "HH:MM" (24 h). Missing: `DEFAULT_REMINDER_AT`. */
+  reminderAt?: string;
+}
+
+export interface Profile {
+  name?: string;
+  /** A small square JPEG as a data URL (~20 KB), so it syncs with settings. */
+  photo?: string;
+  heightCm?: number;
+}
+
+export interface BodyWeight {
+  /** Local day, YYYY-MM-DD. */
+  date: string;
+  kg: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = { unit: 'lb', theme: 'system' };
