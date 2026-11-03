@@ -55,3 +55,13 @@ export function toLocalInput(iso: string) {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+/** A Monday-to-Sunday week as "Oct 19 – 25", or "Sep 28 – Oct 4" across months. */
+export function weekRange(monday: Date): string {
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+  const sameMonth = monday.getMonth() === sunday.getMonth();
+  return `${monday.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${sunday.toLocaleDateString(
+    undefined,
+    sameMonth ? { day: 'numeric' } : { month: 'short', day: 'numeric' },
+  )}`;
+}

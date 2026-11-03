@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { cancelResume } from '../core/sessions';
 import type { Session } from '../core/types';
@@ -12,6 +12,8 @@ interface CancelWorkoutButtonProps {
   onCancelled?: () => void;
   /** Puts a resumed workout back through the page's own copy (else it's saved directly). */
   onRestore?: (restored: Session) => void;
+  /** Just a trash icon (the live workout's bottom bar); the same confirmation, so a stray tap loses nothing. */
+  icon?: boolean;
 }
 
 /**
@@ -19,7 +21,7 @@ interface CancelWorkoutButtonProps {
  * second, ambiguous "Cancel" button next to it). Deletes the in-progress session, or, if it was a finished one
  * picked back up, puts it back as it was.
  */
-export function CancelWorkoutButton({ session, label = 'Cancel workout', onCancelled, onRestore }: CancelWorkoutButtonProps) {
+export function CancelWorkoutButton({ session, label = 'Cancel workout', onCancelled, onRestore, icon }: CancelWorkoutButtonProps) {
   const [asking, setAsking] = useState(false);
   const resumed = !!session.resumedFrom;
 
@@ -37,9 +39,15 @@ export function CancelWorkoutButton({ session, label = 'Cancel workout', onCance
 
   return (
     <>
-      <button className="btn btn-danger btn-sm" onClick={() => setAsking(true)}>
-        <X size={14} /> {label}
-      </button>
+      {icon ? (
+        <button className="btn btn-sm bar-discard" onClick={() => setAsking(true)} aria-label={label} title={label}>
+          <Trash2 size={15} />
+        </button>
+      ) : (
+        <button className="btn btn-danger btn-sm" onClick={() => setAsking(true)}>
+          <X size={14} /> {label}
+        </button>
+      )}
       {asking && (
         <Modal title="Cancel this workout?" onClose={() => setAsking(false)}>
           <p className="muted" style={{ fontSize: 14, lineHeight: 1.5 }}>

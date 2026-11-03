@@ -4,11 +4,11 @@ import { PageHead } from '../components/AccountButton';
 import { DateTimeFields } from '../components/DateTimeFields';
 import { PageSkeleton } from '../components/Skeleton';
 import { useTabActive } from '../components/tabActive';
-import { WorkoutActions, type Held } from '../components/WorkoutActions';
+import { RoutineActions, WorkoutActions, type Held } from '../components/WorkoutActions';
 import { relativeDay } from '../core/format';
 import { createFreestyleSession, createSessionFromWorkout, isImportedSession, type LogTiming } from '../core/sessions';
 import { followedRoutine, nextWorkoutInRoutine, plannedToday, routinesContaining } from '../core/stats';
-import type { ID, Workout } from '../core/types';
+import type { ID, Routine, Workout } from '../core/types';
 import { useSettings } from '../hooks/settings';
 import { useLongPress } from '../hooks/useLongPress';
 import { useExercises, useRoutines, useSessions, useWorkouts } from '../hooks/useRepo';
@@ -38,6 +38,9 @@ export function CheckInPage() {
   }
   const [held, setHeld] = useState<Held<Workout> | null>(null);
   const hold = useLongPress(setHeld);
+  // A routine's heading can be held too (Edit, Share, Rename, Delete), like its card on Workouts.
+  const [heldRoutine, setHeldRoutine] = useState<Held<Routine> | null>(null);
+  const holdRoutine = useLongPress(setHeldRoutine);
 
   if (!workouts || !routines || !sessions || !exercises) return <PageSkeleton />;
 
@@ -119,7 +122,7 @@ export function CheckInPage() {
 
           return (
             <section key={r.id} className="section" style={{ marginTop: 26 }}>
-              <h2 className="section-title">
+              <h2 className="section-title holdable routine-heading" {...holdRoutine(r)}>
                 {r.name}
                 {isFollowed && routines.length > 1 && <span className="muted small" style={{ fontWeight: 500, marginLeft: 8 }}>Following</span>}
               </h2>
@@ -142,6 +145,9 @@ export function CheckInPage() {
         </section>
       )}
       {held && <WorkoutActions held={held} workouts={workouts} routines={routines} exercises={exercises} onClose={() => setHeld(null)} />}
+      {heldRoutine && (
+        <RoutineActions held={heldRoutine} routines={routines} workouts={workouts} exercises={exercises} onClose={() => setHeldRoutine(null)} />
+      )}
     </>
   );
 }

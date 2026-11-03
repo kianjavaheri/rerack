@@ -1,7 +1,7 @@
 /* The website's landing page (the <template id="landing"> in index.html), shown at / to new visitors and at /about.
    Linked from index.html for every page, so everything is scoped to html.landing and the app never sees it. Same look
-   as the app: Google Sans Flex, near-black (dark) or soft grey (light), the logo's rainbow as the accent; the
-   screenshots are of the dark app, in phone frames that are dark in both themes. */
+   as the app: Google Sans Flex, near-black (dark) or soft grey (light), the logo's rainbow as the accent (orange in
+   dark, blue in light). The screenshots match the theme (index.html swaps them), in phone frames that stay dark. */
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,300..800&display=swap');
 
 html.landing {
@@ -15,6 +15,9 @@ html.landing {
   --lp-ink: linear-gradient(100deg, #3d4ad0, #2563cf 30%, #1a78c4 60%, #1488bb);
   --lp-glow-1: #6f7cff;
   --lp-glow-2: #43bbed;
+  --lp-fill: linear-gradient(135deg, #6f7cff, #4aa8f2 55%, #3b9cf0);
+  --lp-fill-shadow: #4a7cf266;
+  --lp-on-fill: #17122b;
   --lp-gutter: clamp(16px, 5vw, 40px);
   background: var(--lp-bg);
   color-scheme: light;
@@ -30,6 +33,9 @@ html.landing[data-theme='dark'] {
   --lp-ink: linear-gradient(100deg, #f58a5c, #f28f82 35%, #ef6266 70%, #ea5560);
   --lp-glow-1: #ed7543;
   --lp-glow-2: #d93a45;
+  --lp-fill: linear-gradient(135deg, #ee8a56, #ec7c6e 50%, #d93a45);
+  --lp-fill-shadow: #e8635c55;
+  --lp-on-fill: #17122b;
   color-scheme: dark;
 }
 
@@ -80,6 +86,38 @@ html.landing *::after {
   font-size: 19px;
   text-decoration: none;
   letter-spacing: -0.01em;
+}
+
+/* Top bar's right side: the light/dark switch and Open Rerack. */
+.lp-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lp-theme {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--lp-line);
+  border-radius: 50%;
+  background: var(--lp-card);
+  color: var(--lp-text);
+  cursor: pointer;
+}
+.lp-theme svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Shows what it switches to. */
+html.landing[data-theme='dark'] .lp-moon,
+html.landing:not([data-theme='dark']) .lp-sun {
+  display: none;
 }
 
 /* Buttons */
@@ -198,6 +236,13 @@ html.landing *::after {
   display: flex;
   flex-direction: column;
 }
+/* The light screenshots are of the light app: its background, and a dark status bar. */
+html.landing:not([data-theme='dark']) .lp-screen {
+  background: #f2f1f6;
+}
+html.landing:not([data-theme='dark']) .lp-status {
+  color: #000;
+}
 .lp-status {
   flex: 0 0 auto;
   height: 12.1cqw;
@@ -308,7 +353,8 @@ html.landing *::after {
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 28px 0 max(28px, env(safe-area-inset-bottom));
+  /* Room below for the back-to-top button, so it never covers the footer's links. */
+  padding: 28px 0 calc(84px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--lp-line);
   color: var(--lp-muted);
   font-size: 14px;
@@ -322,6 +368,46 @@ html.landing *::after {
 }
 .lp-foot a:hover {
   color: var(--lp-text);
+}
+
+/* Back to top: bottom right, appearing once the first screen has scrolled away (index.html adds .shown). */
+.lp-top-btn {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 10;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 16px;
+  /* The app's rainbow, like the tab bar's +: orange in dark, blue in light. */
+  background: var(--lp-fill);
+  color: var(--lp-on-fill);
+  box-shadow: 0 10px 28px var(--lp-fill-shadow), 0 2px 6px #00000033;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.lp-top-btn.shown {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.lp-top-btn:active {
+  transform: scale(0.94);
+}
+.lp-top-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Each part rises in as it comes into view (the script in index.html adds .in). */

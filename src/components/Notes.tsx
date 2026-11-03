@@ -1,9 +1,10 @@
-import { ExternalLink, Link2, NotebookPen, X } from 'lucide-react';
+import { Eraser, ExternalLink, Link2, NotebookPen, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { now } from '../core/ids';
 import { linkLabel, normalizeLink } from '../core/links';
 import type { Exercise, Workout } from '../core/types';
 import { repo } from '../data';
+import { useFeedback } from './Feedback';
 
 /** Notes toggle. Tinted with a dot when there's something saved, so you know to look. */
 export function NotesButton({ hasNotes, open, onClick, label }: { hasNotes: boolean; open: boolean; onClick: () => void; label: string }) {
@@ -20,9 +21,18 @@ export function NotesButton({ hasNotes, open, onClick, label }: { hasNotes: bool
   );
 }
 
-/** Textarea that grows with its content, so notes never scroll inside a tiny box. */
+/**
+ * Textarea that grows with its content, so notes never scroll inside a tiny box. With something written, a Clear
+ * button empties it in one go and offers Undo (notes are sticky, so deleting a long one by hand was tedious).
+ */
 function NoteText({ value, onChange, placeholder, autoFocus }: { value: string; onChange: (v: string) => void; placeholder: string; autoFocus?: boolean }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const { notify } = useFeedback();
+  const clear = () => {
+    const before = value;
+    onChange('');
+    notify('Note cleared', { undo: () => onChange(before) });
+  };
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -30,15 +40,22 @@ function NoteText({ value, onChange, placeholder, autoFocus }: { value: string; 
     el.style.height = `${el.scrollHeight}px`;
   }, [value]);
   return (
-    <textarea
-      ref={ref}
-      className="notepad-text"
-      rows={2}
-      value={value}
-      placeholder={placeholder}
-      autoFocus={autoFocus}
-      onChange={(e) => onChange(e.target.value)}
-    />
+    <>
+      <textarea
+        ref={ref}
+        className="notepad-text"
+        rows={2}
+        value={value}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {value.trim() && (
+        <button type="button" className="notepad-clear" onClick={clear}>
+          <Eraser size={13} /> Clear
+        </button>
+      )}
+    </>
   );
 }
 

@@ -1,10 +1,10 @@
 import { ChartLine, Dumbbell, NotebookText, Play, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AccountButton } from '../components/AccountButton';
+import { AccountSlot } from '../components/AccountButton';
 import { CancelWorkoutButton } from '../components/CancelWorkoutButton';
 import { TrainingHeatmap } from '../components/TrainingHeatmap';
-import { WeekStrip } from '../components/WeekStrip';
+import { WeekPager } from '../components/WeekStrip';
 import { RecentWorkouts } from './WorkoutLogPage';
 import { PageSkeleton } from '../components/Skeleton';
 import { useFirstName } from '../hooks/useAccount';
@@ -89,7 +89,7 @@ export function HomePage() {
           </h1>
           <div className="muted small">{today.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
         </div>
-        <AccountButton />
+        <AccountSlot />
       </header>
       <nav className="hub" aria-label="Main">
         {HUB.map((item, i) => (
@@ -129,15 +129,21 @@ export function HomePage() {
 
       <div className="home-grid section">
         <section>
-          <h2 className="section-title">This week</h2>
-          <WeekStrip sessions={sessions} routines={followed ? [followed] : []} workouts={workouts} />
-
-          <WeekSummary sessions={sessions} planned={plannedThisWeek(followed, sessions)} />
-          {doneToday && (
-            <p className="muted small" style={{ marginTop: 6 }}>
-              Trained today: {doneToday.sessions.map((s) => s.name).join(', ')}
-            </p>
-          )}
+          <WeekPager
+            sessions={sessions}
+            routines={followed ? [followed] : []}
+            workouts={workouts}
+            current={
+              <>
+                <WeekSummary sessions={sessions} planned={plannedThisWeek(followed, sessions)} />
+                {doneToday && (
+                  <p className="muted small" style={{ marginTop: 6 }}>
+                    Trained today: {doneToday.sessions.map((s) => s.name).join(', ')}
+                  </p>
+                )}
+              </>
+            }
+          />
 
           {!active && (
             <div className="stack" style={{ marginTop: 14, gap: 10 }}>

@@ -1,5 +1,6 @@
-import { PencilLine, Share, Trash2 } from 'lucide-react';
+import { PencilLine, Share, SquarePen, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { now } from '../core/ids';
 import { uniqueName } from '../core/plan';
 import { routinePayload, shareableWorkout } from '../core/share';
@@ -62,6 +63,14 @@ function RenameDialog({ title, item, others, onRename, onClose }: RenameDialogPr
 
 const shareAction = (onSelect: () => void): ContextAction => ({ label: 'Share', icon: <Share {...ICON} />, onSelect });
 const renameAction = (onSelect: () => void): ContextAction => ({ label: 'Rename', icon: <PencilLine {...ICON} />, onSelect });
+const editAction = (onSelect: () => void): ContextAction => ({ label: 'Edit', icon: <SquarePen {...ICON} />, onSelect });
+
+/** Opens an editor, which returns here when done (`?from=`). */
+function useOpenEditor() {
+  const navigate = useNavigate();
+  const { pathname, search } = useLocation();
+  return (path: string) => navigate(`${path}?from=${encodeURIComponent(pathname + search)}`);
+}
 const deleteAction = (onSelect: () => void): ContextAction => ({ label: 'Delete', icon: <Trash2 {...ICON} />, danger: true, onSelect });
 
 interface WorkoutActionsProps {
@@ -72,9 +81,10 @@ interface WorkoutActionsProps {
   onClose: () => void;
 }
 
-/** Share, rename or delete a workout from its card. Deleting acts at once and offers Undo. */
+/** Edit, share, rename or delete a workout from its card. Deleting acts at once and offers Undo. */
 export function WorkoutActions({ held: { item: workout, anchor }, workouts, routines, exercises, onClose }: WorkoutActionsProps) {
   const { notify } = useFeedback();
+  const openEditor = useOpenEditor();
   const shareLink = useShareLink();
   const [renaming, setRenaming] = useState(false);
 
@@ -108,6 +118,10 @@ export function WorkoutActions({ held: { item: workout, anchor }, workouts, rout
     );
   }
   const actions = [
+    editAction(() => {
+      onClose();
+      openEditor(`/edit/workouts/${workout.id}`);
+    }),
     ...(workout.exercises.length > 0 ? [shareAction(share)] : []),
     renameAction(() => setRenaming(true)),
     deleteAction(() => void remove()),
@@ -123,9 +137,10 @@ interface RoutineActionsProps {
   onClose: () => void;
 }
 
-/** Share, rename or delete a routine from its card. Deleting asks first, as in the routine editor. */
+/** Edit, share, rename or delete a routine from its card. Deleting asks first, as in the routine editor. */
 export function RoutineActions({ held: { item: routine, anchor }, routines, workouts, exercises, onClose }: RoutineActionsProps) {
   const shareLink = useShareLink();
+  const openEditor = useOpenEditor();
   const [next, setNext] = useState<'rename' | 'delete' | null>(null);
 
   if (next === 'delete') return <DeleteRoutineDialog routine={routine} routines={routines} workouts={workouts} onClose={onClose} />;
@@ -145,6 +160,10 @@ export function RoutineActions({ held: { item: routine, anchor }, routines, work
     onClose();
   };
   const actions = [
+    editAction(() => {
+      onClose();
+      openEditor(`/edit/routines/${routine.id}`);
+    }),
     ...(routine.workoutIds.length > 0 ? [shareAction(share)] : []),
     renameAction(() => setNext('rename')),
     deleteAction(() => setNext('delete')),

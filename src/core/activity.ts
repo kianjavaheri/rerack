@@ -59,14 +59,16 @@ export interface WeekTotals {
  */
 export function weekSoFar(sessions: Session[], now = new Date()): { thisWeek: WeekTotals; lastWeek: WeekTotals } {
   const monday = startOfWeek(now);
-  const totals = (from: Date, to: Date): WeekTotals => {
-    const inRange = sessions.filter((s) => !isImportedSession(s) && new Date(s.startedAt) >= from && new Date(s.startedAt) <= to);
-    return {
-      workouts: inRange.filter((s) => sessionSummary(s).sets > 0).length,
-      sets: inRange.reduce((n, s) => n + sessionSummary(s).sets, 0),
-    };
+  return { thisWeek: totalsBetween(sessions, monday, now), lastWeek: totalsBetween(sessions, addDays(monday, -7), addDays(now, -7)) };
+}
+
+/** Workouts (with sets logged) and sets between two times. Imported notes don't count. */
+export function totalsBetween(sessions: Session[], from: Date, to: Date): WeekTotals {
+  const inRange = sessions.filter((s) => !isImportedSession(s) && new Date(s.startedAt) >= from && new Date(s.startedAt) <= to);
+  return {
+    workouts: inRange.filter((s) => sessionSummary(s).sets > 0).length,
+    sets: inRange.reduce((n, s) => n + sessionSummary(s).sets, 0),
   };
-  return { thisWeek: totals(monday, now), lastWeek: totals(addDays(monday, -7), addDays(now, -7)) };
 }
 
 /**

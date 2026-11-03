@@ -399,9 +399,16 @@ button.chip { cursor: pointer; }
   width: 100%; min-height: 44px; resize: none; overflow: hidden; border: 0; outline: none; background: transparent;
   padding: 2px 0; font-size: 14px; line-height: 1.5;
 }
+/* Empties the note in one tap (with Undo). Sits at the right, under the text. */
+.notepad-clear {
+  align-self: flex-end; display: inline-flex; align-items: center; gap: 5px; margin-top: -6px; padding: 4px 8px;
+  border: 0; border-radius: 8px; background: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer;
+}
+@media (hover: hover) { .notepad-clear:hover { background: var(--hover-tint); color: var(--text); } }
 .notepad-text::placeholder, .link-input::placeholder { color: var(--faint); }
 .links { display: flex; flex-direction: column; gap: 4px; }
-.notepad-text + .links { border-top: 1px solid var(--card-border); padding-top: 8px; }
+.notepad-text + .links, .notepad-clear + .links { border-top: 1px solid var(--card-border); padding-top: 8px; }
 .link-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .link-chip {
   display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 4px 8px; margin-left: -8px; border-radius: 8px;
@@ -829,6 +836,7 @@ button.stat { cursor: pointer; transition: border-color 0.2s, transform 0.2s var
 @media (max-width: 900px) { .home-grid { grid-template-columns: 1fr; } }
 
 .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.week-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; margin-bottom: 12px; }
 .week-day {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 8px 0 10px; border-radius: 12px; border: 1px solid transparent; background: transparent;
@@ -869,7 +877,19 @@ button.heat-cell { cursor: pointer; }
 .heat-cell.big.today { outline: 2px solid var(--text); outline-offset: 2px; }
 .heat-cell.future { aspect-ratio: 1; border-radius: 10px; background: transparent; box-shadow: inset 0 0 0 1px var(--card-border); color: var(--faint); }
 .heat-cell.outside { opacity: 0.45; }
-.heatmap-caption { grid-column: 1 / -1; text-align: center; font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.heatmap-caption { text-align: center; font-size: 13px; font-weight: 600; }
+/* Weeks or months side by side, scrolled one at a time (hooks/usePager.ts): the activity calendars and Home's week. */
+.pager { display: flex; width: 100%; min-width: 0; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; }
+.pager::-webkit-scrollbar { display: none; }
+/* A grid or flex item would otherwise grow to fit every page side by side. */
+.home-grid > *, .heat-paged { min-width: 0; }
+/* Room for what reaches outside a cell (today's outline in the calendars), which the scroller would clip. */
+.pager-page { flex: 0 0 100%; min-width: 0; padding: 5px; scroll-snap-align: start; scroll-snap-stop: always; }
+.pager-head { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px; }
+.pager-arrow { width: 30px; height: 30px; color: var(--muted); }
+.pager-arrow:disabled { opacity: 0.3; }
+.heat-paged { animation: rise 0.3s var(--ease); }
+.heat-paged .heatmap-calendar { animation: none; }
 /* 1M has five rows, so its squares are smaller (about 31px) and the calendar is centred instead of filling the width. */
 .heatmap-calendar.month { max-width: 252px; margin: 0 auto; gap: 5px; }
 .heatmap-calendar.month .heat-cell.big, .heatmap-calendar.month .heat-cell.future { border-radius: 8px; font-size: 12px; }
@@ -907,7 +927,8 @@ button.heat-cell { cursor: pointer; }
 .name-clash { color: var(--warning); margin-top: 6px; }
 /* Long exercise lists stop at 4 lines with an ellipsis. */
 .clamp-4 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
-@media (max-width: 380px) { .bar-unit { display: none; } }
+/* The word "exercises" goes first when the bar is short of room (phones, now that the live bar has a trash button too). */
+@media (max-width: 440px) { .bar-unit { display: none; } }
 .set-grid .head-done { text-align: center; white-space: nowrap; overflow: visible; justify-self: center; }
 /* A session's name with its Live / Done badge right after it (the input grows with the text where supported). */
 .session-name { field-sizing: content; width: auto; min-width: 3ch; max-width: 100%; flex: 0 1 auto; }
@@ -1130,6 +1151,9 @@ button.heat-cell { cursor: pointer; }
 .page-head { display: flex; align-items: center; gap: 12px; }
 .page-head-main { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .account-btn { display: none; }
+/* Where the account button goes in a tab page's title row; the button itself is drawn over it from Layout. */
+.account-slot { display: none; }
+.standalone .account-slot { display: block; flex-shrink: 0; width: 44px; height: 44px; }
 .standalone .account-btn {
   position: relative; isolation: isolate; flex-shrink: 0; display: grid; place-items: center;
   width: 44px; height: 44px; border-radius: 50%; color: var(--text); box-shadow: var(--nav-shadow);
@@ -1590,3 +1614,7 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
 .delete-phrase { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: var(--text); }
 .btn-delete { background: var(--danger); color: var(--page-base); }
 .btn-delete:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* The live workout bar's trash (CancelWorkoutButton icon): set apart from Exercise and Finish, and only red on a hover. */
+.bar-discard { width: 36px; padding: 0; justify-content: center; color: var(--muted); margin-right: 6px; }
+@media (hover: hover) { .bar-discard:hover { color: var(--danger); } }

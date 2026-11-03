@@ -1,6 +1,8 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Fragment, useState, type CSSProperties } from 'react';
 import { addDays, dailyActivity, dayKey, startOfDay, startOfWeek, type DayActivity } from '../core/activity';
-import { pluralize } from '../core/format';
+import { pluralize, weekRange } from '../core/format';
+import { usePager } from '../hooks/usePager';
 import type { Session } from '../core/types';
 import { useOpenDay } from './DaySessions';
 
@@ -9,32 +11,42 @@ const RANGES: Range[] = ['1W', '1M', '6M'];
 const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const STORAGE_KEY = 'fitness-tracker:heatmap-range';
 
+/** How far back the week and month calendars page (to the first workout, at most this many). */
+const MAX_WEEKS = 104;
+const MAX_MONTHS = 36;
+
 /**
- * What a range shows, in Monday-first weeks. 1W: this week. 1M: this calendar month, padded to whole weeks with the
- * neighbouring months' dates (…30, 31, 1, 2…). 6M: the last 26 weeks. `from` is where the stats start counting.
+ * What a range shows, in Monday-first weeks. 1W: a week (`back` weeks before this one). 1M: a calendar month (`back`
+ * months before this one), padded to whole weeks with the neighbouring months' dates (…30, 31, 1, 2…). 6M: the last
+ * 26 weeks. The stats count from `from` to `to` (today at the latest); `month` is the 1M page's month.
  */
-function rangeLayout(range: Range, today: Date): { weeks: Date[][]; from: Date; caption: string | null } {
+function rangeLayout(range: Range, today: Date, back = 0): { weeks: Date[][]; from: Date; to: Date; caption: string | null; month?: number } {
   const weeksFrom = (monday: Date, count: number) =>
     Array.from({ length: count }, (_, w) => Array.from({ length: 7 }, (_, d) => addDays(monday, w * 7 + d)));
+  const upTo = (end: Date) => (end < today ? end : today);
   if (range === '1W') {
-    const monday = startOfWeek(today);
-    const sunday = addDays(monday, 6);
-    const sameMonth = monday.getMonth() === sunday.getMonth();
-    const caption = `${monday.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${sunday.toLocaleDateString(
-      undefined,
-      sameMonth ? { day: 'numeric' } : { month: 'short', day: 'numeric' },
-    )}`;
-    return { weeks: weeksFrom(monday, 1), from: monday, caption };
+    const monday = addDays(startOfWeek(today), -7 * back);
+    return { weeks: weeksFrom(monday, 1), from: monday, to: upTo(addDays(monday, 6)), caption: weekRange(monday) };
   }
   if (range === '1M') {
-    const first = new Date(today.getFullYear(), today.getMonth(), 1);
-    const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const first = new Date(today.getFullYear(), today.getMonth() - back, 1);
+    const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
     const monday = startOfWeek(first);
     const count = Math.round((startOfWeek(last).getTime() - monday.getTime()) / (7 * 86_400_000)) + 1;
-    return { weeks: weeksFrom(monday, count), from: first, caption: today.toLocaleDateString(undefined, { month: 'long' }) };
+    const caption = first.toLocaleDateString(undefined, first.getFullYear() === today.getFullYear() ? { month: 'long' } : { month: 'long', year: 'numeric' });
+    return { weeks: weeksFrom(monday, count), from: first, to: upTo(last), caption, month: first.getMonth() };
   }
   const monday = addDays(startOfWeek(today), -7 * 25);
-  return { weeks: weeksFrom(monday, 26), from: monday, caption: null };
+  return { weeks: weeksFrom(monday, 26), from: monday, to: today, caption: null };
+}
+
+/** How many weeks or months the calendars page through: from the first trained day to now. */
+function pageCount(range: Range, today: Date, firstKey: string | undefined): number {
+  if (range === '6M' || !firstKey) return 1;
+  const [y, m, d] = firstKey.split('-').map(Number);
+  const first = new Date(y, m - 1, d);
+  if (range === '1W') return Math.min(MAX_WEEKS, Math.round((startOfWeek(today).getTime() - startOfWeek(first).getTime()) / (7 * 86_400_000)) + 1);
+  return Math.min(MAX_MONTHS, (today.getFullYear() - first.getFullYear()) * 12 + today.getMonth() - first.getMonth() + 1);
 }
 
 function savedRange(): Range {
@@ -49,15 +61,21 @@ function savedRange(): Range {
 /**
  * Training activity: blue = trained, gray = rest. Deliberately two states — you train at most once a day, and set
  * counts mostly reflect which workout it was rather than effort. 6M is a compact grid (columns are weeks); 1M and 1W
- * are calendars (columns are weekdays) with the date in each square and the month or week as a caption.
+ * are calendars (columns are weekdays) with the date in each square, which scroll sideways back through earlier
+ * months or weeks (arrows beside the caption too); the stats below are for the one in view.
  */
 export function TrainingHeatmap({ sessions }: { sessions: Session[] }) {
   const [range, setRange] = useState<Range>(savedRange);
   const [openDay, daySummary] = useOpenDay(sessions);
   const activity = dailyActivity(sessions);
   const today = startOfDay(new Date());
-  const { weeks, from, caption } = rangeLayout(range, today);
   const calendar = range !== '6M';
+  const firstKey = [...activity.keys()].reduce<string | undefined>((a, b) => (a === undefined || b < a ? b : a), undefined);
+  const count = pageCount(range, today, firstKey);
+  const { ref: pagerRef, index: pagerIndex, onScroll: onPagerScroll, go } = usePager(count, range);
+  // Oldest first, so the newest is on the right where the row opens.
+  const pages = Array.from({ length: count }, (_, i) => rangeLayout(range, today, count - 1 - i));
+  const { weeks, from, to, caption } = pages[Math.min(pagerIndex, count - 1)];
 
   const choose = (r: Range) => {
     setRange(r);
@@ -71,25 +89,25 @@ export function TrainingHeatmap({ sessions }: { sessions: Session[] }) {
   let sessionCount = 0;
   let activeDays = 0;
   for (const [key, day] of activity) {
-    if (key >= dayKey(from) && key <= dayKey(today)) {
+    if (key >= dayKey(from) && key <= dayKey(to)) {
       sessionCount += day.sessions.length;
       activeDays += 1;
     }
   }
-  const elapsedWeeks = Math.max(1, (today.getTime() - from.getTime()) / (7 * 86_400_000));
+  const elapsedWeeks = Math.max(1, (to.getTime() - from.getTime() + 86_400_000) / (7 * 86_400_000));
 
   /**
    * A day's square. `at` is its place in the grid (column, row, columns, rows): trained squares show their part of one
    * rainbow spread across the whole grid.
    */
   // The legend's "Trained" square shows the same part of the rainbow as the latest trained day, so they match.
-  const shown = [...activity.keys()].filter((k) => k >= dayKey(from) && k <= dayKey(today));
+  const shown = [...activity.keys()].filter((k) => k >= dayKey(from) && k <= dayKey(to));
   const latestKey = shown.length ? shown.reduce((a, b) => (a > b ? a : b)) : '';
   const places = new Map<string, CSSProperties>();
-  const cell = (date: Date, at: [number, number, number, number]) => {
+  const cell = (date: Date, at: [number, number, number, number], month?: number) => {
     const key = dayKey(date);
     // Days from the neighbouring months that pad the 1M calendar to whole weeks.
-    const outside = range === '1M' && date.getMonth() !== today.getMonth() ? ' outside' : '';
+    const outside = month !== undefined && date.getMonth() !== month ? ' outside' : '';
     if (date > today) {
       return calendar ? (
         <span key={key} className={`heat-cell big future${outside}`}>
@@ -137,14 +155,30 @@ export function TrainingHeatmap({ sessions }: { sessions: Session[] }) {
 
       {/* key replays the entrance animation when the range changes */}
       {calendar ? (
-        <div key={range} className={`heatmap heatmap-calendar${range === '1M' ? ' month' : ''}`}>
-          <div className="heatmap-caption">{caption}</div>
-          {DAY_LETTERS.map((l, i) => (
-            <span key={`h${i}`} className="heatmap-day">
-              {l}
-            </span>
-          ))}
-          {weeks.flat().map((date, i) => cell(date, [i % 7, Math.floor(i / 7), 7, weeks.length]))}
+        <div key={range} className="heat-paged">
+          <div className="pager-head">
+            <button className="icon-btn pager-arrow" onClick={() => go(pagerIndex - 1)} disabled={pagerIndex === 0} aria-label={range === '1W' ? 'Earlier week' : 'Earlier month'}>
+              <ChevronLeft size={18} />
+            </button>
+            <span className="heatmap-caption">{caption}</span>
+            <button className="icon-btn pager-arrow" onClick={() => go(pagerIndex + 1)} disabled={pagerIndex === count - 1} aria-label={range === '1W' ? 'Later week' : 'Later month'}>
+              <ChevronRight size={18} />
+            </button>
+          </div>
+          <div className="pager" ref={pagerRef} onScroll={onPagerScroll}>
+            {pages.map((page) => (
+              <div key={dayKey(page.from)} className="pager-page">
+                <div className={`heatmap heatmap-calendar${range === '1M' ? ' month' : ''}`}>
+                  {DAY_LETTERS.map((l, i) => (
+                    <span key={`h${i}`} className="heatmap-day">
+                      {l}
+                    </span>
+                  ))}
+                  {page.weeks.flat().map((date, i) => cell(date, [i % 7, Math.floor(i / 7), 7, page.weeks.length], page.month))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div key={range} className="heatmap" style={{ gridTemplateColumns: `16px repeat(${weeks.length}, minmax(0, 1fr))` }}>

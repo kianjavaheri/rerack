@@ -40,12 +40,19 @@ and `src/main.tsx` doesn't import the app at all (`src/boot.tsx` is the app's re
 iPhone app starts at `/`). "Used the app" is localStorage `rerack:app-user` (`APP_USER_KEY`), set by Layout once
 past sign-in (or local mode); deleting the account clears it and goes to `/`. So no hosting or service-worker
 changes: `/about` and every app path fall back to the same `index.html`. Landing styles: `src/landing/landing.css`,
-linked from `index.html` for every page and scoped to `html.landing`. Screenshots: `public/landing/*.webp`
-(780 x 1594, the app at 390 x 797 dark with demo data, drawn under a fake status bar in CSS phone frames; excluded
-from the precache); `public/landing/og.png` is the link preview (`node scripts/landing-og.mjs`). To retake shots use
+linked from `index.html` for every page and scoped to `html.landing`. It has its own light/dark switch (sun/moon in
+the top bar, remembered as localStorage `rerack:site-theme`, apart from the app's setting; else the app's theme or
+the system's), and each screenshot has a dark (`name.webp`) and light (`name-light.webp`) version that the script
+swaps (`img[data-shot]`; the other theme's are prefetched after load). Screenshots: `public/landing/*.webp`
+(780 x 1594, the app at 390 x 797 with demo data, drawn under a fake status bar in CSS phone frames; excluded
+from the precache). The demo account behind them follows a Mon/Wed/Fri Push / Pull / Legs for 26 weeks, generated
+with a few missed sessions and some a day late, weights climbing with two lighter weeks (rebuild it in the
+`web-shots` origin rather than relying on `src/data/demo.ts`, whose dates don't match those planned days); `public/landing/og.png` is the link preview (`node scripts/landing-og.mjs`). To retake shots use
 the `web-shots` launch config (:5176, its own origin, so loading demo data there doesn't touch `web-local`'s), load
 demo data, `standalone` class, viewport 390 x 797, finish animations before each capture. The sign-in screen links
-back with "What's Rerack?" (`.web-only`, hidden when installed). The PWA manifest's `start_url` is `/home`.
+back with "What's Rerack?" (`.web-only`, hidden when installed). A back-to-top button (`.lp-top-btn`: a rounded square in the
+app's rainbow, orange in dark and blue in light, like the tab bar's +) shows at the bottom right once the first
+screen has scrolled away; the footer leaves room under its links for it. The PWA manifest's `start_url` is `/home`.
 
 There is no test suite. Verify changes in the browser; in dev, **Settings → Load demo data** (or importing
 `src/data/demo.ts` and calling `repo.importSnapshot(demoSnapshot())`) gives ~10 weeks of history to look at. When
@@ -185,7 +192,8 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   several and none picked, Home asks you to pick one (the circle on routine cards in Workouts).
 - **Notes are sticky**: `Exercise.notes`/`links` and `Workout.notes` show every time it's logged (session note pads,
   Exercises form, workout editor). Links are http(s) only via `normalizeLink`. `WorkoutExercise.notes` is the
-  separate per-slot note (e.g. "(slow)" from imports) shown under the exercise name.
+  separate per-slot note (e.g. "(slow)" from imports) shown under the exercise name. A note pad with text has a
+  **Clear** under it (`NoteText` in `components/Notes.tsx`), with an Undo banner.
 - Progress metric for one number per session (`progressValue`): estimated 1RM (Epley) for weighted exercises, total
   reps for bodyweight. Analytics is one page (Records was dropped; Log is its own tab, and the old
   `?view=log` redirects there). It lists logged workouts and exercises together (one filter; `?workout=` or `?exercise=`, else the latest workout). A workout plots each exercise as % change from its first session so
@@ -240,8 +248,9 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   routine offers to delete workouts used only by it (sessions are always kept).
 - **Press-and-hold menus**: workout cards (Plan, Check in), routine cards (Plan) and session cards (Home's Recent workouts, History) open an
   iOS-style context menu on press-and-hold or right-click (`useLongPress`, with a haptic → `components/ContextMenu.tsx`,
-  which lifts a copy of the card over a light blur; actions in `components/WorkoutActions.tsx`: Share for
-  workouts/routines, Rename, Delete). Routine delete there and in the editor is `components/DeleteRoutineDialog.tsx`.
+  which lifts a copy of the card over a light blur; actions in `components/WorkoutActions.tsx`: Edit (opens the editor
+  with `?from=` the current page), Share for workouts/routines, Rename, Delete). On Check in, where tapping a card
+  starts the workout, a routine's heading can be held too (`.routine-heading`). Routine delete there and in the editor is `components/DeleteRoutineDialog.tsx`.
   The touch that opens a menu carries on after it opens, so the tab and edge swipes also check for `.ctx-overlay`
   while a touch moves, not only where it starts.
 - **Hold and drag to reorder** (`hooks/useDragReorder.ts`): workouts in the routine editor, exercises in the workout
@@ -265,8 +274,10 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   `display-mode: standalone` / `navigator.standalone`), the top nav and Home's orbs are hidden and a floating bottom
   tab bar (`.tabbar`, Clock-app style, icons only, liquid glass) shows Home, Workouts,
   a rainbow + (Check in), Analytics, Log. Your account is a glass circle at the top right of each tab page's title
-  row, like Apple TV / HBO Max (`components/AccountButton.tsx`: `PageHead` wraps a tab page's title; app only, the web
-  has the nav's account menu); it opens Settings, which in the app is a sub-page with Back and edge swipe. In the home-screen web app a solid strip
+  row, like Apple TV / HBO Max (`components/AccountButton.tsx`; app only, the web has the nav's account menu). It's one
+  button for all the tabs (`FloatingAccountButton`, in Layout, portaled to `<body>` at page coordinates from layout
+  offsets), placed over the current page's empty `AccountSlot` (in `PageHead`, and Home's greeting), so it stays still
+  while pages swipe under it and still scrolls with the page; hidden where there's no slot (a workout, Settings); it opens Settings, which in the app is a sub-page with Back and edge swipe. In the home-screen web app a solid strip
   (`.statusbar-scrim`) covers the status bar plus ~32px because iOS blurs that band and it can't be turned off; the
   iPhone app (`html.native`) has no blur, so its strip only backs the status bar and content starts just below.
   Bottom `.sticky-bar`s sit above the tabs. To test in a browser, add the `standalone` class to `<html>`.
@@ -285,7 +296,10 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   again (no celebration). A finished session's Back/Done goes back, else to History.
 - A logged session is `/session/:id`; check-in is `/check-in`. Use "Cancel workout" (not "Stop") for discarding an
   in-progress session — `components/CancelWorkoutButton.tsx` uses an in-app dialog, not `confirm()`; from the
-  workout's page it returns to Check in.
+  workout's page it returns to Check in. The live workout's bottom bar has it too, as a gray trash icon (`icon`,
+  `.bar-discard`) set apart from + Exercise and Finish; the dialog is what stops an accidental tap. To make room, the bar
+  drops the word "exercises" under 440px ("1/4 · 38 min"), and its left side truncates rather than running under
+  the buttons.
 - Editor pages accept `?from=<path>` so Save returns to where the user came from (e.g. back to a routine); validate it
   with `safeReturnPath` (rejects `//host`). Session pages go back with `navigate(-1)` when `canGoBack()`.
 - **No `confirm()`/`alert()`**: `components/Feedback.tsx` (`useFeedback`) gives in-app `confirm({…})` dialogs and
@@ -485,9 +499,15 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   accent and a fixed-order 8-color categorical palette validated for colour-blind separation — don't cycle or
   reorder; >8 series must be capped).
 - Home's Activity heatmap has 1W / 1M / 6M (remembered per device in localStorage): 6M is the compact grid with
-  weeks as columns; 1W (this week, captioned "Oct 19 – 25") and 1M (this calendar month, captioned with its name,
-  padded to whole Monday–Sunday weeks with the neighbouring months' dates, faded) are calendars that show the date.
-  Stats count from the start of the week/month (`rangeLayout`). No 1Y: 52
+  weeks as columns; 1W (a week, captioned "Oct 19 – 25", `weekRange`) and 1M (a calendar month, captioned with its
+  name, padded to whole Monday–Sunday weeks with the neighbouring months' dates, faded) are calendars that show the
+  date, and scroll sideways back to the first trained day (at most 104 weeks / 36 months), with arrows beside the
+  caption. Stats are for the week/month in view (`rangeLayout(range, today, back)`). Home's week strip pages back the
+  same way (`WeekPager` in `components/WeekStrip.tsx`): its title is "This week", "Last week", then the dates, and an
+  earlier week shows "3 of 5 planned · 33 sets" instead of this week's summary. Both use `hooks/usePager.ts`: a
+  scroll-snapped `.pager` (sideways scrollers are left alone by tab swipes) that opens on the newest page; inside a
+  grid it needs `min-width: 0` or it grows to fit every page, and each page has 5px padding because the scroller
+  clips anything outside it (today's outline in the calendars). No 1Y: 52
   columns are too small to see or tap on a phone.
 - Home's activity grid is deliberately two-state (rest gray / trained rainbow): you train at most once a day,
   and set counts mostly reflect which workout it was, so shading by volume was confusing. Don't reintroduce a ramp

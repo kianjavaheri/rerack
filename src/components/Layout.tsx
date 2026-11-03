@@ -20,6 +20,7 @@ import { AccountMenu } from './AccountMenu';
 import { ForgottenWorkoutPrompt } from './ForgottenWorkout';
 import { IntroGate } from './Intro';
 import { SummaryWindow } from './SummaryWindow';
+import { FloatingAccountButton } from './AccountButton';
 import { SyncIndicator } from './SyncIndicator';
 import { TabPager } from './TabPager';
 
@@ -215,6 +216,7 @@ export function Layout() {
 
       <ForgottenWorkoutPrompt />
       <SummaryWindow />
+      <FloatingAccountButton />
       <IntroGate />
       <SyncIndicator />
 

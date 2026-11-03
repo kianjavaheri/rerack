@@ -408,7 +408,7 @@ export function SessionPage() {
 
       <div className="sticky-bar">
         {/* Progress through the workout: exercises with every set checked, plus how long it's been going. */}
-        <div className="small tnum" style={{ minWidth: 0, whiteSpace: 'nowrap' }}>
+        <div className="small tnum" style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           <strong>
             {session.entries.filter(isEntryDone).length}/{session.entries.length}
           </strong>
@@ -422,6 +422,14 @@ export function SessionPage() {
           {!inProgress && duration != null && ` · ${formatDuration(duration)}`}
         </div>
         <div className="row" style={{ gap: 6 }}>
+          {inProgress && (
+            <CancelWorkoutButton
+              icon
+              session={session}
+              onCancelled={() => navigate('/check-in', { replace: true })}
+              onRestore={(restored) => update(() => restored)}
+            />
+          )}
           <button className="btn btn-sm" onClick={() => setPicking({ mode: 'add' })}>
             <Plus size={15} /> Exercise
           </button>
