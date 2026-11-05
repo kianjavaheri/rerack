@@ -250,7 +250,11 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   iOS-style context menu on press-and-hold or right-click (`useLongPress`, with a haptic → `components/ContextMenu.tsx`,
   which lifts a copy of the card over a light blur; actions in `components/WorkoutActions.tsx`: Edit (opens the editor
   with `?from=` the current page), Share for workouts/routines, Rename, Delete). On Check in, where tapping a card
-  starts the workout, a routine's heading can be held too (`.routine-heading`). Routine delete there and in the editor is `components/DeleteRoutineDialog.tsx`.
+  starts the workout, a routine's heading can be held too (`.routine-heading`). The menu's icons are our own filled
+  drawings in the manner of iOS's (`components/MenuIcons.tsx`: share, trash, edit, rename; SF Symbols themselves may
+  only be used in apps on Apple's platforms, and this is web code), with no dividers between the actions. Routine
+  delete there and in the editor is `components/DeleteRoutineDialog.tsx`; deleting the followed routine follows the
+  one trained from most recently instead (else the newest), so Home isn't left without one.
   The touch that opens a menu carries on after it opens, so the tab and edge swipes also check for `.ctx-overlay`
   while a touch moves, not only where it starts.
 - **Hold and drag to reorder** (`hooks/useDragReorder.ts`): workouts in the routine editor, exercises in the workout
@@ -375,8 +379,15 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   `utils/keyboard.ts` (`trackKeyboard`, run in `main.tsx`) publishes `--vv-top`/`--vv-height` (dialog overlays are
   sized to them, so a sheet sits on the keyboard), sets `html.keyboard-open`, and scrolls a covered focused field
   into view.
-- **Share links**: `/share#<base64 JSON>` (`core/share.ts`) carries a workout or routine (exercises by name/catalogId,
-  targets, notes, supersets, routine days) but no history; `data/shared.ts` adds it (matches exercises, unique names).
+- **Share links**: `/share#2.<…>` (`core/share.ts`) carries a workout or routine (exercises by name/catalogId,
+  targets, notes, supersets, routine days) but no history, in a compact form (arrays, short keys, defaults and a
+  library exercise's group/equipment left out) deflated with `fflate`'s synchronous `deflateSync` (building it must not
+  wait, or iOS won't open the share sheet from the tap) and URL-safe base64: ~1/6 of the old length. Old links (plain
+  base64 JSON, no `2.`) still open. Never stored anywhere (the privacy policy says so). `data/shared.ts` adds it (matches
+  exercises, unique names, fills a library exercise's group and equipment from the catalog).
+  `components/SharePreview.tsx` shows what it holds (each workout's days, notes and every exercise's sets × reps): on
+  the share page above "Add to my workouts", and on the sign-in screen when someone opens a link signed out
+  (`LoginScreen`, `.with-share`: "Sign in to add it…"; the address survives sign-in, so the share page follows).
 - In the app (`html.standalone`) Home opens with a greeting by time of day plus first name when signed in, and the
   date (`.home-greeting`; hidden on the web, where the top bar and orbs are).
 - Home shows a week summary vs last week to the same weekday (`weekSoFar`).
@@ -408,7 +419,8 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   Push / Pull / Legs, Body Part Split): slots by friendly name + library id + sets × reps, weekdays or `rotateEvery`.
   `addProgram` builds a share payload and goes through `addShared` (reuses your exercises by library id or name),
   returns what it made; `removeProgram` is its Undo. `components/Programs.tsx` `ProgramList` (cards that open to
-  show workouts and exercises, "Use this program") is in the intro's routine step and Workouts' **Programs** window
+  show workouts and exercises, "Use this program"; the body is always rendered, `inert` while closed, and opens by
+  animating a grid row from `0fr` to `1fr`, the one way to animate to its natural height, then scrolls into view) is in the intro's routine step and Workouts' **Programs** window
   (also linked from the empty routines box); using one follows it.
 - **First-run intro** (`components/Intro.tsx`, mounted in Layout as `IntroGate`): its own window (full screen on a
   phone, a panel on wide screens; `.intro`, z 90, under dialogs). Explains routine → workout → exercise (a diagram
@@ -587,8 +599,10 @@ MARKETING_VERSION / CURRENT_PROJECT_VERSION.
   deleting removes it (even with saving turned off). Calls run one at a time (two saves at once would each add one);
   editing a finished workout's name, date or duration re-saves it (`syncToAppleHealth`, debounced). Off until turned on in Settings (per phone, localStorage `lifttrack:apple-health`; Health
   permission is per device). Needs `App/App.entitlements` (HealthKit) and the Health usage strings in Info.plist.
-- Status bar style follows the theme (`@capacitor/status-bar`). Share links use `SITE_URL`, not the page origin
-  (`capacitor://localhost`). Info.plist has local-network keys for live reload and `ITSAppUsesNonExemptEncryption`
+- Status bar style follows the theme (`@capacitor/status-bar`). Share links use `SITE_URL`
+  (`https://www.rerackapp.net`), not the page origin (`capacitor://localhost`). The site's domain: `www.rerackapp.net`
+  (DNS at Squarespace, CNAME to `fitness-tracker-cb4cd.web.app`), with `rerackapp.net` redirecting to it in Firebase
+  Hosting; the old `fitness-tracker-cb4cd.web.app` still works, so earlier share links keep opening. Info.plist has local-network keys for live reload and `ITSAppUsesNonExemptEncryption`
   false.
 
 **Project tooling.** `scripts/ios-setup-project.rb` (xcodeproj gem; run with `GEM_HOME=$HOME/.gem/ruby/2.6.0 ruby …`)

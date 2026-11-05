@@ -1,4 +1,3 @@
-import { PencilLine, Share, SquarePen, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { now } from '../core/ids';
@@ -9,6 +8,7 @@ import { repo } from '../data';
 import { removeFromAppleHealth, saveToAppleHealth, syncToAppleHealth } from '../native/health';
 import { useShareLink } from '../hooks/useShareLink';
 import { ContextMenu, type ContextAction } from './ContextMenu';
+import { EditFill, RenameFill, ShareFill, TrashFill } from './MenuIcons';
 import { DeleteRoutineDialog } from './DeleteRoutineDialog';
 import { useFeedback } from './Feedback';
 import { Modal } from './Modal';
@@ -19,7 +19,6 @@ export interface Held<T> {
   anchor: HTMLElement;
 }
 
-const ICON = { size: 22, strokeWidth: 1.8 };
 
 interface RenameDialogProps {
   title: string;
@@ -61,9 +60,9 @@ function RenameDialog({ title, item, others, onRename, onClose }: RenameDialogPr
   );
 }
 
-const shareAction = (onSelect: () => void): ContextAction => ({ label: 'Share', icon: <Share {...ICON} />, onSelect });
-const renameAction = (onSelect: () => void): ContextAction => ({ label: 'Rename', icon: <PencilLine {...ICON} />, onSelect });
-const editAction = (onSelect: () => void): ContextAction => ({ label: 'Edit', icon: <SquarePen {...ICON} />, onSelect });
+const shareAction = (onSelect: () => void): ContextAction => ({ label: 'Share', icon: <ShareFill />, onSelect });
+const renameAction = (onSelect: () => void): ContextAction => ({ label: 'Rename', icon: <RenameFill />, onSelect });
+const editAction = (onSelect: () => void): ContextAction => ({ label: 'Edit', icon: <EditFill />, onSelect });
 
 /** Opens an editor, which returns here when done (`?from=`). */
 function useOpenEditor() {
@@ -71,7 +70,7 @@ function useOpenEditor() {
   const { pathname, search } = useLocation();
   return (path: string) => navigate(`${path}?from=${encodeURIComponent(pathname + search)}`);
 }
-const deleteAction = (onSelect: () => void): ContextAction => ({ label: 'Delete', icon: <Trash2 {...ICON} />, danger: true, onSelect });
+const deleteAction = (onSelect: () => void): ContextAction => ({ label: 'Delete', icon: <TrashFill />, danger: true, onSelect });
 
 interface WorkoutActionsProps {
   held: Held<Workout>;

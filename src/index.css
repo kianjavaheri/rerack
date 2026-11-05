@@ -980,6 +980,13 @@ button.heat-cell { cursor: pointer; }
 /* Apple's button in its black (light mode) / white (dark mode) style. */
 .login-apple { background: var(--text); color: var(--page-base); }
 @media (hover: hover) { .login-apple:hover:not(:disabled) { background: var(--text); opacity: 0.88; } }
+/* A share link opened before signing in: its preview above the sign-in card, both in one column. */
+.login.with-share { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 18px; padding-top: max(24px, env(safe-area-inset-top)); }
+.login-share { width: min(480px, 100%); animation: rise 0.35s var(--ease); }
+.share-workout { padding: 14px 16px; }
+.share-notes { margin: 2px 0 6px; }
+.share-exercises { list-style: none; margin: 4px 0 0; padding: 0; }
+.share-exercises li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; font-size: 14px; border-top: 1px solid var(--card-border); }
 .login-about { display: inline-block; margin-top: 18px; text-decoration: underline; text-underline-offset: 3px; }
 .login-skip {
   margin-top: 22px; padding: 6px 10px; border: 0; background: none; cursor: pointer;
@@ -1201,8 +1208,8 @@ a.card:active, button.card:active:not(:disabled) { transform: scale(0.98); }
 .drag-lifted { position: relative; z-index: 20; box-shadow: 0 12px 32px #00000038, 0 2px 8px #0000001f; will-change: transform; }
 
 /* ---------- Context menu (press and hold a card; components/ContextMenu.tsx) ---------- */
-:root { --ctx-bg: #fbfbfcf2; --ctx-divider: #0000001a; }
-[data-theme='dark'] { --ctx-bg: #232427f2; --ctx-divider: #ffffff1a; }
+:root { --ctx-bg: #fbfbfcf2; }
+[data-theme='dark'] { --ctx-bg: #232427f2; }
 .ctx-overlay {
   position: fixed; inset: 0; z-index: 110;
   animation: fade 0.2s ease; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
@@ -1233,10 +1240,9 @@ a.card:active, button.card:active:not(:disabled) { transform: scale(0.98); }
 }
 .ctx-action {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px;
-  padding: 16px 6px 13px; border: 0; background: none; cursor: pointer;
+  padding: 17px 6px 14px; border: 0; background: none; cursor: pointer;
   color: var(--text); font: inherit; font-size: 14px; font-weight: 500;
 }
-.ctx-action + .ctx-action { border-left: 1px solid var(--ctx-divider); }
 .ctx-action.danger { color: var(--danger); }
 .ctx-action:active { background: var(--hover-tint); }
 @media (hover: hover) { .ctx-action:hover { background: var(--hover-tint); } }
@@ -1576,6 +1582,13 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
 .program-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 16px; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .program-chevron { transition: transform 0.2s var(--ease); flex-shrink: 0; }
 .program.open .program-chevron { transform: rotate(180deg); }
+/* Opening: the body's row grows from 0 to its full height (a grid row can animate to "auto"; height can't), and its
+   content fades in a little behind. */
+.program-reveal { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.32s var(--ease-swipe); }
+.program.open .program-reveal { grid-template-rows: 1fr; }
+.program-clip { min-height: 0; overflow: hidden; opacity: 0; transition: opacity 0.2s ease; }
+.program.open .program-clip { opacity: 1; transition: opacity 0.25s ease 0.08s; }
+@media (prefers-reduced-motion: reduce) { .program-reveal, .program-clip { transition: none; } }
 .program-body { padding: 0 16px 16px; }
 .program-workout { margin-bottom: 12px; }
 .program-workout-name { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }

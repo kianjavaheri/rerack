@@ -14,7 +14,7 @@ const bg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" hei
   <text font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="68" font-weight="800" fill="#f7f8f8" letter-spacing="-2">
     <tspan x="76" y="290">The workout log</tspan><tspan x="76" y="370">that remembers</tspan><tspan x="76" y="450">last time.</tspan>
   </text>
-  <text x="80" y="540" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="30" fill="#8a8f98">rerackapp.net</text>
+  <text x="80" y="540" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="30" fill="#8a8f98">www.rerackapp.net</text>
 </svg>`);
 const logo = await sharp(readFileSync(`${root}/public/app-icon.svg`)).resize(84, 84).png().toBuffer();
 // The Home screenshot in a phone frame that runs off the bottom edge.

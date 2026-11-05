@@ -4,4 +4,4 @@ import { Capacitor } from '@capacitor/core';
 export const isNative = Capacitor.isNativePlatform();
 
 /** The hosted web app. Inside the iPhone app the page's own origin is capacitor://localhost, so links use this. */
-export const SITE_URL = 'https://fitness-tracker-cb4cd.web.app';
+export const SITE_URL = 'https://www.rerackapp.net';

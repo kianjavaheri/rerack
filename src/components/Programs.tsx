@@ -9,17 +9,24 @@ const daysText = (days: number[] | undefined) =>
 
 /**
  * Ready-made programs as cards: tap one to see its workouts and exercises (sets × reps), then use it. `busy` is the one
- * being added.
+ * being added. A card opens and closes smoothly (its body is always there, its height animated from 0), and one that
+ * opens past the bottom of the view is scrolled into it.
  */
 export function ProgramList({ onUse, busy }: { onUse: (program: Program) => void; busy?: string | null }) {
   const [open, setOpen] = useState<string | null>(null);
+  const toggle = (id: string, card: HTMLElement) => {
+    const opening = open !== id;
+    setOpen(opening ? id : null);
+    // After the open animation (which also closes another card above it, moving this one up).
+    if (opening) setTimeout(() => card.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 340);
+  };
   return (
     <div className="program-list">
       {PROGRAMS.map((p) => {
         const expanded = open === p.id;
         return (
           <div key={p.id} className={`card program${expanded ? ' open' : ''}`}>
-            <button className="program-head" onClick={() => setOpen(expanded ? null : p.id)} aria-expanded={expanded}>
+            <button className="program-head" onClick={(e) => toggle(p.id, e.currentTarget.parentElement!)} aria-expanded={expanded}>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span className="card-title" style={{ display: 'block' }}>
                   {p.name}
@@ -28,34 +35,36 @@ export function ProgramList({ onUse, busy }: { onUse: (program: Program) => void
               </span>
               <ChevronDown size={18} className="program-chevron muted" />
             </button>
-            {expanded && (
-              <div className="program-body">
-                <p className="small" style={{ margin: '0 0 12px' }}>
-                  {p.description}
-                </p>
-                {p.workouts.map((w) => (
-                  <div key={w.name} className="program-workout">
-                    <div className="program-workout-name">
-                      <strong>{w.name}</strong>
-                      <span className="muted small">{p.rotateEvery ? 'Alternate, every other day' : daysText(w.days)}</span>
+            <div className="program-reveal" inert={!expanded}>
+              <div className="program-clip">
+                <div className="program-body">
+                  <p className="small" style={{ margin: '0 0 12px' }}>
+                    {p.description}
+                  </p>
+                  {p.workouts.map((w) => (
+                    <div key={w.name} className="program-workout">
+                      <div className="program-workout-name">
+                        <strong>{w.name}</strong>
+                        <span className="muted small">{p.rotateEvery ? 'Alternate, every other day' : daysText(w.days)}</span>
+                      </div>
+                      <ul>
+                        {w.exercises.map(([name, , sets, reps]) => (
+                          <li key={name}>
+                            <span>{name}</span>
+                            <span className="muted tnum">
+                              {sets} × {reps}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <ul>
-                      {w.exercises.map(([name, , sets, reps]) => (
-                        <li key={name}>
-                          <span>{name}</span>
-                          <span className="muted tnum">
-                            {sets} × {reps}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-                <button className="btn btn-primary" style={{ width: '100%', marginTop: 4 }} disabled={!!busy} onClick={() => onUse(p)}>
-                  {busy === p.id ? 'Adding…' : 'Use this program'}
-                </button>
+                  ))}
+                  <button className="btn btn-primary" style={{ width: '100%', marginTop: 4 }} disabled={!!busy} onClick={() => onUse(p)}>
+                    {busy === p.id ? 'Adding…' : 'Use this program'}
+                  </button>
+                </div>
               </div>
-            )}
+            </div>
           </div>
         );
       })}

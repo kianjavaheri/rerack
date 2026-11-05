@@ -3,6 +3,7 @@ import { uniqueName } from '../core/plan';
 import type { SharedExercise, SharePayload } from '../core/share';
 import type { Exercise, ID, Routine, Workout } from '../core/types';
 import { repo } from '.';
+import { loadCatalog } from './catalog';
 
 /**
  * Adds what a share link carries to this account: exercises are matched to the user's own (same library entry, else
@@ -12,6 +13,9 @@ import { repo } from '.';
 export async function addShared(payload: SharePayload): Promise<{ routineId: ID | null; workoutIds: ID[] }> {
   const ts = now();
   const exercises = await repo.listExercises();
+  // Links leave out a library exercise's muscle group and equipment: they come from the library here.
+  const catalog = payload.workouts.some((w) => w.exercises.some((e) => e.catalogId && !e.muscleGroup)) ? await loadCatalog().catch(() => []) : [];
+  const fromLibrary = new Map(catalog.map((c) => [c.id, c]));
   const key = (name: string) => name.trim().toLowerCase();
 
   const resolve = async (shared: SharedExercise): Promise<ID> => {
@@ -29,8 +33,8 @@ export async function addShared(payload: SharePayload): Promise<{ routineId: ID 
       id: newId(),
       name: shared.name.trim(),
       kind: shared.kind === 'bodyweight' ? 'bodyweight' : 'weighted',
-      muscleGroup: shared.muscleGroup,
-      equipment: shared.equipment,
+      muscleGroup: shared.muscleGroup ?? (shared.catalogId ? fromLibrary.get(shared.catalogId)?.muscleGroup : undefined),
+      equipment: shared.equipment ?? (shared.catalogId ? fromLibrary.get(shared.catalogId)?.equipment : undefined),
       catalogId: shared.catalogId,
       createdAt: ts,
       updatedAt: ts,
