@@ -45,6 +45,15 @@
   --glass-filter: blur(28px) saturate(2.1) brightness(1.06);
   --glass-tint: #ffffff4d;
   --sheet-tint: #f7f8fab8;
+  /* The bottom tab bar's own glass, after YouTube's: in light a see-through cool gray (white read as a solid bar),
+     lightly blurred so what's behind still shows, set off by a darker hairline and a soft shadow; the current tab a
+     darker pill. Dark mode is the mirror image (below). */
+  --tabbar-glass: linear-gradient(180deg, #ffffff4d 0%, #ffffff0d 55%, #ffffff00 100%), #c9ccd459;
+  --tabbar-filter: blur(14px) saturate(1.8);
+  --tabbar-edge: inset 0 1px 0 #ffffffb3, inset 0 0 0 0.5px #ffffff59, 0 0 0 0.5px #00000024;
+  --tabbar-shadow: 0 10px 30px #00000029, 0 1px 3px #0000001a;
+  --tabbar-pill: #00000017;
+  --tabbar-pill-checkin: #00000033; /* the ring round the + on Check in: a darker grey */
   --glass-sheen: linear-gradient(155deg, #ffffff73 0%, #ffffff1f 28%, #ffffff00 52%, #ffffff00 78%, #ffffff26 100%);
   /* On a light page white glass vanishes, so its edge also catches a little shade: a faint grey just inside the rim and
      along the bottom, under the bright top highlight, which is what makes iOS's light glass read as a lens. */
@@ -110,6 +119,12 @@
   --glass-filter: blur(28px) saturate(1.9) brightness(1.12);
   --glass-tint: #28292d73;
   --sheet-tint: #202124b8;
+  --tabbar-glass: linear-gradient(180deg, #ffffff0f 0%, #ffffff00 45%), #0c0c0dc7;
+  --tabbar-filter: blur(16px) saturate(1.8);
+  --tabbar-edge: inset 0 1px 0 #ffffff21, inset 0 0 0 0.5px #ffffff17, 0 0 0 0.5px #000000b3;
+  --tabbar-shadow: 0 10px 32px #000000a6, 0 1px 3px #00000080;
+  --tabbar-pill: #ffffff26;
+  --tabbar-pill-checkin: #ffffff12;
   --glass-sheen: linear-gradient(155deg, #ffffff21 0%, #ffffff08 30%, #ffffff00 55%, #ffffff00 78%, #ffffff0f 100%);
   --glass-edge: inset 0 1px 0.5px #ffffff4d, inset 0 -0.5px 0.5px #ffffff1f, inset 0 0 0 0.5px #ffffff1a,
     inset 0 0 22px #ffffff0d, 0 0 0 0.5px #00000080;
@@ -351,7 +366,22 @@ button.chip { cursor: pointer; }
 }
 @media (hover: hover) { .day:hover { background: var(--chip-bg-hover); color: var(--text); } }
 .day.on { background: var(--text); color: var(--page-base); }
-.day.day-every { width: auto; padding: 0 10px; }
+/* Under the weekdays, apart from them: how a workout repeats, and whether it's optional in this routine. */
+.slot-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--card-border);
+}
+.repeat-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px;
+  border: 1px dashed var(--faint); background: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: color 0.15s, border-color 0.15s;
+}
+@media (hover: hover) { .repeat-btn:hover { color: var(--text); border-color: var(--muted); } }
+.optional-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.optional-tag {
+  flex-shrink: 0; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  border: 1px dashed var(--faint); color: var(--muted);
+}
 /* "Every 2 days" with its stepper, for a workout or a whole routine in rotation. */
 .schedule-every { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
 
@@ -545,6 +575,12 @@ button.chip { cursor: pointer; }
   /* A sheet floating just inside the screen's edges, its corners following the phone's, like iOS 26. */
   .overlay { place-items: end stretch; padding: 0 8px calc(env(safe-area-inset-bottom) + 8px); }
   .modal { width: 100%; border-radius: 36px; max-height: min(86vh, calc(var(--vv-height, 100vh) - 24px)); }
+  /* Pulled up (useSwipeToClose's expandable): nearly the full screen, below the status bar, empty space and all. */
+  .modal.expanded {
+    height: calc(var(--vv-height, 100vh) - max(env(safe-area-inset-top), 12px) - 12px - env(safe-area-inset-bottom) - 8px);
+    max-height: none;
+  }
+  .keyboard-open .modal.expanded { height: calc(var(--vv-height, 100vh) - max(env(safe-area-inset-top), 12px) - 20px); }
   /* Keyboard up: the sheet sits right on it (the home indicator's space is under the keyboard). */
   .keyboard-open .overlay { padding-bottom: 8px; }
 }
@@ -850,6 +886,8 @@ button.stat { cursor: pointer; transition: border-color 0.2s, transform 0.2s var
 .week-mark { width: 8px; height: 8px; border-radius: 50%; }
 .week-mark.done { background: var(--text); }
 .week-mark.planned { box-shadow: inset 0 0 0 1.5px var(--muted); }
+/* An optional workout's day: a fainter, dashed ring (never "missed"). */
+.week-mark.optional { border: 1.5px dashed var(--faint); }
 
 /* Two states only: rest (well gray) and trained (the rainbow). Trained cells are windows onto one rainbow spread
    across the whole grid (--gx/--gy: the cell's place in it, set by TrainingHeatmap), not a rainbow each. */
@@ -1083,13 +1121,13 @@ button.heat-cell { cursor: pointer; }
 }
 .tabbar-inner {
   position: relative; display: flex; height: var(--tabbar-h); padding: 5px; border-radius: 999px;
-  box-shadow: var(--nav-shadow);
+  box-shadow: var(--tabbar-shadow);
 }
 /* Glass on a layer behind the tabs (see .nav::before) so icons and labels stay sharp on iOS. */
 .tabbar-inner::before {
   content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
-  background: var(--glass-sheen), var(--glass-tint); box-shadow: var(--glass-edge);
-  -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter);
+  background: var(--tabbar-glass); box-shadow: var(--tabbar-edge);
+  -webkit-backdrop-filter: var(--tabbar-filter); backdrop-filter: var(--tabbar-filter);
 }
 .tab {
   flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
@@ -1102,15 +1140,18 @@ button.heat-cell { cursor: pointer; }
 /* One pill that slides to the current tab, with a little overshoot like iOS. */
 .tab-indicator {
   position: absolute; left: 5px; width: calc((100% - 10px) / var(--tabs));
-  border-radius: 999px; background: var(--chip-bg); --tabs: 5;
+  border-radius: 999px; --tabs: 5;
+  /* Turns a darker grey as it closes round the + (following a swipe as --c changes, eased on a tap). */
+  background: color-mix(in srgb, var(--tabbar-pill-checkin) calc(var(--c) * 100%), var(--tabbar-pill));
   transform: translateX(calc(var(--i) * 100%));
   /* Towards Check in (--c → 1) it becomes a 54px circle around the 46px rainbow +, showing as a thin ring: 3px taller
      into the bar's padding each way, and narrowed to a circle. */
   --c: 0;
   top: calc(5px - var(--c) * 3px); bottom: calc(5px - var(--c) * 3px);
   clip-path: inset(0 calc(var(--c) * (50% - 27px)) round 999px);
-  transition: transform 0.5s cubic-bezier(0.34, 1.4, 0.5, 1), clip-path 0.4s var(--ease), top 0.4s var(--ease),
-    bottom 0.4s var(--ease), opacity 0.2s;
+  /* No overshoot: it glides to the tab and stops there. */
+  transition: transform 0.45s var(--ease-swipe), clip-path 0.4s var(--ease), top 0.4s var(--ease),
+    bottom 0.4s var(--ease), background-color 0.4s var(--ease), opacity 0.2s;
 }
 .tab svg, .tab img, .tab .avatar { transition: transform 0.25s cubic-bezier(0.34, 1.6, 0.5, 1); }
 .tab:active svg, .tab:active img, .tab:active .avatar { transform: scale(0.82); transition-duration: 0.1s; }
@@ -1204,6 +1245,8 @@ a.card, button.card, .icon-btn, .chip, .segmented button, .week-day, .list-row, 
 a.card:active, button.card:active:not(:disabled) { transform: scale(0.98); }
 /* Press-and-hold cards (useLongPress): no iOS link preview or text selection fighting the hold. */
 .holdable { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* A card held anywhere to drag it still has fields to type in (iOS won't edit text that can't be selected). */
+.holdable :is(input, textarea) { -webkit-user-select: text; user-select: text; }
 /* An item picked up to reorder (hooks/useDragReorder.ts): lifted above the rest, following the finger. */
 .drag-lifted { position: relative; z-index: 20; box-shadow: 0 12px 32px #00000038, 0 2px 8px #0000001f; will-change: transform; }
 
@@ -1596,11 +1639,19 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
 .program-workout li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: 14px; border-top: 1px solid var(--card-border); }
 .intro-subhead { font-size: 16px; font-weight: 600; margin: 26px 0 4px; }
 
-/* Settings → Profile (components/ProfileWindow.tsx). */
-.settings-link { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
-.profile-top { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 16px; }
-.profile-photo { position: relative; width: 96px; height: 96px; border-radius: 50%; padding: 0; border: 0; background: none; cursor: pointer; }
-.profile-photo img, .profile-photo .avatar { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; font-size: 38px; }
+/* Settings' profile fields (components/Profile.tsx). */
+/* Settings' header, like an app's profile page (components/Profile.tsx): the photo, then the name over a row of
+   label-over-number stats. */
+.profile-head { display: flex; align-items: center; gap: 20px; padding: 2px 2px 6px; }
+.profile-head-main { min-width: 0; flex: 1; }
+.profile-name { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-stats { display: flex; gap: 32px; margin-top: 6px; }
+.profile-stats > div { display: flex; flex-direction: column; gap: 2px; }
+.profile-stats span { font-size: 14px; }
+.profile-stats strong { font-size: 20px; font-weight: 600; }
+.profile-photo-reset { margin-top: 6px; }
+.profile-photo { position: relative; flex-shrink: 0; width: 88px; height: 88px; border-radius: 50%; padding: 0; border: 0; background: none; cursor: pointer; }
+.profile-photo img, .profile-photo .avatar { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; font-size: 34px; }
 .profile-photo-badge {
   position: absolute; right: 0; bottom: 0; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
   background: var(--rainbow-dot); color: var(--on-rainbow); border: 2px solid var(--paper);

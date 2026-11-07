@@ -3,33 +3,38 @@ import { useRef, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../auth/AuthProvider';
 import { dayString, feetInches, fromFeetInches, weightChange, withoutWeight, withWeight } from '../core/body';
-import { formatDate, formatDateLong } from '../core/format';
+import { formatDate, formatDateLong, formatNumber } from '../core/format';
 import type { Profile } from '../core/types';
 import { formatWeight, parseWeightInput } from '../core/units';
 import { useSettings } from '../hooks/settings';
+import { useAccountUser } from '../hooks/useAccount';
 import { squarePhoto } from '../utils/image';
 import { ACCENT } from './chartTheme';
-import { Modal } from './Modal';
 import { NumericInput } from './NumericInput';
 
-/**
- * Settings → Profile: the name and photo the app shows (over the sign-in's), height, and body weight over time. All
- * optional and only here, so it never gets in the way.
- */
-export function ProfileWindow({ onClose }: { onClose: () => void }) {
-  const { user } = useAuth();
-  const { settings, update, resolvedTheme } = useSettings();
-  const unit = settings.unit;
+// The top of Settings, like an app's profile page (after Hevy's): your photo, name and counts, then your name, height
+// and body weight to edit right there. The name and photo override the sign-in's everywhere (hooks/useAccount.ts).
+
+function useProfile() {
+  const { settings, update } = useSettings();
   const profile = settings.profile ?? {};
-  const weights = settings.bodyWeights ?? [];
+  const setProfile = (patch: Partial<Profile>) => update({ profile: { ...profile, ...patch } });
+  return { profile, setProfile };
+}
+
+/**
+ * Photo (tap to change), name, and counts in a row of label-over-number stats. Only Workouts for now; laid out for
+ * more (followers and following are planned).
+ */
+export function ProfileHeader({ workouts }: { workouts: number }) {
+  const { user } = useAuth();
+  const account = useAccountUser();
+  const { profile, setProfile } = useProfile();
   const fileRef = useRef<HTMLInputElement>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
-  const [weightText, setWeightText] = useState('');
-
-  const setProfile = (patch: Partial<Profile>) => update({ profile: { ...profile, ...patch } });
   const photo = profile.photo || user?.photoURL;
-  const name = profile.name ?? '';
-  const initial = (name.trim() || user?.name || user?.email || '')[0]?.toUpperCase();
+  const name = account?.name || profile.name?.trim() || '';
+  const initial = (name || user?.email || '')[0]?.toUpperCase();
 
   const pickPhoto = async (file: File) => {
     setPhotoError(null);
@@ -39,6 +44,54 @@ export function ProfileWindow({ onClose }: { onClose: () => void }) {
       setPhotoError('That file couldn’t be read as a photo.');
     }
   };
+
+  return (
+    <header className="profile-head">
+      <button className="profile-photo" onClick={() => fileRef.current?.click()} aria-label="Change photo" title="Change photo">
+        {photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : <span className="avatar">{initial ?? <User size={36} />}</span>}
+        <span className="profile-photo-badge" aria-hidden>
+          <Camera size={13} />
+        </span>
+      </button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void pickPhoto(f);
+          e.target.value = '';
+        }}
+      />
+      <div className="profile-head-main">
+        <div className="profile-name">{name || 'Your profile'}</div>
+        <div className="profile-stats">
+          <div>
+            <span className="muted">Workouts</span>
+            <strong className="tnum">{formatNumber(workouts)}</strong>
+          </div>
+        </div>
+        {profile.photo && (
+          <button className="link-btn small profile-photo-reset" onClick={() => setProfile({ photo: undefined })}>
+            {user?.photoURL ? 'Use my account’s photo' : 'Remove photo'}
+          </button>
+        )}
+        {photoError && <span className="small" style={{ color: 'var(--danger)' }}>{photoError}</span>}
+      </div>
+    </header>
+  );
+}
+
+/** Name, height and body weight (logged by day, with a chart and the last few entries), edited in place. */
+export function ProfileFields() {
+  const { user } = useAuth();
+  const { settings, update, resolvedTheme } = useSettings();
+  const { profile, setProfile } = useProfile();
+  const unit = settings.unit;
+  const weights = settings.bodyWeights ?? [];
+  const [weightText, setWeightText] = useState('');
+  const name = profile.name ?? '';
 
   const today = dayString(new Date());
   const logWeight = () => {
@@ -53,33 +106,7 @@ export function ProfileWindow({ onClose }: { onClose: () => void }) {
   const ft = profile.heightCm ? feetInches(profile.heightCm) : null;
 
   return (
-    <Modal title="Profile" onClose={onClose}>
-      <div className="profile-top">
-        <button className="profile-photo" onClick={() => fileRef.current?.click()} aria-label="Change photo">
-          {photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : <span className="avatar">{initial ?? <User size={40} />}</span>}
-          <span className="profile-photo-badge" aria-hidden>
-            <Camera size={14} />
-          </span>
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void pickPhoto(f);
-            e.target.value = '';
-          }}
-        />
-        {profile.photo && (
-          <button className="link-btn small" onClick={() => setProfile({ photo: undefined })}>
-            {user?.photoURL ? 'Use my account’s photo' : 'Remove photo'}
-          </button>
-        )}
-        {photoError && <span className="small" style={{ color: 'var(--danger)' }}>{photoError}</span>}
-      </div>
-
+    <div className="card profile-card">
       <label className="profile-field">
         <span className="label">Name</span>
         <input className="input" value={name} placeholder={user?.name ?? 'Your name'} autoComplete="name" onChange={(e) => setProfile({ name: e.target.value || undefined })} />
@@ -208,6 +235,6 @@ export function ProfileWindow({ onClose }: { onClose: () => void }) {
           </ul>
         )}
       </section>
-    </Modal>
+    </div>
   );
 }

@@ -19,7 +19,7 @@ npm run lint           # oxlint (.oxlintrc.json)
 npm run emulators      # Firebase auth :9099 + Firestore :8080 + UI :4000 (needs Java)
 npm run dev:emulator   # app wired to the emulators via .env.emulator (demo project, no real Firebase)
 node scripts/build-exercise-catalog.mjs <exercises.json>   # regenerate src/data/exerciseCatalog.json
-npm run deploy         # build + Firebase Hosting (project in .firebaserc; needs `npx firebase login` once)
+npm run deploy         # build + Firebase Hosting + Firestore rules (project in .firebaserc; needs `npx firebase login` once)
 npm run icons          # regenerate home-screen/PWA PNGs in public/ from public/app-icon.svg
 npm run ios            # build, sync into ios/ and open Xcode (Archive there to upload to TestFlight)
 npm run ios:live       # phone app loads the Vite dev server (edits show in seconds); Ctrl+C undoes it
@@ -49,7 +49,9 @@ from the precache). The demo account behind them follows a Mon/Wed/Fri Push / Pu
 with a few missed sessions and some a day late, weights climbing with two lighter weeks (rebuild it in the
 `web-shots` origin rather than relying on `src/data/demo.ts`, whose dates don't match those planned days); `public/landing/og.png` is the link preview (`node scripts/landing-og.mjs`). To retake shots use
 the `web-shots` launch config (:5176, its own origin, so loading demo data there doesn't touch `web-local`'s), load
-demo data, `standalone` class, viewport 390 x 797, finish animations before each capture. The sign-in screen links
+demo data, `standalone` class, viewport 390 x 797, finish animations before each capture. The same shots, as PNGs (`<name>-dark.png` /
+`<name>-light.png`), go in `portfolio/screenshots/`. Taking them late at night, the page's `Date` can be swapped for a
+subclass whose `now` is an evening, so times and the greeting read naturally. The sign-in screen links
 back with "What's Rerack?" (`.web-only`, hidden when installed). A back-to-top button (`.lp-top-btn`: a rounded square in the
 app's rainbow, orange in dark and blue in light, like the tab bar's +) shows at the bottom right once the first
 screen has scrolled away; the footer leaves room under its links for it. The PWA manifest's `start_url` is `/home`.
@@ -125,7 +127,8 @@ confirm them (asks before discarding if offline), then `signOutAndClear()` signs
 offline cache and reloads to `/`. Without Firebase config, `useAuth().status === 'disabled'`: no gate, local-only data —
 handy for UI work.
 
-**Deleting the account** (Settings → Privacy card → Delete account, App Review requires it; first
+**Deleting the account** (Settings → Account card at the bottom, with Sign out and "Signed in as …"; Privacy keeps only
+the policy link → Delete account, App Review requires it; first
 `components/DeleteAccountDialog.tsx`, where "delete my account" must be typed, like GitHub): `AuthProvider.deleteAccount`
 flushes queued writes, covers the app ("Deleting your account…"), then `session.ts` `deleteAccount` re-authenticates
 with the account's provider (Apple first if linked; native sheets in the app via `appleSheet`/`googleSheet`, popups on
@@ -184,7 +187,12 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   every N days), or `rotateEvery` (the whole routine in rotation, one workout every N days, in order; overrides the
   others, which are kept). The "every" kinds count from when it was last really done, so a late workout moves the rest
   along; `scheduledOn` is the one place that works out a date's plan (Home, week strip, Check in, "x of y planned").
-  Set in the routine editor (Schedule card: By day / In rotation; "Every…" on a workout). "Up next" (`nextWorkoutInRoutine`)
+  Set in the routine editor (Schedule card: By day / In rotation; under each workout's weekdays, set apart by a line,
+  a dashed "Every few days" button and an **Optional** switch). **Optional** (`Routine.optional[workoutId]`, per
+  routine, so Upper B can be optional in one and required in another): still drawn on its days (a dashed ring in the
+  week strip, an "Optional" tag in the editor and on Check in) but never counted as planned or missed (`requiredOn`
+  for counts, reminders and the widget; `plannedOn` marks it), and "Up next" skips it unless it's the only one
+  planned today. Carried by share links (`p`) and Duplicate. "Up next" (`nextWorkoutInRoutine`)
   returns a workout planned for today, else the one after the last done from that routine (in rotation, always the next
   in order, with its day from `nextPlannedDay`), else **null** — never
   guess when there's no basis. Only the **followed** routine (`followedRoutine`: `settings.activeRoutineId`, or the
@@ -249,7 +257,10 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
 - **Press-and-hold menus**: workout cards (Plan, Check in), routine cards (Plan) and session cards (Home's Recent workouts, History) open an
   iOS-style context menu on press-and-hold or right-click (`useLongPress`, with a haptic → `components/ContextMenu.tsx`,
   which lifts a copy of the card over a light blur; actions in `components/WorkoutActions.tsx`: Edit (opens the editor
-  with `?from=` the current page), Share for workouts/routines, Rename, Delete). On Check in, where tapping a card
+  with `?from=` the current page), Share and **Duplicate** for workouts/routines, Rename, Delete). Duplicating a
+  workout opens the copy's editor; a routine asks first (`components/DuplicateRoutineDialog.tsx`: copy its workouts
+  too, or share the same ones; `cloneRoutine` in `core/plan.ts` keeps days, every and optional), also from the
+  routine editor's Duplicate button. On Check in, where tapping a card
   starts the workout, a routine's heading can be held too (`.routine-heading`). The menu's icons are our own filled
   drawings in the manner of iOS's (`components/MenuIcons.tsx`: share, trash, edit, rename; SF Symbols themselves may
   only be used in apps on Apple's platforms, and this is web code), with no dividers between the actions. Routine
@@ -257,8 +268,10 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   one trained from most recently instead (else the newest), so Home isn't left without one.
   The touch that opens a menu carries on after it opens, so the tab and edge swipes also check for `.ctx-overlay`
   while a touch moves, not only where it starts.
-- **Hold and drag to reorder** (`hooks/useDragReorder.ts`): workouts in the routine editor, exercises in the workout
-  editor and in a session (hold the exercise name). After 350 ms still the item lifts with a haptic, the page stops
+- **Hold and drag to reorder** (`hooks/useDragReorder.ts`): workouts in the routine editor and exercises in the
+  workout editor (held anywhere on the card but a field; `.holdable` cards keep their inputs selectable), and
+  exercises in a session (hold the exercise name). The workout editor's exercise cards also have **Replace** (⇄ beside
+  the superset link: the exercise search, keeps sets/reps/notes, Undo). After 350 ms still the item lifts with a haptic, the page stops
   scrolling by touch (touchmove `preventDefault`) and scrolls itself near the screen edges, the others slide aside, and
   letting go calls the same move as the arrow buttons (`move` / `moveUnlinked`). Moving first is a scroll. Slides
   and the drop use an even 280 ms ease-in-out (the app's front-loaded `--ease` at 0.2 s looked like popping), and
@@ -371,7 +384,9 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
 - The exercise search (`ExercisePicker`) focuses its field only with a mouse; on a phone the keyboard waits for a tap.
 - **Swipe down to close**: every `Modal` (`hooks/useSwipeToClose.ts`; touch only, with a grabber): from anywhere on
   the sheet unless what's under the finger is scrolled down or is a textarea/select/slider. Past 110 px or a fast flick
-  closes it, else it springs back. The first downward move is `preventDefault`ed before it's a real pull, because iOS
+  closes it, else it springs back. List sheets pass `expandable` (Add workout, the exercise search, Programs, Last):
+  on a phone, pulling up grows the sheet with the finger and past 60 px it settles nearly full screen (`.expanded`,
+  empty space below is fine); a pull down from there closes it. The first downward move is `preventDefault`ed before it's a real pull, because iOS
   settles on scrolling at a touch's first move. Full-screen windows (intro, New workout) don't have it.
 - **Tabs reset**: a tab button always goes to that tab's root, so a finished workout opened from Home doesn't survive
   leaving (deliberate; the user asked and it stays).
@@ -383,8 +398,19 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   targets, notes, supersets, routine days) but no history, in a compact form (arrays, short keys, defaults and a
   library exercise's group/equipment left out) deflated with `fflate`'s synchronous `deflateSync` (building it must not
   wait, or iOS won't open the share sheet from the tap) and URL-safe base64: ~1/6 of the old length. Old links (plain
-  base64 JSON, no `2.`) still open. Never stored anywhere (the privacy policy says so). `data/shared.ts` adds it (matches
+  base64 JSON, no `2.`) still open. **Short links** (`/s/<8 chars>`, what Share makes when signed in): the same encoded
+  plan saved in Firestore `shares/<id>` (`{ plan, owner, createdAt }`; `auth/shareLinks.ts` makes the id, unambiguous
+  characters, and calls the saver `session.ts` registers when it loads, so no SDK in the main bundle; the write isn't
+  awaited, Firestore queues it, so the share sheet still opens from the tap). Rules: anyone can `get` one, only the
+  owner can `list` (with an owner filter) or delete, create only (no overwrite). Not signed in: the long link.
+  `hooks/useSharedPlan.ts` reads either kind (Firestore readable signed out), used by SharePage (routes `share` and
+  `s/:id`) and LoginScreen. Account deletion deletes the user's shares. The privacy policy says so. `data/shared.ts` adds it (matches
   exercises, unique names, fills a library exercise's group and equipment from the catalog).
+  In the iPhone app, tapping a `www.rerackapp.net/s/…` or `/share…` link opens it in the app (Universal Links:
+  `public/.well-known/apple-app-site-association` with team `78842M9R35`, served as JSON by a hosting header, and
+  firebase.json's ignore no longer skips dot-folders; `applinks:www.rerackapp.net` in `App.entitlements`, only www since
+  Apple won't follow the apex's redirect for that file; `native/links.ts` opens the same path and fragment). Not
+  installed: the website opens as before.
   `components/SharePreview.tsx` shows what it holds (each workout's days, notes and every exercise's sets × reps): on
   the share page above "Add to my workouts", and on the sign-in screen when someone opens a link signed out
   (`LoginScreen`, `.with-share`: "Sign in to add it…"; the address survives sign-in, so the share page follows).
@@ -410,7 +436,10 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   2 and 100–113 whenever the plan changes, never prompting; permission is asked by Settings' card and the intro's
   Notifications step (after the routine/program, before "You're set"; Later skips it). Local notifications only, so
   the web just stores the choice.
-- **Profile** (Settings → Profile card → `components/ProfileWindow.tsx`; deliberately only there): name and photo
+- **Profile** (the top of Settings, `components/Profile.tsx`; deliberately only there): `ProfileHeader` is laid out like
+  Hevy's account header (88px photo, tap to change, with a camera badge; the name over label-over-number stats: only
+  Workouts for now, finished sessions with sets and not Log-only records; Followers / Following are planned), and
+  `ProfileFields` edits name, height and body weight in a card right under it. Name and photo
   (`Settings.profile`; photo is a 256 px JPEG data URL from `utils/image.ts` `squarePhoto`, so it syncs with settings)
   override the sign-in's everywhere through `hooks/useAccount.ts` (`useAccountUser` for avatars and menus,
   `useFirstName` for greetings); height (ft/in with lb, cm with kg); body weight log `Settings.bodyWeights` (one per
@@ -430,7 +459,8 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   filters, search, and an "Add “…”" tile for a new one; picks keep their tapped order, shown as numbered chips). Each
   workout is saved straight away (library picks adopted, `DEFAULT_SETS`/`DEFAULT_REPS`); the routine is made with
   the first one and followed if none is. Shows once per account (`Settings.introDone`, synced) to accounts with no
-  routines or workouts, while no workout is open; `introDone: false` (Settings → Intro → Show again) brings it back.
+  routines or workouts, while no workout is open and not on a share link's page (`/share`, `/s/…`: it covered the
+  preview, so a friend's link seemed to do nothing); `introDone: false` (Settings → Intro → Show again) brings it back.
   It covers the whole screen (`inset: 0`, not the `--vv-*` area dialogs use: sized to that, iOS moving it around the
   focused field let the page show through below); with the keyboard up the bottom bar hides (`.keyboard-open`), and
   the grid's search and filters are sticky, scrolled to the top on focus so results fill down to the keyboard. Both
@@ -442,7 +472,7 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   (`useTabSwipe`; Check in, behind the rainbow +, is a tab page too, and while a workout is open that workout takes
   its slot: TabPager draws `SessionPage` there with `data-tab="/check-in"` and `data-href` its URL, which the swipe
   navigates to, so you can swipe out of a live workout and back; edge swipe-back stays off on it). Reaching Check in, the tab bar's highlight (`--i`)
-  becomes a 54px circle around the 46px + (`--c`: clip-path plus top/bottom), a thin ring; it stays there on the workout
+  becomes a 54px circle around the 46px + (`--c`: clip-path plus top/bottom), a thin ring in a darker grey (`--tabbar-pill-checkin`, mixed in by `--c`, so it follows a swipe and eases on a tap); it glides between tabs with no overshoot (`--ease-swipe`); it stays there on the workout
   in progress (`activeTab` in Layout; History and a finished workout count as Home). Tab pages stay
   drawn between visits; one that must start fresh each visit reads `useTabActive()` (Check in resets to live/now). It
   has to feel like Apple's Health app: one continuous motion. How it works, and why:
@@ -485,7 +515,11 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   `[data-theme='dark']` (set by `hooks/settings.tsx`, which also keeps the theme choice in localStorage
   `lifttrack:theme` so `index.html` and the loader use it before settings load, not the phone's setting). Look and feel mirrors kianjavaheri.com: Google Sans Flex,
   gradient cards, full-width glass navbar, uppercase underlined CTAs; Antigravity-style round icon "orbs" on Home.
-- **Liquid glass** (iOS 26 look) on the tab bar, bottom bars, rest bar, sheets and the hold menu: `--glass-filter`
+- **The bottom tab bar has its own glass**, after YouTube's bar (`--tabbar-glass/-filter/-edge/-shadow/-pill`): dark
+  is a deep, nearly black tint with a lighter blur (16px) so what's behind still shows, a faint top highlight and a
+  lighter gray pill on the current tab; light is a see-through cool gray (~35%; white, and a heavy blur over
+  the light page, both read as a solid bar), a darker hairline and soft shadow, a darker pill.
+- **Liquid glass** (iOS 26 look) on the bottom bars, rest bar, sheets and the hold menu: `--glass-filter`
   (strong saturated blur), a light `--glass-tint` (`--sheet-tint` for sheets and menus, which hold more text), a
   `--glass-sheen` gradient and a bright `--glass-edge` rim. Always on a `::before` layer behind the content (text on
   the blurring element goes soft on iOS), and never put `backdrop-filter` on an ancestor of glass (it would stop the
@@ -608,13 +642,19 @@ MARKETING_VERSION / CURRENT_PROJECT_VERSION.
 **Project tooling.** `scripts/ios-setup-project.rb` (xcodeproj gem; run with `GEM_HOME=$HOME/.gem/ruby/2.6.0 ruby …`)
 adds the app's own Swift files and the widget target to the Xcode project; add new app Swift files to its list and
 re-run it (idempotent). `scripts/ios-assets.mjs` (run by `npm run icons`) writes the app icons and a plain dark launch
-screen. The icon (`public/app-icon.svg`, drawn at 1024 units; `favicon.svg` is the same in a circle, also used by the
-loader, Splash and the sign-in screen) is an abstract bench press that reads as Rerack: a barbell with an r on the left
-(its arm above the bar) and an upside-down r on the right (its foot at the bottom), mirroring each other, with a thin
-gap where the bar crosses them (an L and a T before the rename; `LogoMark` in `RestTimerWidget.swift` draws the same
-paths). Styled after the Apple TV
-icon: white fading into a rainbow towards the bottom, a soft shading just inside the edges, a gentle rainbow glow
-behind, on a near-black gradient tile (`#151516` → `#050505`), with a faint glow (opacity 0.2). Same rainbow as the app's accent.
+screen. The icon (`public/app-icon.svg`, drawn at 1024 units;
+`favicon.svg` is the same in a circle, also used by the loader, Splash and the sign-in screen; all three icon SVGs are
+written by `node scripts/app-icon.mjs`, so edit that, then `npm run icons`) is an abstract bench press that reads as
+Rerack: a barbell through the middle with an r on the left (its arm at the top) and the same r turned half a turn on
+the right (its foot at the bottom), with a thin gap where the bar crosses them (an L and a T before the rename;
+`LogoMark` in `RestTimerWidget.swift` draws the same outline). Each piece is a single outline (overlapping shapes
+showed as seams under the translucent colour). Styled after the Apple TV mark: white at each piece's top left, the original logo's rainbow coming in along
+its diagonal (top left to bottom right; the barbell's runs mostly downwards, as one gradient) and at full strength
+by 70% of the way (the user tried a mostly white version and went back to strong colour), with glass edges: a rim
+washed with white, a faint line where it meets the face, a specular highlight from the top left
+(`feSpecularLighting` on the blurred alpha) and a soft inner shadow opposite, plus a gentle glow behind, on a
+near-black gradient tile (`#151516` → `#050505`). The hues run left to right (violet, blue, green, yellow, orange,
+pink).
 The iPhone icon set has this dark icon plus a grey one for tinted home screens. `public/app-icon-light.svg` is a white
 version (white tile, near-black lettering, a deeper rainbow that rises sooner, since dark over colour goes muddy), used
 only for the portfolio: as the iPhone's default it showed on every Default home screen even in dark mode (iOS has no

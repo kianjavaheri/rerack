@@ -1,5 +1,5 @@
 import { isImportedSession, isUndatedSession } from './sessions';
-import { exerciseLog, isCompletedSet, pastOrder, scheduledOn, sessionSummary, type PastSets } from './stats';
+import { exerciseLog, isCompletedSet, isOptional, pastOrder, requiredOn, scheduledOn, sessionSummary, type PastSets } from './stats';
 import type { ID, Routine, Session } from './types';
 
 /** Local calendar day as "YYYY-MM-DD" (not UTC, so late-evening sessions land on the right day). */
@@ -44,8 +44,8 @@ export function dailyActivity(sessions: Session[]): Map<string, DayActivity> {
 }
 
 /** Workouts planned for a given date (see `scheduledOn`), with the routine each came from. */
-export function plannedOn(date: Date, routines: Routine[], sessions: Session[]): { routineId: ID; workoutId: ID }[] {
-  return routines.flatMap((r) => scheduledOn(r, sessions, date).map((workoutId) => ({ routineId: r.id, workoutId })));
+export function plannedOn(date: Date, routines: Routine[], sessions: Session[]): { routineId: ID; workoutId: ID; optional: boolean }[] {
+  return routines.flatMap((r) => scheduledOn(r, sessions, date).map((workoutId) => ({ routineId: r.id, workoutId, optional: isOptional(r, workoutId) })));
 }
 
 export interface WeekTotals {
@@ -72,22 +72,22 @@ export function totalsBetween(sessions: Session[], from: Date, to: Date): WeekTo
 }
 
 /**
- * Workouts planned this week (each planned day counts once). An "every N days" schedule has no fixed days behind it, so
+ * Workouts planned this week (each planned day counts once; optional workouts don't). An "every N days" schedule has no fixed days behind it, so
  * for those it's what's been done this week so far plus what's still to come.
  */
 export function plannedThisWeek(routine: Routine | null, sessions: Session[] = [], now = new Date()): number {
   if (!routine) return 0;
   if (!routine.rotateEvery && !Object.keys(routine.every ?? {}).length) {
-    return routine.workoutIds.reduce((n, id) => n + (routine.days?.[id]?.length ?? 0), 0);
+    return routine.workoutIds.reduce((n, id) => n + (isOptional(routine, id) ? 0 : (routine.days?.[id]?.length ?? 0)), 0);
   }
   const monday = startOfWeek(now);
   const today = startOfDay(now);
   const done = sessions.filter((s) => {
     const at = new Date(s.startedAt);
-    return !isImportedSession(s) && s.workoutId && routine.workoutIds.includes(s.workoutId) && at >= monday && at <= now;
+    return !isImportedSession(s) && s.workoutId && routine.workoutIds.includes(s.workoutId) && !isOptional(routine, s.workoutId) && at >= monday && at <= now;
   }).length;
   let toCome = 0;
-  for (let d = today; d < addDays(monday, 7); d = addDays(d, 1)) toCome += scheduledOn(routine, sessions, d, now).length;
+  for (let d = today; d < addDays(monday, 7); d = addDays(d, 1)) toCome += requiredOn(routine, sessions, d, now).length;
   return done + toCome;
 }
 

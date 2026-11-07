@@ -5,25 +5,35 @@ import { useFeedback } from '../components/Feedback';
 import { HOME_PATH, PLAN_PATH } from '../config';
 import { SharePreview } from '../components/SharePreview';
 import { pluralize } from '../core/format';
-import { decodeShare } from '../core/share';
+import { useSharedPlan } from '../hooks/useSharedPlan';
 import { addShared } from '../data/shared';
 
 /**
- * Opened from a share link (/share#…): what it holds (`SharePreview`), and one button to add it. Someone not signed in
+ * Opened from a share link (/s/<id>, or the longer /share#…): what it holds (`SharePreview`), and one button to add it. Someone not signed in
  * sees the same preview on the sign-in screen first (LoginScreen), then lands here.
  */
 export function SharePage() {
-  const { hash } = useLocation();
+  const { pathname, hash } = useLocation();
   const navigate = useNavigate();
   const { notify } = useFeedback();
   const [busy, setBusy] = useState(false);
-  const payload = decodeShare(hash.slice(1));
+  const payload = useSharedPlan(pathname, hash);
 
+  if (payload === undefined) {
+    return (
+      <div className="narrow">
+        <span className="muted small">Shared workout</span>
+        <p className="muted">Loading…</p>
+      </div>
+    );
+  }
   if (!payload) {
     return (
       <div className="narrow">
         <h1 className="title">Shared workout</h1>
-        <div className="empty section">This link is incomplete or damaged. Ask for it to be shared again.</div>
+        <div className="empty section">
+          This link doesn’t open anything: it may be incomplete, or it was deleted. Ask for it to be shared again.
+        </div>
       </div>
     );
   }

@@ -1,7 +1,7 @@
 import { registerPlugin } from '@capacitor/core';
 import { useEffect } from 'react';
 import { dayString } from '../core/body';
-import { doneOn, followedRoutine, scheduledOn } from '../core/stats';
+import { doneOn, followedRoutine, requiredOn } from '../core/stats';
 import type { Session, Settings } from '../core/types';
 import { useRoutines, useWorkouts } from '../hooks/useRepo';
 import { isNative } from './platform';
@@ -25,7 +25,7 @@ export function useHomeWidget(sessions: Session[] | undefined, settings: Setting
     const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7), 12);
     const days = Array.from({ length: 14 }, (_, i) => {
       const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i, 12);
-      const planned = routine ? scheduledOn(routine, sessions, date, now).flatMap((id) => names.get(id) ?? []) : [];
+      const planned = routine ? requiredOn(routine, sessions, date, now).flatMap((id) => names.get(id) ?? []) : [];
       return { date: dayString(date), planned, done: doneOn(sessions, date).size > 0 };
     });
     // writtenAt changes every render, so it's left out of the comparison below and added when sending.

@@ -67,12 +67,14 @@ export async function addShared(payload: SharePayload): Promise<{ routineId: ID 
   if (!payload.routine) return { routineId: null, workoutIds };
   const days: Routine['days'] = {};
   const every: Record<ID, number> = {};
+  const optional: Record<ID, boolean> = {};
   const validRepeat = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 1 && (n as number) <= 30;
   workoutIds.forEach((id, i) => {
     const planned = (payload.routine?.days?.[i] ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
     if (planned.length) days[id] = planned;
     const n = payload.routine?.every?.[i];
     if (validRepeat(n)) every[id] = n;
+    if (payload.routine?.optional?.[i] === true) optional[id] = true;
   });
   const routine: Routine = {
     id: newId(),
@@ -80,6 +82,7 @@ export async function addShared(payload: SharePayload): Promise<{ routineId: ID 
     workoutIds,
     days,
     every,
+    ...(Object.keys(optional).length ? { optional } : {}),
     ...(validRepeat(payload.routine.rotateEvery) ? { rotateEvery: payload.routine.rotateEvery } : {}),
     createdAt: ts,
     updatedAt: ts,

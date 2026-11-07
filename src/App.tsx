@@ -34,6 +34,7 @@ export function App() {
               <Route path="check-in" element={null} />
               <Route path="session/:id" element={<SessionPage />} />
               <Route path="share" element={<SharePage />} />
+              <Route path="s/:id" element={<SharePage />} />
               <Route path="history" element={<HistoryPage />} />
               <Route path="analytics" element={null} />
               <Route path="log" element={null} />

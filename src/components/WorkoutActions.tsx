@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { now } from '../core/ids';
-import { uniqueName } from '../core/plan';
+import { cloneWorkout, uniqueName } from '../core/plan';
 import { routinePayload, shareableWorkout } from '../core/share';
 import type { Exercise, ID, Routine, Session, Workout } from '../core/types';
 import { repo } from '../data';
 import { removeFromAppleHealth, saveToAppleHealth, syncToAppleHealth } from '../native/health';
 import { useShareLink } from '../hooks/useShareLink';
 import { ContextMenu, type ContextAction } from './ContextMenu';
-import { EditFill, RenameFill, ShareFill, TrashFill } from './MenuIcons';
+import { DuplicateFill, EditFill, RenameFill, ShareFill, TrashFill } from './MenuIcons';
+import { DuplicateRoutineDialog } from './DuplicateRoutineDialog';
 import { DeleteRoutineDialog } from './DeleteRoutineDialog';
 import { useFeedback } from './Feedback';
 import { Modal } from './Modal';
@@ -63,6 +64,7 @@ function RenameDialog({ title, item, others, onRename, onClose }: RenameDialogPr
 const shareAction = (onSelect: () => void): ContextAction => ({ label: 'Share', icon: <ShareFill />, onSelect });
 const renameAction = (onSelect: () => void): ContextAction => ({ label: 'Rename', icon: <RenameFill />, onSelect });
 const editAction = (onSelect: () => void): ContextAction => ({ label: 'Edit', icon: <EditFill />, onSelect });
+const duplicateAction = (onSelect: () => void): ContextAction => ({ label: 'Duplicate', icon: <DuplicateFill />, onSelect });
 
 /** Opens an editor, which returns here when done (`?from=`). */
 function useOpenEditor() {
@@ -80,7 +82,7 @@ interface WorkoutActionsProps {
   onClose: () => void;
 }
 
-/** Edit, share, rename or delete a workout from its card. Deleting acts at once and offers Undo. */
+/** Edit, share, duplicate, rename or delete a workout from its card. Deleting acts at once and offers Undo. */
 export function WorkoutActions({ held: { item: workout, anchor }, workouts, routines, exercises, onClose }: WorkoutActionsProps) {
   const { notify } = useFeedback();
   const openEditor = useOpenEditor();
@@ -122,6 +124,12 @@ export function WorkoutActions({ held: { item: workout, anchor }, workouts, rout
       openEditor(`/edit/workouts/${workout.id}`);
     }),
     ...(workout.exercises.length > 0 ? [shareAction(share)] : []),
+    // A copy of its own ("Upper A 2"), opened to be changed.
+    duplicateAction(() => {
+      onClose();
+      const copy = cloneWorkout(workout, workouts);
+      void repo.saveWorkout(copy).then(() => openEditor(`/edit/workouts/${copy.id}`));
+    }),
     renameAction(() => setRenaming(true)),
     deleteAction(() => void remove()),
   ];
@@ -136,12 +144,13 @@ interface RoutineActionsProps {
   onClose: () => void;
 }
 
-/** Edit, share, rename or delete a routine from its card. Deleting asks first, as in the routine editor. */
+/** Edit, share, duplicate, rename or delete a routine from its card. Deleting asks first, as in the routine editor. */
 export function RoutineActions({ held: { item: routine, anchor }, routines, workouts, exercises, onClose }: RoutineActionsProps) {
   const shareLink = useShareLink();
   const openEditor = useOpenEditor();
-  const [next, setNext] = useState<'rename' | 'delete' | null>(null);
+  const [next, setNext] = useState<'rename' | 'delete' | 'duplicate' | null>(null);
 
+  if (next === 'duplicate') return <DuplicateRoutineDialog routine={routine} routines={routines} workouts={workouts} onClose={onClose} />;
   if (next === 'delete') return <DeleteRoutineDialog routine={routine} routines={routines} workouts={workouts} onClose={onClose} />;
   if (next === 'rename') {
     return (
@@ -164,6 +173,7 @@ export function RoutineActions({ held: { item: routine, anchor }, routines, work
       openEditor(`/edit/routines/${routine.id}`);
     }),
     ...(routine.workoutIds.length > 0 ? [shareAction(share)] : []),
+    duplicateAction(() => setNext('duplicate')),
     renameAction(() => setNext('rename')),
     deleteAction(() => setNext('delete')),
   ];

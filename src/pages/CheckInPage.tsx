@@ -7,7 +7,7 @@ import { useTabActive } from '../components/tabActive';
 import { RoutineActions, WorkoutActions, type Held } from '../components/WorkoutActions';
 import { relativeDay } from '../core/format';
 import { createFreestyleSession, createSessionFromWorkout, isImportedSession, type LogTiming } from '../core/sessions';
-import { followedRoutine, nextWorkoutInRoutine, plannedToday, routinesContaining } from '../core/stats';
+import { followedRoutine, isOptional, nextWorkoutInRoutine, plannedToday, routinesContaining } from '../core/stats';
 import type { ID, Routine, Workout } from '../core/types';
 import { useSettings } from '../hooks/settings';
 import { useLongPress } from '../hooks/useLongPress';
@@ -54,7 +54,7 @@ export function CheckInPage() {
   const timing = (): LogTiming => (live ? { live: true } : { live: false, startedAt: when });
 
 
-  const workoutCard = (workout: Workout, routineId: ID | null, badge?: string) => {
+  const workoutCard = (workout: Workout, routineId: ID | null, badge?: string, optional = false) => {
     const last = lastDone(workout.id);
     return (
       <button
@@ -67,6 +67,7 @@ export function CheckInPage() {
         <div className="row" style={{ gap: 8 }}>
           <span className="card-title">{workout.name}</span>
           {badge && <span className="badge">{badge}</span>}
+          {optional && <span className="optional-tag">Optional</span>}
         </div>
         <div className="card-body clamp-4 small" style={{ paddingRight: 24 }}>
           {workout.exercises.length === 0 ? 'No exercises yet' : workout.exercises.map((we) => exerciseName.get(we.exerciseId)).join(' · ')}
@@ -131,7 +132,7 @@ export function CheckInPage() {
                   const w = workoutById.get(wid);
                   if (!w) return null;
                   const badge = isFollowed && plannedToday(r, wid, sessions) ? 'Today' : wid === next ? 'Up next' : undefined;
-                  return workoutCard(w, r.id, badge);
+                  return workoutCard(w, r.id, badge, isOptional(r, wid));
                 })}
               </div>
             </section>

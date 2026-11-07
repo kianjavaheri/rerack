@@ -249,7 +249,10 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
       e.preventDefault();
       e.stopPropagation();
     },
-    onContextMenu: (e: MouseEvent) => e.preventDefault(),
+    // A field inside keeps its own menu (paste and so on).
+    onContextMenu: (e: MouseEvent) => {
+      if (!(e.target as Element).closest('input, textarea')) e.preventDefault();
+    },
   });
 
   return { itemRef, handle };

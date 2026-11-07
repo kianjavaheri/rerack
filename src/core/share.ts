@@ -19,7 +19,7 @@ export interface SharedWorkout {
 /** What a share link carries: one workout, or a routine with its workouts and planned days. No history. */
 export interface SharePayload {
   v: 1;
-  routine?: { name: string; days?: number[][]; every?: (number | null)[]; rotateEvery?: number };
+  routine?: { name: string; days?: number[][]; every?: (number | null)[]; rotateEvery?: number; optional?: boolean[] };
   workouts: SharedWorkout[];
 }
 
@@ -67,6 +67,7 @@ export function routinePayload(routine: Routine, workouts: Workout[], exerciseBy
       days: included.map((w) => routine.days?.[w.id] ?? []),
       ...(routine.rotateEvery ? { rotateEvery: routine.rotateEvery } : {}),
       ...(included.some((w) => routine.every?.[w.id]) ? { every: included.map((w) => routine.every?.[w.id] ?? null) } : {}),
+      ...(included.some((w) => routine.optional?.[w.id]) ? { optional: included.map((w) => !!routine.optional?.[w.id]) } : {}),
     },
     workouts: included.map((w) => shareableWorkout(w, exerciseById)),
   };
@@ -90,7 +91,7 @@ interface CompactMore {
   s?: 1;
 }
 interface CompactPayload {
-  r?: { n: string; d?: number[][]; e?: (number | null)[]; t?: number };
+  r?: { n: string; d?: number[][]; e?: (number | null)[]; t?: number; /** Optional workouts, 1 each. */ p?: (0 | 1)[] };
   w: { n: string; o?: string; x: CompactExercise[] }[];
 }
 
@@ -111,6 +112,7 @@ function compact(payload: SharePayload): CompactPayload {
             ...(r.days?.some((d) => d.length) ? { d: r.days } : {}),
             ...(r.every ? { e: r.every } : {}),
             ...(r.rotateEvery ? { t: r.rotateEvery } : {}),
+            ...(r.optional?.some(Boolean) ? { p: r.optional.map((o): 0 | 1 => (o ? 1 : 0)) } : {}),
           },
         }
       : {}),
@@ -139,7 +141,7 @@ function compact(payload: SharePayload): CompactPayload {
 function expand(c: CompactPayload): SharePayload {
   return {
     v: 1,
-    ...(c.r ? { routine: { name: c.r.n, days: c.r.d ?? c.w.map(() => []), ...(c.r.e ? { every: c.r.e } : {}), ...(c.r.t ? { rotateEvery: c.r.t } : {}) } } : {}),
+    ...(c.r ? { routine: { name: c.r.n, days: c.r.d ?? c.w.map(() => []), ...(c.r.e ? { every: c.r.e } : {}), ...(c.r.t ? { rotateEvery: c.r.t } : {}), ...(Array.isArray(c.r.p) ? { optional: c.r.p.map((o) => o === 1) } : {}) } } : {}),
     workouts: c.w.map((w) => ({
       name: w.n,
       ...(w.o ? { notes: w.o } : {}),
@@ -198,8 +200,4 @@ function validPayload(payload: SharePayload): boolean {
       (typeof payload.routine?.name === 'string' &&
         (payload.routine.days === undefined || (Array.isArray(payload.routine.days) && payload.routine.days.every((d) => Array.isArray(d))))))
   );
-}
-
-export function shareUrl(payload: SharePayload, origin: string): string {
-  return `${origin}/share#${encodeShare(payload)}`;
 }

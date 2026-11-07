@@ -34,14 +34,19 @@ function WeekStrip({
         const date = addDays(monday, i);
         const key = dayKey(date);
         const done = activity.get(key);
-        const planned = plannedOn(date, routines, sessions).map((p) => workoutName.get(p.workoutId)).filter(Boolean);
+        const plans = plannedOn(date, routines, sessions);
+        const planned = plans.filter((p) => !p.optional).map((p) => workoutName.get(p.workoutId)).filter(Boolean);
+        // Optional workouts show on their days but are never "missed".
+        const optional = plans.filter((p) => p.optional).map((p) => workoutName.get(p.workoutId)).filter(Boolean);
         const isToday = key === todayKey;
         const isPast = key < todayKey;
         const status = done
           ? `Trained: ${done.sessions.map((s) => s.name).join(', ')}`
           : planned.length
-            ? `${isPast ? 'Planned (missed)' : 'Planned'}: ${planned.join(', ')}`
-            : 'Rest';
+            ? `${isPast ? 'Planned (missed)' : 'Planned'}: ${planned.join(', ')}${optional.length ? ` (optional: ${optional.join(', ')})` : ''}`
+            : optional.length
+              ? `Optional: ${optional.join(', ')}`
+              : 'Rest';
         const label = `${date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })} · ${status}`;
         return (
           <button
@@ -55,7 +60,7 @@ function WeekStrip({
           >
             <span className="week-name">{date.toLocaleDateString(undefined, { weekday: 'narrow' })}</span>
             <span className="week-date tnum">{date.getDate()}</span>
-            <span className={`week-mark${done ? ' done' : planned.length ? ' planned' : ''}`} />
+            <span className={`week-mark${done ? ' done' : planned.length ? ' planned' : optional.length ? ' optional' : ''}`} />
           </button>
         );
       })}
@@ -94,7 +99,7 @@ export function WeekPager({
   let past: ReactNode = null;
   if (back > 0) {
     const done = totalsBetween(sessions, monday, addDays(monday, 7));
-    const planned = Array.from({ length: 7 }, (_, i) => plannedOn(addDays(monday, i), routines, sessions).length).reduce((a, b) => a + b, 0);
+    const planned = Array.from({ length: 7 }, (_, i) => plannedOn(addDays(monday, i), routines, sessions).filter((p) => !p.optional).length).reduce((a, b) => a + b, 0);
     past = (
       <p className="small tnum week-summary">
         <strong>{planned ? `${done.workouts} of ${planned} planned` : pluralize(done.workouts, 'workout')}</strong> · {pluralize(done.sets, 'set')}

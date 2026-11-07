@@ -1,5 +1,5 @@
 import { newId, now } from './ids';
-import type { ID, Workout } from './types';
+import type { ID, Routine, Workout } from './types';
 
 // Workout and routine names are unique (ignoring case and surrounding spaces), so "Upper A" always means one thing.
 
@@ -35,6 +35,28 @@ export function cloneWorkout(workout: Workout, others: { id: ID; name: string }[
     // The original counts as taken, so "Upper A" → "Upper A 2" and "Upper A 2" → "Upper A 3".
     name: uniqueName(workout.name, [...others, workout]),
     exercises: workout.exercises.map((slot) => ({ ...slot, id: newId() })),
+    createdAt: ts,
+    updatedAt: ts,
+  };
+}
+
+/**
+ * A copy of a routine ("PPL 2") with its schedule. With `copies` (workout id → its copy) its workouts are the copies,
+ * so the new routine can be changed without touching the original's; without, it shares the same workouts.
+ */
+export function cloneRoutine(routine: Routine, others: { id: ID; name: string }[], copies?: Map<ID, ID>): Routine {
+  const ts = now();
+  const to = (id: ID) => copies?.get(id) ?? id;
+  const remap = <T,>(record: Record<ID, T> | undefined) =>
+    record && Object.fromEntries(Object.entries(record).map(([id, v]) => [to(id), v]));
+  return {
+    ...routine,
+    id: newId(),
+    name: uniqueName(routine.name, [...others, routine]),
+    workoutIds: routine.workoutIds.map(to),
+    ...(routine.days ? { days: remap(routine.days) } : {}),
+    ...(routine.every ? { every: remap(routine.every) } : {}),
+    ...(routine.optional ? { optional: remap(routine.optional) } : {}),
     createdAt: ts,
     updatedAt: ts,
   };

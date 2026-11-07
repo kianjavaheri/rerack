@@ -75,7 +75,7 @@ export function ProgramList({ onUse, busy }: { onUse: (program: Program) => void
 /** Workouts' "Programs" window. */
 export function ProgramsWindow({ onUse, busy, onClose }: { onUse: (program: Program) => void; busy?: string | null; onClose: () => void }) {
   return (
-    <Modal title="Programs" onClose={onClose}>
+    <Modal title="Programs" onClose={onClose} expandable>
       <p className="muted small" style={{ margin: '0 0 12px' }}>
         A routine to start from. It’s added to yours, and you can change anything in it afterwards.
       </p>

@@ -69,3 +69,18 @@ export function RenameFill() {
     </svg>
   );
 }
+
+/** Two rounded squares, the front one solid and the back one cut away around it, with a gap between. */
+export function DuplicateFill() {
+  const mask = useMaskId();
+  return (
+    <svg width={SIZE} height={SIZE} viewBox="0 0 24 24" aria-hidden>
+      <mask id={mask}>
+        <rect width="24" height="24" fill="#fff" />
+        <rect x="6.2" y="6.2" width="16" height="16" rx="4.2" fill="#000" />
+      </mask>
+      <rect x="2.6" y="2.6" width="13.6" height="13.6" rx="3.2" fill="currentColor" mask={`url(#${mask})`} />
+      <rect x="8" y="8" width="13.4" height="13.4" rx="3.2" fill="currentColor" />
+    </svg>
+  );
+}

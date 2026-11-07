@@ -71,6 +71,11 @@ export interface Routine {
   every?: Record<ID, number>;
   /** The routine in rotation: one workout every N days, in order (2: Push, rest, Pull, rest…). Overrides the above. */
   rotateEvery?: number;
+  /**
+   * Workouts that are optional in this routine: still shown on their planned days, but never counted as planned or
+   * missed, not reminded about, and skipped by "Up next". Per routine, so a workout can be optional in one only.
+   */
+  optional?: Record<ID, boolean>;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

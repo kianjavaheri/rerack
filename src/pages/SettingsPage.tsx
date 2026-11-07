@@ -1,23 +1,21 @@
-import { ArrowLeft, ChevronRight, Download, LogOut, Upload } from 'lucide-react';
+import { ArrowLeft, Download, LogOut, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { SignInButtons } from '../auth/SignInButtons';
-import { Avatar } from '../components/Avatar';
 import { useFeedback } from '../components/Feedback';
 import { NotificationChoice } from '../components/NotificationChoice';
-import { ProfileWindow } from '../components/ProfileWindow';
+import { ProfileFields, ProfileHeader } from '../components/Profile';
 import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
 import { RestLength } from '../components/RestLength';
 import { checkSnapshot } from '../core/backup';
+import { isImportedSession } from '../core/sessions';
+import { sessionSummary } from '../core/stats';
 import { anyNotificationOn } from '../core/notifications';
-import { formatHeight } from '../core/body';
-import { formatWeight } from '../core/units';
 import { pluralize } from '../core/format';
 import { DEFAULT_REST_SECONDS, type NotificationSettings, type ThemePreference, type WeightUnit } from '../core/types';
 import { repo } from '../data';
 import { useSettings } from '../hooks/settings';
-import { useAccountUser } from '../hooks/useAccount';
 import { useSessions } from '../hooks/useRepo';
 import { appleHealthOn, healthSupported, healthWorkouts, saveAllToAppleHealth, setAppleHealth } from '../native/health';
 import { canGoBack } from '../utils/history';
@@ -78,6 +76,9 @@ export function SettingsPage() {
   const { confirm } = useFeedback();
   const auth = useAuth();
   const signedIn = auth.status === 'signed-in';
+  // Workouts you've logged (not notes imported into the Log), for the header's count.
+  const sessions = useSessions();
+  const workoutCount = (sessions ?? []).filter((s) => s.finishedAt && !isImportedSession(s) && sessionSummary(s).sets > 0).length;
   const fileRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -120,10 +121,10 @@ export function SettingsPage() {
       </button>
       <h1 className="title">Settings</h1>
 
-      <div className="stack" style={{ marginTop: 24, maxWidth: 680 }}>
-        {auth.status === 'signed-in' && <AccountCard />}
+      <div className="stack" style={{ marginTop: 20, maxWidth: 680 }}>
+        <ProfileHeader workouts={workoutCount} />
+        <ProfileFields />
         {auth.status === 'local' && <SignInCard />}
-        <ProfileCard />
 
         <div className="card">
           <div className="spread">
@@ -264,6 +265,7 @@ export function SettingsPage() {
         </div>
 
         <PrivacyCard />
+        {signedIn && <AccountCard />}
       </div>
     </>
   );
@@ -271,8 +273,6 @@ export function SettingsPage() {
 
 /** The privacy policy (a static page, public/privacy.html), and deleting the account. */
 function PrivacyCard() {
-  const { status, user, deleteAccount } = useAuth();
-  const [deleting, setDeleting] = useState(false);
   // In the iPhone app a link would replace the app in its web view, so it opens in Safari instead.
   const policy = isNative ? `${SITE_URL}/privacy` : '/privacy';
   return (
@@ -286,26 +286,6 @@ function PrivacyCard() {
           Privacy policy
         </a>
       </div>
-      {status === 'signed-in' && (
-        <div className="spread" style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--card-border)' }}>
-          <div className="muted small" style={{ flex: 1, minWidth: 0 }}>
-            Deletes your account and all its data.
-          </div>
-          <button className="btn btn-danger btn-sm" onClick={() => setDeleting(true)}>
-            Delete account
-          </button>
-        </div>
-      )}
-      {deleting && (
-        <DeleteAccountDialog
-          email={user?.email ?? null}
-          onClose={() => setDeleting(false)}
-          onDelete={() => {
-            setDeleting(false);
-            void deleteAccount();
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -360,47 +340,42 @@ function NotificationsCard() {
   );
 }
 
-/** A quiet way into the profile: who you are, your height and body weight. */
-function ProfileCard() {
-  const { settings } = useSettings();
-  const [open, setOpen] = useState(false);
-  const latest = settings.bodyWeights?.at(-1);
-  const height = formatHeight(settings.profile?.heightCm, settings.unit);
-  const facts = [height, latest ? `${formatWeight(latest.kg, settings.unit)} ${settings.unit}` : ''].filter(Boolean).join(' · ');
-  return (
-    <>
-      <button className="card settings-link" onClick={() => setOpen(true)}>
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', fontWeight: 600, fontSize: 15 }}>Profile</span>
-          <span className="muted small">{facts || 'Name, photo, height and body weight'}</span>
-        </span>
-        <ChevronRight size={18} className="muted" />
-      </button>
-      {open && <ProfileWindow onClose={() => setOpen(false)} />}
-    </>
-  );
-}
-
+/** Who you're signed in as, with Sign out and Delete account: at the bottom, out of the way of the profile. */
 function AccountCard() {
-  const { signOut } = useAuth();
-  const user = useAccountUser();
+  const { user, signOut, deleteAccount } = useAuth();
+  const [deleting, setDeleting] = useState(false);
   if (!user) return null;
   return (
     <div className="card">
       <div className="spread">
-        <div className="row" style={{ minWidth: 0 }}>
-          <Avatar user={user} size={40} />
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>{user.name ?? 'Signed in'}</div>
-            <div className="muted small" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user.email}
-            </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>Account</div>
+          <div className="muted small" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            Signed in as {user.email ?? user.name ?? 'you'}
           </div>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={signOut}>
+        <button className="btn btn-sm" onClick={signOut}>
           <LogOut size={14} /> Sign out
         </button>
       </div>
+      <div className="spread" style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--card-border)' }}>
+        <div className="muted small" style={{ flex: 1, minWidth: 0 }}>
+          Deletes your account and all its data.
+        </div>
+        <button className="btn btn-danger btn-sm" onClick={() => setDeleting(true)}>
+          Delete account
+        </button>
+      </div>
+      {deleting && (
+        <DeleteAccountDialog
+          email={user.email}
+          onClose={() => setDeleting(false)}
+          onDelete={() => {
+            setDeleting(false);
+            void deleteAccount();
+          }}
+        />
+      )}
     </div>
   );
 }

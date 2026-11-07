@@ -5,7 +5,8 @@ import type { Session } from '../core/types';
 import { isNative } from './platform';
 
 /**
- * In the iPhone app, follows `rerack://` links: the home-screen widget opens rerack://check-in, which goes to Check in
+ * In the iPhone app, follows website links it was opened with (a share link tapped in Messages, via Universal Links),
+ * and `rerack://` links: the home-screen widget opens rerack://check-in, which goes to Check in
  * (where its "up next" workout is started), or straight to the workout under way if one is open. Covers both a launch
  * from the link and the app already running; a link waits until the workouts have loaded, to know if one is open.
  */
@@ -29,6 +30,13 @@ export function useAppLinks(sessions: Session[] | undefined) {
   useEffect(() => {
     if (!pending || !sessions || followed.current === pending) return;
     followed.current = pending;
+    // A website link the app was opened with (Universal Links: public/.well-known/apple-app-site-association lists
+    // /share*): open the same page here, its fragment (the shared plan) included.
+    const web = /^https:\/\/(www\.)?rerackapp\.net(\/[^#?]*)?(\?[^#]*)?(#.*)?$/.exec(pending.url);
+    if (web) {
+      navigate(`${web[2] || '/'}${web[3] ?? ''}${web[4] ?? ''}`);
+      return;
+    }
     const target = pending.url.replace(/^rerack:\/\//, '').replace(/^\/+|\/+$/g, '');
     if (target === 'check-in') {
       const open = sessions.find((s) => !s.finishedAt);

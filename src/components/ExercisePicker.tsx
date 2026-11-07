@@ -102,7 +102,7 @@ export function ExercisePicker({ title = 'Add exercise', onPick, onClose, select
   if (editing) return <ExerciseForm exercise={editing} onClose={() => setEditing(null)} />;
 
   return (
-    <Modal title={title} onClose={onClose}>
+    <Modal title={title} onClose={onClose} expandable>
       <div className="search" style={{ marginBottom: 10 }}>
         <Search size={16} />
         <input

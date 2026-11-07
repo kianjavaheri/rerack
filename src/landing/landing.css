@@ -10,13 +10,14 @@ html.landing {
   --lp-muted: #5f6168;
   --lp-line: #0000001a;
   --lp-card: #ffffff;
+  --lp-card-hover: #e9e9ee;
+  --lp-line-hover: #00000026;
   --lp-btn: #0b0b0c;
   --lp-on-btn: #fff;
   --lp-ink: linear-gradient(100deg, #3d4ad0, #2563cf 30%, #1a78c4 60%, #1488bb);
   --lp-glow-1: #6f7cff;
   --lp-glow-2: #43bbed;
   --lp-fill: linear-gradient(135deg, #6f7cff, #4aa8f2 55%, #3b9cf0);
-  --lp-fill-shadow: #4a7cf266;
   --lp-on-fill: #17122b;
   --lp-gutter: clamp(16px, 5vw, 40px);
   background: var(--lp-bg);
@@ -28,13 +29,14 @@ html.landing[data-theme='dark'] {
   --lp-muted: #8a8f98;
   --lp-line: #ffffff14;
   --lp-card: #121315;
+  --lp-card-hover: #1c1d20;
+  --lp-line-hover: #ffffff24;
   --lp-btn: #f7f8f8;
   --lp-on-btn: #08090a;
   --lp-ink: linear-gradient(100deg, #f58a5c, #f28f82 35%, #ef6266 70%, #ea5560);
   --lp-glow-1: #ed7543;
   --lp-glow-2: #d93a45;
   --lp-fill: linear-gradient(135deg, #ee8a56, #ec7c6e 50%, #d93a45);
-  --lp-fill-shadow: #e8635c55;
   --lp-on-fill: #17122b;
   color-scheme: dark;
 }
@@ -104,6 +106,13 @@ html.landing *::after {
   background: var(--lp-card);
   color: var(--lp-text);
   cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+/* Only with a mouse: on touch, :hover sticks after a tap. */
+@media (hover: hover) {
+  .lp-theme:hover {
+    background: var(--lp-card-hover);
+  }
 }
 .lp-theme svg {
   width: 18px;
@@ -316,6 +325,14 @@ html.landing:not([data-theme='dark']) .lp-status {
   border: 1px solid var(--lp-line);
   border-radius: 24px;
   padding: 24px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+/* Only with a mouse: on touch, :hover sticks after a tap. */
+@media (hover: hover) {
+  .lp-extra:hover {
+    background: var(--lp-card-hover);
+    border-color: var(--lp-line-hover);
+  }
 }
 .lp-extra svg {
   width: 26px;
@@ -373,8 +390,8 @@ html.landing:not([data-theme='dark']) .lp-status {
 /* Back to top: bottom right, appearing once the first screen has scrolled away (index.html adds .shown). */
 .lp-top-btn {
   position: fixed;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: max(16px, env(safe-area-inset-bottom));
+  right: max(28px, env(safe-area-inset-right));
+  bottom: max(28px, env(safe-area-inset-bottom));
   z-index: 10;
   width: 52px;
   height: 52px;
@@ -385,12 +402,18 @@ html.landing:not([data-theme='dark']) .lp-status {
   /* The app's rainbow, like the tab bar's +: orange in dark, blue in light. */
   background: var(--lp-fill);
   color: var(--lp-on-fill);
-  box-shadow: 0 10px 28px var(--lp-fill-shadow), 0 2px 6px #00000033;
+  box-shadow: 0 4px 10px #00000040;
   cursor: pointer;
   opacity: 0;
   transform: translateY(12px);
   pointer-events: none;
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition: opacity 0.25s ease, transform 0.25s ease, filter 0.2s ease;
+}
+/* Only with a mouse: on touch, :hover sticks after a tap. */
+@media (hover: hover) {
+  .lp-top-btn:hover {
+    filter: brightness(0.8);
+  }
 }
 .lp-top-btn.shown {
   opacity: 1;

@@ -1,5 +1,5 @@
 import { FORGOTTEN_AFTER_MS, lastActivity } from './sessions';
-import { doneOn, scheduledOn } from './stats';
+import { doneOn, requiredOn } from './stats';
 import type { ID, NotificationKind, NotificationSettings, Routine, Session, Settings } from './types';
 
 export const DEFAULT_REMINDER_AT = '17:00';
@@ -29,7 +29,7 @@ export interface PlannedNotification {
 }
 
 /**
- * Reminders for the followed routine's planned days over the next `days` days, at `time` ("HH:MM"). Not for a day
+ * Reminders for the followed routine's planned days (not its optional workouts) over the next `days` days, at `time` ("HH:MM"). Not for a day
  * whose time has passed, or today once that workout's been done.
  */
 export function reminderPlan(
@@ -46,7 +46,7 @@ export function reminderPlan(
     const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, h || 0, m || 0);
     if (at <= now) continue;
     const done = i === 0 ? doneOn(sessions, now) : new Set<ID | null>();
-    const names = scheduledOn(routine, sessions, at, now)
+    const names = requiredOn(routine, sessions, at, now)
       .filter((id) => !done.has(id))
       .map(workoutName)
       .filter((n): n is string => !!n);

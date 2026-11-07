@@ -1,32 +1,68 @@
-<!-- App icon (npm run icons turns it into the home-screen, install and iPhone app icons; favicon.svg is the same in a circle). An abstract bench press that reads as Rerack: a barbell with an r on the left (its arm above the bar) and an upside-down r on the right (its foot at the bottom), mirroring each other. In the style of the Apple TV icon: white lettering that fades into a rainbow towards the bottom, a soft shading just inside the edges, a gentle glow behind, on a dark tile. -->
+<!-- App icon (npm run icons turns it into the home-screen, install and iPhone app icons; favicon.svg is the same in a circle). Drawn by scripts/app-icon.mjs: edit that, not this. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#151516"/><stop offset="1" stop-color="#050505"/>
     </linearGradient>
+    <!-- The hues run left to right across the mark. -->
     <linearGradient id="rainbow" gradientUnits="userSpaceOnUse" x1="176" y1="0" x2="848" y2="0">
-      <stop offset="0" stop-color="#9a7bff"/><stop offset="0.25" stop-color="#5ec8ff"/><stop offset="0.45" stop-color="#5fe3a1"/>
-      <stop offset="0.62" stop-color="#ffd25a"/><stop offset="0.8" stop-color="#ff8f6b"/><stop offset="1" stop-color="#ff8fc8"/>
+      <stop offset="0" stop-color="#9a7bff"/><stop offset="0.25" stop-color="#5ec8ff"/><stop offset="0.45" stop-color="#5fe3a1"/><stop offset="0.62" stop-color="#ffd25a"/><stop offset="0.8" stop-color="#ff8f6b"/><stop offset="1" stop-color="#ff8fc8"/>
     </linearGradient>
-    <!-- The rainbow rises from the bottom: none at the top of the mark, full colour at its foot. -->
-    <linearGradient id="rise" gradientUnits="userSpaceOnUse" x1="0" y1="340" x2="0" y2="690">
-      <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="1"/>
-    </linearGradient>
+    <!-- How much colour, along each piece's diagonal; the edge band follows a gentler curve. -->
+    <linearGradient id="fade0" gradientUnits="userSpaceOnUse" x1="300" y1="256" x2="486" y2="728"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.05" stop-color="#fff" stop-opacity="0"/><stop offset="0.1292" stop-color="#fff" stop-opacity="0.122"/><stop offset="0.2083" stop-color="#fff" stop-opacity="0.244"/><stop offset="0.2875" stop-color="#fff" stop-opacity="0.365"/><stop offset="0.3667" stop-color="#fff" stop-opacity="0.487"/><stop offset="0.4458" stop-color="#fff" stop-opacity="0.609"/><stop offset="0.525" stop-color="#fff" stop-opacity="0.731"/><stop offset="0.6042" stop-color="#fff" stop-opacity="0.853"/><stop offset="0.6833" stop-color="#fff" stop-opacity="0.974"/><stop offset="0.7625" stop-color="#fff" stop-opacity="1"/><stop offset="0.8417" stop-color="#fff" stop-opacity="1"/><stop offset="0.9208" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient>
+    <linearGradient id="fade1" gradientUnits="userSpaceOnUse" x1="538" y1="296" x2="724" y2="768"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.05" stop-color="#fff" stop-opacity="0"/><stop offset="0.1292" stop-color="#fff" stop-opacity="0.122"/><stop offset="0.2083" stop-color="#fff" stop-opacity="0.244"/><stop offset="0.2875" stop-color="#fff" stop-opacity="0.365"/><stop offset="0.3667" stop-color="#fff" stop-opacity="0.487"/><stop offset="0.4458" stop-color="#fff" stop-opacity="0.609"/><stop offset="0.525" stop-color="#fff" stop-opacity="0.731"/><stop offset="0.6042" stop-color="#fff" stop-opacity="0.853"/><stop offset="0.6833" stop-color="#fff" stop-opacity="0.974"/><stop offset="0.7625" stop-color="#fff" stop-opacity="1"/><stop offset="0.8417" stop-color="#fff" stop-opacity="1"/><stop offset="0.9208" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient>
+    <linearGradient id="fade2" gradientUnits="userSpaceOnUse" x1="497" y1="414" x2="527" y2="610"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.05" stop-color="#fff" stop-opacity="0"/><stop offset="0.1292" stop-color="#fff" stop-opacity="0.122"/><stop offset="0.2083" stop-color="#fff" stop-opacity="0.244"/><stop offset="0.2875" stop-color="#fff" stop-opacity="0.365"/><stop offset="0.3667" stop-color="#fff" stop-opacity="0.487"/><stop offset="0.4458" stop-color="#fff" stop-opacity="0.609"/><stop offset="0.525" stop-color="#fff" stop-opacity="0.731"/><stop offset="0.6042" stop-color="#fff" stop-opacity="0.853"/><stop offset="0.6833" stop-color="#fff" stop-opacity="0.974"/><stop offset="0.7625" stop-color="#fff" stop-opacity="1"/><stop offset="0.8417" stop-color="#fff" stop-opacity="1"/><stop offset="0.9208" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient>
     <mask id="fade" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
-      <rect width="1024" height="1024" fill="url(#rise)"/>
+    <path d="M300 728 L300 356 Q300 256 400 256 L486 256 L486 336 L400 336 Q380 336 380 356 L380 728 Z" fill="url(#fade0)" mask="url(#gap)"/>
+    <path d="M724 296 L724 668 Q724 768 624 768 L538 768 L538 688 L624 688 Q644 688 644 668 L644 296 Z" fill="url(#fade1)" mask="url(#gap)"/>
+    <path d="M202 414 H242 A22 22 0 0 1 264 436 V489 H760 V436 A22 22 0 0 1 782 414 H822 A22 22 0 0 1 844 436 V588 A22 22 0 0 1 822 610 H782 A22 22 0 0 1 760 588 V535 H264 V588 A22 22 0 0 1 242 610 H202 A22 22 0 0 1 180 588 V436 A22 22 0 0 1 202 414 Z" fill="url(#fade2)"/>
+    </mask>
+    <linearGradient id="rimfade0" gradientUnits="userSpaceOnUse" x1="300" y1="256" x2="486" y2="728"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.05" stop-color="#fff" stop-opacity="0"/><stop offset="0.1292" stop-color="#fff" stop-opacity="0.206"/><stop offset="0.2083" stop-color="#fff" stop-opacity="0.347"/><stop offset="0.2875" stop-color="#fff" stop-opacity="0.47"/><stop offset="0.3667" stop-color="#fff" stop-opacity="0.583"/><stop offset="0.4458" stop-color="#fff" stop-opacity="0.689"/><stop offset="0.525" stop-color="#fff" stop-opacity="0.79"/><stop offset="0.6042" stop-color="#fff" stop-opacity="0.887"/><stop offset="0.6833" stop-color="#fff" stop-opacity="0.981"/><stop offset="0.7625" stop-color="#fff" stop-opacity="1"/><stop offset="0.8417" stop-color="#fff" stop-opacity="1"/><stop offset="0.9208" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient>
+    <linearGradient id="rimfade1" gradientUnits="userSpaceOnUse" x1="538" y1="296" x2="724" y2="768"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.05" stop-color="#fff" stop-opacity="0"/><stop offset="0.1292" stop-color="#fff" stop-opacity="0.206"/><stop offset="0.2083" stop-color="#fff" stop-opacity="0.347"/><stop offset="0.2875" stop-color="#fff" stop-opacity="0.47"/><stop offset="0.3667" stop-color="#fff" stop-opacity="0.583"/><stop offset="0.4458" stop-color="#fff" stop-opacity="0.689"/><stop offset="0.525" stop-color="#fff" stop-opacity="0.79"/><stop offset="0.6042" stop-color="#fff" stop-opacity="0.887"/><stop offset="0.6833" stop-color="#fff" stop-opacity="0.981"/><stop offset="0.7625" stop-color="#fff" stop-opacity="1"/><stop offset="0.8417" stop-color="#fff" stop-opacity="1"/><stop offset="0.9208" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient>
+    <linearGradient id="rimfade2" gradientUnits="userSpaceOnUse" x1="497" y1="414" x2="527" y2="610"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.05" stop-color="#fff" stop-opacity="0"/><stop offset="0.1292" stop-color="#fff" stop-opacity="0.206"/><stop offset="0.2083" stop-color="#fff" stop-opacity="0.347"/><stop offset="0.2875" stop-color="#fff" stop-opacity="0.47"/><stop offset="0.3667" stop-color="#fff" stop-opacity="0.583"/><stop offset="0.4458" stop-color="#fff" stop-opacity="0.689"/><stop offset="0.525" stop-color="#fff" stop-opacity="0.79"/><stop offset="0.6042" stop-color="#fff" stop-opacity="0.887"/><stop offset="0.6833" stop-color="#fff" stop-opacity="0.981"/><stop offset="0.7625" stop-color="#fff" stop-opacity="1"/><stop offset="0.8417" stop-color="#fff" stop-opacity="1"/><stop offset="0.9208" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient>
+    <mask id="rimfade" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+    <path d="M300 728 L300 356 Q300 256 400 256 L486 256 L486 336 L400 336 Q380 336 380 356 L380 728 Z" fill="url(#rimfade0)" mask="url(#gap)"/>
+    <path d="M724 296 L724 668 Q724 768 624 768 L538 768 L538 688 L624 688 Q644 688 644 668 L644 296 Z" fill="url(#rimfade1)" mask="url(#gap)"/>
+    <path d="M202 414 H242 A22 22 0 0 1 264 436 V489 H760 V436 A22 22 0 0 1 782 414 H822 A22 22 0 0 1 844 436 V588 A22 22 0 0 1 822 610 H782 A22 22 0 0 1 760 588 V535 H264 V588 A22 22 0 0 1 242 610 H202 A22 22 0 0 1 180 588 V436 A22 22 0 0 1 202 414 Z" fill="url(#rimfade2)"/>
     </mask>
     <!-- A thin gap in the letters where the bar crosses them. -->
     <mask id="gap" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
       <rect width="1024" height="1024" fill="#fff"/>
-      <path d="M236 440 H788" stroke="#000" stroke-width="84" stroke-linecap="round"/>
+      <path d="M264 512 H760" stroke="#000" stroke-width="84" stroke-linecap="round"/>
     </mask>
-    <!-- Darkens just inside the edges, for the slightly raised, glassy look. -->
-    <filter id="emboss" filterUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="9" result="blur"/>
-      <feComposite in="SourceAlpha" in2="blur" operator="out" result="edge"/>
-      <feFlood flood-color="#000" flood-opacity="0.24"/>
-      <feComposite in2="edge" operator="in" result="shade"/>
-      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="shade"/></feMerge>
+    <!-- Glass edges, after the Apple TV mark: a rim 13 units wide round every piece that catches the light.
+         The rim is washed with white (so on the coloured parts it reads as a lighter, reflecting edge), a faint
+         darker line marks where it meets the face, light from the top left adds a specular highlight along the
+         rounded-off edges (the alpha, blurred, is the height map; flat faces get almost none since the light is low),
+         and the edges facing away get a soft inner shadow. -->
+    <filter id="bevel" filterUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <feMorphology in="SourceAlpha" operator="erode" radius="13" result="inner"/>
+      <feGaussianBlur in="inner" stdDeviation="2" result="innerSoft"/>
+      <feComposite in="SourceAlpha" in2="innerSoft" operator="out" result="rim"/>
+      <feFlood flood-color="#fff" flood-opacity="0.3"/>
+      <feComposite in2="rim" operator="in" result="sheen"/>
+      <feMorphology in="SourceAlpha" operator="erode" radius="16" result="inner2"/>
+      <feGaussianBlur in="inner2" stdDeviation="2" result="inner2Soft"/>
+      <feComposite in="innerSoft" in2="inner2Soft" operator="out" result="ring"/>
+      <feFlood flood-color="#000" flood-opacity="0.14"/>
+      <feComposite in2="ring" operator="in" result="line"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="height"/>
+      <feSpecularLighting in="height" surfaceScale="8" specularConstant="1.1" specularExponent="20" lighting-color="#fff" result="spec">
+        <feDistantLight azimuth="225" elevation="22"/>
+      </feSpecularLighting>
+      <feComposite in="spec" in2="SourceAlpha" operator="in" result="shine"/>
+      <feOffset in="SourceAlpha" dx="-5" dy="-5" result="shifted"/>
+      <feGaussianBlur in="shifted" stdDeviation="5" result="shiftedBlur"/>
+      <feComposite in="SourceAlpha" in2="shiftedBlur" operator="out" result="far"/>
+      <feFlood flood-color="#000" flood-opacity="0.22"/>
+      <feComposite in2="far" operator="in" result="shade"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="sheen"/><feMergeNode in="line"/><feMergeNode in="shade"/><feMergeNode in="shine"/></feMerge>
+    </filter>
+    <!-- Keeps only a soft band just inside the edges. -->
+    <filter id="rim" filterUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="22" result="b"/>
+      <feComposite in="SourceAlpha" in2="b" operator="out" result="edge"/>
+      <feComposite in="SourceGraphic" in2="edge" operator="in"/>
     </filter>
     <filter id="glow" filterUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
       <feGaussianBlur stdDeviation="30"/>
@@ -36,39 +72,26 @@
   <rect width="1024" height="1024" fill="url(#tile)"/>
 
   <!-- Glow: the coloured mark, blurred, behind. -->
-  <g filter="url(#glow)" opacity="0.2">
-    <g stroke="url(#rainbow)" fill="none" stroke-width="80" mask="url(#fade)">
-      <path d="M312 728 V356 Q312 296 372 296 H458"/>
-      <path d="M712 296 V668 Q712 728 652 728 H566"/>
-    </g>
-    <g fill="url(#rainbow)" mask="url(#fade)">
-      <rect x="176" y="350" width="60" height="180" rx="18"/>
-      <rect x="788" y="350" width="60" height="180" rx="18"/>
-    </g>
-  </g>
+  <g filter="url(#glow)" opacity="0.22"><g mask="url(#fade)">
+    <path d="M300 728 L300 356 Q300 256 400 256 L486 256 L486 336 L400 336 Q380 336 380 356 L380 728 Z" fill="url(#rainbow)" mask="url(#gap)"/>
+    <path d="M724 296 L724 668 Q724 768 624 768 L538 768 L538 688 L624 688 Q644 688 644 668 L644 296 Z" fill="url(#rainbow)" mask="url(#gap)"/>
+    <path d="M202 414 H242 A22 22 0 0 1 264 436 V489 H760 V436 A22 22 0 0 1 782 414 H822 A22 22 0 0 1 844 436 V588 A22 22 0 0 1 822 610 H782 A22 22 0 0 1 760 588 V535 H264 V588 A22 22 0 0 1 242 610 H202 A22 22 0 0 1 180 588 V436 A22 22 0 0 1 202 414 Z" fill="url(#rainbow)"/>
+  </g></g>
 
-  <g filter="url(#emboss)">
-    <!-- The two r's: white, then the rainbow over it. -->
-    <g mask="url(#gap)" fill="none" stroke-width="80">
-      <g stroke="#f7f7f9">
-        <path d="M312 728 V356 Q312 296 372 296 H458"/>
-        <path d="M712 296 V668 Q712 728 652 728 H566"/>
-      </g>
-      <g stroke="url(#rainbow)" mask="url(#fade)">
-        <path d="M312 728 V356 Q312 296 372 296 H458"/>
-        <path d="M712 296 V668 Q712 728 652 728 H566"/>
-      </g>
+  <g filter="url(#bevel)">
+    <!-- The letters and barbell, the colour over them, then the colour along their edges. -->
+    <path d="M300 728 L300 356 Q300 256 400 256 L486 256 L486 336 L400 336 Q380 336 380 356 L380 728 Z" fill="#f6f6f8" mask="url(#gap)"/>
+    <path d="M724 296 L724 668 Q724 768 624 768 L538 768 L538 688 L624 688 Q644 688 644 668 L644 296 Z" fill="#f6f6f8" mask="url(#gap)"/>
+    <path d="M202 414 H242 A22 22 0 0 1 264 436 V489 H760 V436 A22 22 0 0 1 782 414 H822 A22 22 0 0 1 844 436 V588 A22 22 0 0 1 822 610 H782 A22 22 0 0 1 760 588 V535 H264 V588 A22 22 0 0 1 242 610 H202 A22 22 0 0 1 180 588 V436 A22 22 0 0 1 202 414 Z" fill="#f6f6f8"/>
+    <g mask="url(#fade)">
+    <path d="M300 728 L300 356 Q300 256 400 256 L486 256 L486 336 L400 336 Q380 336 380 356 L380 728 Z" fill="url(#rainbow)" mask="url(#gap)"/>
+    <path d="M724 296 L724 668 Q724 768 624 768 L538 768 L538 688 L624 688 Q644 688 644 668 L644 296 Z" fill="url(#rainbow)" mask="url(#gap)"/>
+    <path d="M202 414 H242 A22 22 0 0 1 264 436 V489 H760 V436 A22 22 0 0 1 782 414 H822 A22 22 0 0 1 844 436 V588 A22 22 0 0 1 822 610 H782 A22 22 0 0 1 760 588 V535 H264 V588 A22 22 0 0 1 242 610 H202 A22 22 0 0 1 180 588 V436 A22 22 0 0 1 202 414 Z" fill="url(#rainbow)"/>
     </g>
-    <!-- The barbell. -->
-    <g fill="#f7f7f9" stroke="#f7f7f9">
-      <path d="M236 440 H788" stroke-width="46" stroke-linecap="round" fill="none"/>
-      <rect x="176" y="350" width="60" height="180" rx="18" stroke="none"/>
-      <rect x="788" y="350" width="60" height="180" rx="18" stroke="none"/>
-    </g>
-    <g fill="url(#rainbow)" stroke="url(#rainbow)" mask="url(#fade)">
-      <path d="M236 440 H788" stroke-width="46" stroke-linecap="round" fill="none"/>
-      <rect x="176" y="350" width="60" height="180" rx="18" stroke="none"/>
-      <rect x="788" y="350" width="60" height="180" rx="18" stroke="none"/>
-    </g>
+    <g mask="url(#rimfade)" opacity="0.85"><g filter="url(#rim)">
+    <path d="M300 728 L300 356 Q300 256 400 256 L486 256 L486 336 L400 336 Q380 336 380 356 L380 728 Z" fill="url(#rainbow)" mask="url(#gap)"/>
+    <path d="M724 296 L724 668 Q724 768 624 768 L538 768 L538 688 L624 688 Q644 688 644 668 L644 296 Z" fill="url(#rainbow)" mask="url(#gap)"/>
+    <path d="M202 414 H242 A22 22 0 0 1 264 436 V489 H760 V436 A22 22 0 0 1 782 414 H822 A22 22 0 0 1 844 436 V588 A22 22 0 0 1 822 610 H782 A22 22 0 0 1 760 588 V535 H264 V588 A22 22 0 0 1 242 610 H202 A22 22 0 0 1 180 588 V436 A22 22 0 0 1 202 414 Z" fill="url(#rainbow)"/>
+    </g></g>
   </g>
 </svg>

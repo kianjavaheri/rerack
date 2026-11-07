@@ -1,7 +1,8 @@
-import { ArrowDown, ArrowLeft, ArrowUp, Check, Pencil, Plus, Share, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarDays, Check, Copy, Pencil, Plus, Repeat, Share, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DeleteRoutineDialog } from '../components/DeleteRoutineDialog';
+import { DuplicateRoutineDialog } from '../components/DuplicateRoutineDialog';
 import { NewWorkoutWindow } from '../components/NewWorkout';
 import { Modal } from '../components/Modal';
 import { NotFound } from '../components/NotFound';
@@ -39,6 +40,7 @@ export function RoutineEditorPage() {
   // Picked a workout that's already in another routine: ask whether to share it or add a copy.
   const [sharing, setSharing] = useState<Workout | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
   const [routine, update] = useEditable<Routine>(
@@ -97,7 +99,18 @@ export function RoutineEditorPage() {
       delete days[workoutId];
       const every = { ...r.every };
       delete every[workoutId];
-      return { ...r, workoutIds: r.workoutIds.filter((x) => x !== workoutId), days, every };
+      const optional = { ...r.optional };
+      delete optional[workoutId];
+      return { ...r, workoutIds: r.workoutIds.filter((x) => x !== workoutId), days, every, optional };
+    });
+
+  /** Optional in this routine only: shown on its days but never counted as planned or missed. */
+  const setOptional = (workoutId: ID, on: boolean) =>
+    update((r) => {
+      const optional = { ...r.optional };
+      if (on) optional[workoutId] = true;
+      else delete optional[workoutId];
+      return { ...r, optional };
     });
 
   /** A workout every N days, or back to its weekdays (null; those are kept meanwhile). */
@@ -202,13 +215,15 @@ export function RoutineEditorPage() {
             const w = workoutById.get(wid);
             const days = routine.days?.[wid] ?? [];
             return (
-              <div key={wid} ref={reorder.itemRef(i)} className="card" style={{ padding: '12px 14px' }}>
-                <div className="spread holdable" style={{ flexWrap: 'nowrap' }} {...reorder.handle(i)}>
+              // Held anywhere, the card lifts to be dragged.
+              <div key={wid} ref={reorder.itemRef(i)} className="card holdable" style={{ padding: '12px 14px' }} {...reorder.handle(i)}>
+                <div className="spread" style={{ flexWrap: 'nowrap' }}>
                   <Link to={`/edit/workouts/${wid}?from=${encodeURIComponent(here)}`} className="row" style={{ minWidth: 0, gap: 8 }}>
                     <span className="set-num">{i + 1}</span>
                     <span style={{ fontWeight: 600, fontSize: 15 }}>{w?.name ?? 'Unknown'}</span>
                     <span className="muted small">{pluralize(w?.exercises.length ?? 0, 'exercise')}</span>
                     {upNext === wid && <span className="badge">Up next</span>}
+                    {routine.optional?.[wid] && <span className="optional-tag">Optional</span>}
                   </Link>
                   <div className="row" style={{ gap: 0, flexShrink: 0 }}>
                     <Link to={`/edit/workouts/${wid}?from=${encodeURIComponent(here)}`} className="icon-btn" aria-label={`Edit ${w?.name ?? 'workout'}`} title="Edit">
@@ -235,27 +250,49 @@ export function RoutineEditorPage() {
                     </button>
                   </div>
                 </div>
-                {rotating ? null : routine.every?.[wid] ? (
-                  <div className="schedule-every" style={{ marginTop: 10 }}>
-                    <span>Every</span>
-                    <Stepper label={`days between ${w?.name ?? 'workout'}`} value={routine.every[wid]} min={1} max={30} onChange={(n) => setEvery(wid, n)} />
-                    <span>{routine.every[wid] === 1 ? 'day' : 'days'}</span>
-                    {nextIn(wid) && <span className="muted small">Next: {nextIn(wid)}</span>}
-                    <button className="btn btn-ghost btn-sm" style={{ marginLeft: 'auto' }} onClick={() => setEvery(wid, null)}>
-                      Pick days
-                    </button>
-                  </div>
-                ) : (
-                  <div className="days" style={{ marginTop: 10 }} role="group" aria-label={`Days for ${w?.name ?? 'workout'}`}>
-                    {WEEK_ORDER.map((d) => (
-                      <button key={d} className={`day${days.includes(d) ? ' on' : ''}`} onClick={() => toggleDay(wid, d)} aria-pressed={days.includes(d)}>
-                        {WEEKDAYS[d]}
-                      </button>
-                    ))}
-                    <button className="day day-every" onClick={() => setEvery(wid, 2)} title="Repeat it every few days instead of on set days">
-                      Every…
-                    </button>
-                  </div>
+                {rotating ? null : (
+                  <>
+                    {routine.every?.[wid] ? (
+                      <div className="schedule-every" style={{ marginTop: 10 }}>
+                        <Repeat size={15} className="muted" aria-hidden />
+                        <span>Every</span>
+                        <Stepper label={`days between ${w?.name ?? 'workout'}`} value={routine.every[wid]} min={1} max={30} onChange={(n) => setEvery(wid, n)} />
+                        <span>{routine.every[wid] === 1 ? 'day' : 'days'}</span>
+                        {nextIn(wid) && <span className="muted small">Next: {nextIn(wid)}</span>}
+                      </div>
+                    ) : (
+                      <div className="days" style={{ marginTop: 10 }} role="group" aria-label={`Days for ${w?.name ?? 'workout'}`}>
+                        {WEEK_ORDER.map((d) => (
+                          <button key={d} className={`day${days.includes(d) ? ' on' : ''}`} onClick={() => toggleDay(wid, d)} aria-pressed={days.includes(d)}>
+                            {WEEKDAYS[d]}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {/* Set apart from the weekdays: how it repeats, and whether it has to be done at all. */}
+                    <div className="slot-foot">
+                      {routine.every?.[wid] ? (
+                        <button className="repeat-btn" onClick={() => setEvery(wid, null)}>
+                          <CalendarDays size={14} /> Pick days instead
+                        </button>
+                      ) : (
+                        <button className="repeat-btn" onClick={() => setEvery(wid, 2)} title="Repeat it every few days instead of on set days">
+                          <Repeat size={14} /> Every few days
+                        </button>
+                      )}
+                      <label className="optional-switch">
+                        <span>Optional</span>
+                        <button
+                          type="button"
+                          className={`switch${routine.optional?.[wid] ? ' on' : ''}`}
+                          role="switch"
+                          aria-checked={!!routine.optional?.[wid]}
+                          aria-label={`${w?.name ?? 'Workout'} is optional in this routine`}
+                          onClick={() => setOptional(wid, !routine.optional?.[wid])}
+                        />
+                      </label>
+                    </div>
+                  </>
                 )}
               </div>
             );
@@ -275,6 +312,10 @@ export function RoutineEditorPage() {
         <button className="btn btn-danger btn-sm" onClick={() => setDeleting(true)}>
           <Trash2 size={14} /> Delete routine
         </button>
+        <div className="row-wrap" style={{ gap: 6 }}>
+        <button className="btn btn-ghost btn-sm" onClick={() => setDuplicating(true)}>
+          <Copy size={14} /> Duplicate
+        </button>
         <button
           className="btn btn-ghost btn-sm"
           onClick={() => shareLink(routine.name, routinePayload(routine, workouts ?? [], new Map((exercises ?? []).map((e) => [e.id, e]))))}
@@ -282,10 +323,11 @@ export function RoutineEditorPage() {
         >
           <Share size={14} /> Share
         </button>
+        </div>
       </div>
 
       {adding && (
-        <Modal title="Add workout" onClose={() => setAdding(false)}>
+        <Modal title="Add workout" onClose={() => setAdding(false)} expandable>
           {available.length === 0 && <p className="muted">Every workout is already in this routine.</p>}
           {available.map((w) => (
             <button key={w.id} className="list-row" onClick={() => {
@@ -330,6 +372,9 @@ export function RoutineEditorPage() {
         </Modal>
       )}
 
+      {duplicating && (
+        <DuplicateRoutineDialog routine={routine} routines={routines ?? []} workouts={workouts ?? []} onClose={() => setDuplicating(false)} />
+      )}
       {creating && <NewWorkoutWindow routine={routine} from={here} onClose={() => setCreating(false)} />}
       {deleting && (
         <DeleteRoutineDialog

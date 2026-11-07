@@ -177,6 +177,16 @@ export function scheduledOn(routine: Routine, sessions: Session[], date = new Da
   });
 }
 
+/** True when the workout doesn't need to be done in this routine (see `Routine.optional`). */
+export function isOptional(routine: Routine, workoutId: ID | null | undefined): boolean {
+  return !!workoutId && !!routine.optional?.[workoutId];
+}
+
+/** What `scheduledOn` plans for a date, less the optional workouts: what counts as planned (and missed). */
+export function requiredOn(routine: Routine, sessions: Session[], date = new Date(), now = new Date()): ID[] {
+  return scheduledOn(routine, sessions, date, now).filter((id) => !isOptional(routine, id));
+}
+
 /** The next day (from today) a workout in the routine is planned, if within two months. */
 export function nextPlannedDay(routine: Routine, workoutId: ID, sessions: Session[], now = new Date()): Date | null {
   for (let i = 0; i < 62; i++) {
@@ -201,15 +211,23 @@ export function nextWorkoutInRoutine(routine: Routine, sessions: Session[], date
   }
 
   const doneToday = doneOn(sessions, date);
-  const planned = scheduledOn(routine, sessions, date, date).find((id) => !doneToday.has(id));
+  // A required workout planned today first, then an optional one.
+  const today = scheduledOn(routine, sessions, date, date).filter((id) => !doneToday.has(id));
+  const planned = today.find((id) => !isOptional(routine, id)) ?? today[0];
   if (planned) return planned;
 
   const last = sessions
     .filter((s) => s.routineId === routine.id && s.workoutId && routine.workoutIds.includes(s.workoutId))
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
   if (!last?.workoutId) return null;
-  const idx = routine.workoutIds.indexOf(last.workoutId);
-  return routine.workoutIds[(idx + 1) % routine.workoutIds.length];
+  // The next one along that isn't optional (unless they all are).
+  const ids = routine.workoutIds;
+  const idx = ids.indexOf(last.workoutId);
+  for (let k = 1; k <= ids.length; k++) {
+    const id = ids[(idx + k) % ids.length];
+    if (!isOptional(routine, id)) return id;
+  }
+  return ids[(idx + 1) % ids.length];
 }
 
 /**

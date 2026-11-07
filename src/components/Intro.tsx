@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, Check, ChevronRight, NotebookPen, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { APP_NAME, HOME_PATH } from '../config';
 import { newId, now } from '../core/ids';
 import { uniqueName } from '../core/plan';
@@ -29,14 +29,17 @@ const SHOW_INTRO_TO_EXISTING = true;
 /**
  * Shows the first-run intro once per account: to a new user (no routines or workouts yet), or when asked for again
  * from Settings (`introDone: false`), once settings have loaded and while no workout is open. Finishing or skipping it
- * sets `Settings.introDone`.
+ * sets `Settings.introDone`. Never over a share link's page: someone arriving from a friend's link first sees what was
+ * shared (it covered the page, so the link seemed to do nothing); adding it usually means no intro is needed after.
  */
 export function IntroGate() {
   const { settings, ready } = useSettings();
+  const { pathname } = useLocation();
   const routines = useRoutines();
   const workouts = useWorkouts();
   const sessions = useSessions();
   if (!ready || !routines || !workouts || !sessions || settings.introDone) return null;
+  if (pathname === '/share' || pathname.startsWith('/s/')) return null;
   if (sessions.some((s) => !s.finishedAt)) return null;
   const isNew = routines.length === 0 && workouts.length === 0;
   if (settings.introDone === undefined && !isNew && !SHOW_INTRO_TO_EXISTING) return null;

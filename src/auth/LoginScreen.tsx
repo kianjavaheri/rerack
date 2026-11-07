@@ -1,6 +1,6 @@
 import { SharePreview } from '../components/SharePreview';
 import { APP_NAME } from '../config';
-import { decodeShare } from '../core/share';
+import { useSharedPlan } from '../hooks/useSharedPlan';
 import type { SignInProvider } from './AuthProvider';
 import { SignInButtons } from './SignInButtons';
 
@@ -15,7 +15,7 @@ export function LoginScreen({
 }) {
   // Opened from a share link before signing in: show what it holds first, so it can be looked at before deciding.
   // (This screen sits above the router; the address is kept, so the share page opens after signing in.)
-  const shared = window.location.pathname === '/share' ? decodeShare(window.location.hash.slice(1)) : null;
+  const shared = useSharedPlan(window.location.pathname, window.location.hash);
   return (
     <main className={`login${shared ? ' with-share' : ''}`}>
       {shared && (

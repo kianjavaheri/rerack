@@ -9,7 +9,10 @@ const stack: symbol[] = [];
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ title, onClose, children }: { title: ReactNode; onClose: () => void; children: ReactNode }) {
+/**
+ * A dialog: a sheet at the bottom on phones. `expandable` (for lists) lets it be pulled up to nearly the full screen.
+ */
+export function Modal({ title, onClose, children, expandable = false }: { title: ReactNode; onClose: () => void; children: ReactNode; expandable?: boolean }) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
@@ -17,7 +20,7 @@ export function Modal({ title, onClose, children }: { title: ReactNode; onClose:
     onCloseRef.current = onClose;
   });
 
-  useSwipeToClose(dialogRef, () => onCloseRef.current());
+  useSwipeToClose(dialogRef, () => onCloseRef.current(), expandable);
 
   useEffect(() => {
     const me = Symbol('modal');

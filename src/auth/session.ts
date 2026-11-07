@@ -17,11 +17,25 @@ import {
   type AuthProvider,
   type User,
 } from 'firebase/auth';
-import { clearIndexedDbPersistence, collection, doc, getDocs, terminate, waitForPendingWrites, writeBatch } from 'firebase/firestore';
+import {
+  clearIndexedDbPersistence,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  terminate,
+  waitForPendingWrites,
+  where,
+  writeBatch,
+} from 'firebase/firestore';
 import { CloudRepository } from '../data/cloudRepository';
 import { isNative } from '../native/platform';
 import { stopNativeRest } from '../native/rest';
 import { getFirebase } from './firebaseServices';
+import { registerShareSaver } from './shareLinks';
 
 // Everything that touches the Firebase SDK at runtime. Loaded with a dynamic import by
 // AuthProvider only when Firebase is configured.
@@ -97,6 +111,26 @@ async function signInNativeCredential(credential: AuthCredential) {
     keepForLinking(err, credential);
     throw err;
   }
+}
+
+/**
+ * Short share links (auth/shareLinks.ts): saves an encoded plan under `id` for the signed-in user, without waiting
+ * (Firestore queues it, offline too). False when nobody is signed in.
+ */
+function saveSharedPlan(id: string, plan: string): boolean {
+  const { auth, db } = services();
+  const uid = auth.currentUser?.uid;
+  if (!uid) return false;
+  void setDoc(doc(db, 'shares', id), { plan, owner: uid, createdAt: serverTimestamp() }).catch((err) => console.warn('Share link not saved', err));
+  return true;
+}
+registerShareSaver(saveSharedPlan);
+
+/** The encoded plan saved under a short link's id, or null. Readable signed out (firestore.rules). */
+export async function loadSharedPlan(id: string): Promise<string | null> {
+  const snap = await getDoc(doc(services().db, 'shares', id));
+  const plan = snap.exists() ? snap.data().plan : null;
+  return typeof plan === 'string' ? plan : null;
 }
 
 export function createCloudRepository(uid: string) {
@@ -256,7 +290,8 @@ const USER_COLLECTIONS = ['exercises', 'workouts', 'routines', 'sessions'];
  * Deletes the signed-in account and everything in it, as App Review requires apps with accounts to offer:
  * 1. signs in again with the account's provider (Firebase only deletes after a recent sign-in; Apple first when
  *    linked, since its sign-in also gives what revoking needs). Closing that sheet cancels, with nothing deleted;
- * 2. deletes every document under users/{uid} (the app's queued writes reach the server first, so none come back);
+ * 2. deletes every document under users/{uid} and the plans it shared by short link (the app's queued writes reach
+ *    the server first, so none come back);
  * 3. revokes Sign in with Apple's token, so the app no longer shows under the Apple ID's "Sign in with Apple" apps;
  * 4. deletes the Firebase user, then clears this device's offline copy like signing out.
  */
@@ -300,6 +335,8 @@ export async function deleteAccount(): Promise<'deleted' | 'cancelled'> {
   await stopNativeRest().catch(() => {});
   const refs = [doc(db, 'users', user.uid, 'meta', 'settings')];
   for (const name of USER_COLLECTIONS) refs.push(...(await getDocs(collection(db, 'users', user.uid, name))).docs.map((d) => d.ref));
+  // The plans this account shared by short link (they live outside users/, so links can be read signed out).
+  refs.push(...(await getDocs(query(collection(db, 'shares'), where('owner', '==', user.uid)))).docs.map((d) => d.ref));
   for (let i = 0; i < refs.length; i += 400) {
     const batch = writeBatch(db);
     refs.slice(i, i + 400).forEach((ref) => batch.delete(ref));

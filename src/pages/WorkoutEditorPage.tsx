@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowLeft, ArrowUp, Check, Copy, Pencil, Play, Plus, Share, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowUp, Check, Copy, Pencil, Play, Plus, Share, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ExerciseForm } from '../components/ExerciseForm';
@@ -39,6 +39,8 @@ export function WorkoutEditorPage() {
   const shareLink = useShareLink();
   const { notify } = useFeedback();
   const [picking, setPicking] = useState(false);
+  /** The slot whose exercise is being swapped for another (sets, reps and notes stay). */
+  const [replacing, setReplacing] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<Exercise | null>(null);
   /** The library exercise whose photos are open. */
   const [photosOf, setPhotosOf] = useState<Exercise | null>(null);
@@ -143,8 +145,13 @@ export function WorkoutEditorPage() {
         every[copy.id] = every[workout.id];
         delete every[workout.id];
       }
+      const optional = { ...fromRoutine.optional };
+      if (optional[workout.id]) {
+        optional[copy.id] = true;
+        delete optional[workout.id];
+      }
       const workoutIds = fromRoutine.workoutIds.map((x) => (x === workout.id ? copy.id : x));
-      await repo.saveRoutine({ ...fromRoutine, workoutIds, days, every, updatedAt: now() });
+      await repo.saveRoutine({ ...fromRoutine, workoutIds, days, every, optional, updatedAt: now() });
     }
     navigate(`/edit/workouts/${copy.id}?from=${encodeURIComponent(from)}`, { replace: true });
   };
@@ -198,8 +205,9 @@ export function WorkoutEditorPage() {
   const slotCard = (we: Workout['exercises'][number], i: number) => {
     const ex = exerciseById.get(we.exerciseId);
     return (
-      <div className="card" style={{ padding: '12px 14px' }}>
-        <div className="spread holdable" style={{ flexWrap: 'nowrap' }} {...reorder.handle(i)}>
+      // Held anywhere (not in a field), the card lifts to be dragged.
+      <div className="card holdable" style={{ padding: '12px 14px' }} {...reorder.handle(i)}>
+        <div className="spread" style={{ flexWrap: 'nowrap' }}>
           {/* A long name wraps onto more lines; the buttons stay on the right. */}
           <div className="row" style={{ minWidth: 0, flex: 1, gap: 8, flexWrap: 'nowrap' }}>
             <span className="set-num" style={{ flexShrink: 0 }}>{i + 1}</span>
@@ -255,7 +263,10 @@ export function WorkoutEditorPage() {
             <input className="input" placeholder="Optional" value={we.notes ?? ''} onChange={(e) => setSlot(we.id, { notes: e.target.value })} />
           </label>
         </div>
-        <div className="row" style={{ justifyContent: 'flex-end', marginTop: 6, marginRight: -6, marginBottom: -4 }}>
+        <div className="row" style={{ justifyContent: 'flex-end', gap: 2, marginTop: 6, marginRight: -6, marginBottom: -4 }}>
+          <button className="icon-btn" onClick={() => setReplacing(we.id)} aria-label={`Replace ${ex?.name ?? 'exercise'}`} title="Replace">
+            <ArrowLeftRight size={16} />
+          </button>
           {supersetButton(we, i)}
         </div>
       </div>
@@ -361,6 +372,23 @@ export function WorkoutEditorPage() {
           }}
         />
       )}
+      {replacing && workout.exercises.some((x) => x.id === replacing) && (() => {
+        const slot = workout.exercises.find((x) => x.id === replacing)!;
+        const name = exerciseById.get(slot.exerciseId)?.name ?? 'exercise';
+        return (
+          <ExercisePicker
+            title={`Replace ${name} with…`}
+            excludeIds={[slot.exerciseId]}
+            onClose={() => setReplacing(null)}
+            onPick={(ex) => {
+              const before = slot.exerciseId;
+              setSlot(slot.id, { exerciseId: ex.id });
+              setReplacing(null);
+              notify(`Replaced ${name} with ${ex.name}`, { undo: () => setSlot(slot.id, { exerciseId: before }) });
+            }}
+          />
+        );
+      })()}
       {supersetFor && workout.exercises.some((x) => x.id === supersetFor) && (() => {
         const host = workout.exercises.findIndex((x) => x.id === supersetFor);
         const [start, end] = groupBounds(workout.exercises, host);

@@ -109,7 +109,7 @@ export function WorkoutPlan() {
         {(routines.length > 0 || workouts.length > 0) && (
           <p className="muted small" style={{ margin: '-4px 0 12px' }}>
             {canPick && "Tap the routine you're following; Home plans your week from it. The pencil edits a routine. "}
-            Press and hold a routine or workout to rename or delete it.
+            Press and hold a routine or workout to duplicate, rename or delete it.
           </p>
         )}
         <div className="grid">

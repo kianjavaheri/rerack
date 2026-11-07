@@ -231,32 +231,36 @@ private struct RestBar: View {
 /// on the right (foot at the bottom). Drawn from the icon's 1024-unit coordinates, scaled to fit.
 struct LogoMark: Shape {
     func path(in rect: CGRect) -> Path {
-        // The mark spans x 176…848 and y 296…728 in the icon (the letters' 80-unit strokes reach 40 further up and down).
-        let box = CGRect(x: 176, y: 256, width: 672, height: 512)
+        // Same outline as the app icon (scripts/app-icon.mjs): the mark spans x 180…844 and y 256…768 there.
+        let box = CGRect(x: 180, y: 256, width: 664, height: 512)
         let scale = min(rect.width / box.width, rect.height / box.height)
         let dx = rect.midX - box.midX * scale
         let dy = rect.midY - box.midY * scale
         func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x * scale + dx, y: y * scale + dy) }
 
-        var letters = Path()
-        letters.move(to: p(312, 728))
-        letters.addLine(to: p(312, 356))
-        letters.addQuadCurve(to: p(372, 296), control: p(312, 296))
-        letters.addLine(to: p(458, 296))
-        letters.move(to: p(712, 296))
-        letters.addLine(to: p(712, 668))
-        letters.addQuadCurve(to: p(652, 728), control: p(712, 728))
-        letters.addLine(to: p(566, 728))
-
-        var bar = Path()
-        bar.move(to: p(236, 440))
-        bar.addLine(to: p(788, 440))
-
-        var mark = letters.strokedPath(StrokeStyle(lineWidth: 80 * scale))
-        mark.addPath(bar.strokedPath(StrokeStyle(lineWidth: 46 * scale, lineCap: .round)))
-        for x in [176.0, 788.0] {
-            mark.addRoundedRect(in: CGRect(origin: p(x, 350), size: CGSize(width: 60 * scale, height: 180 * scale)),
-                                cornerSize: CGSize(width: 18 * scale, height: 18 * scale))
+        var mark = Path()
+        // The left r, then the same turned half a turn about the centre (512, 512) for the right one.
+        for flip in [false, true] {
+            func q(_ x: CGFloat, _ y: CGFloat) -> CGPoint { flip ? p(1024 - x, 1024 - y) : p(x, y) }
+            mark.move(to: q(300, 728))
+            mark.addLine(to: q(300, 356))
+            mark.addQuadCurve(to: q(400, 256), control: q(300, 256))
+            mark.addLine(to: q(486, 256))
+            mark.addLine(to: q(486, 336))
+            mark.addLine(to: q(400, 336))
+            mark.addQuadCurve(to: q(380, 356), control: q(380, 336))
+            mark.addLine(to: q(380, 728))
+            mark.closeSubpath()
+        }
+        // The barbell: plates 84 × 196 and a bar 46 thick through the middle.
+        for x in [180.0, 760.0] {
+            mark.addRoundedRect(in: CGRect(origin: p(x, 414), size: CGSize(width: 84 * scale, height: 196 * scale)),
+                                cornerSize: CGSize(width: 22 * scale, height: 22 * scale))
+        }
+        // The bar in three pieces, between the plates and the stems, so nothing overlaps (overlapping subpaths that
+        // wind opposite ways would leave holes).
+        for (from, to) in [(264.0, 300.0), (380.0, 644.0), (724.0, 760.0)] {
+            mark.addRect(CGRect(origin: p(from, 489), size: CGSize(width: (to - from) * scale, height: 46 * scale)))
         }
         return mark
     }

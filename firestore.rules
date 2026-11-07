@@ -1,10 +1,26 @@
 rules_version = '2';
 
-// Each signed-in user can read and write only their own data under users/{uid}/…
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Each signed-in user can read and write only their own data under users/{uid}/…
     match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Short share links (/s/<id>): a shared workout or routine plan, saved by a signed-in user under a random id.
+    // Anyone with the link can read that one plan; nobody can list them (except their owner, to delete them with the
+    // account). Never changed once made: a second save under the same id is refused.
+    match /shares/{id} {
+      allow get: if true;
+      allow list: if request.auth != null && resource.data.owner == request.auth.uid;
+      allow create: if request.auth != null
+        && id.size() >= 6 && id.size() <= 16
+        && request.resource.data.keys().hasOnly(['plan', 'owner', 'createdAt'])
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.plan is string
+        && request.resource.data.plan.size() < 20000
+        && request.resource.data.createdAt == request.time;
+      allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
     }
   }
 }

@@ -1,0 +1,21 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "78842M9R35.com.kianjavaheri.fitnesstracker"
+        ],
+        "components": [
+          {
+            "/": "/s/*",
+            "comment": "Short share links"
+          },
+          {
+            "/": "/share*",
+            "comment": "Shared workouts and routines open in the app when it's installed"
+          }
+        ]
+      }
+    ]
+  }
+}

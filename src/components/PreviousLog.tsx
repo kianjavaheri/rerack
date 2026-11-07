@@ -36,7 +36,7 @@ function SetChips({ sets, unit, bodyweight }: { sets: SetLog[]; unit: WeightUnit
 /** Every earlier time an exercise was done: date, then its sets. */
 export function ExercisePrevious({ exercise, log, unit, onClose }: { exercise: Exercise; log: PastSets[]; unit: WeightUnit; onClose: () => void }) {
   return (
-    <Modal title={exercise.name} onClose={onClose}>
+    <Modal title={exercise.name} onClose={onClose} expandable>
       {log.length === 0 ? (
         <p className="muted">Nothing logged before this one yet.</p>
       ) : (
@@ -68,7 +68,7 @@ export function WorkoutPrevious({
   onClose: () => void;
 }) {
   return (
-    <Modal title={name} onClose={onClose}>
+    <Modal title={name} onClose={onClose} expandable>
       {log.length === 0 ? (
         <p className="muted">None of these exercises have been logged before.</p>
       ) : (
