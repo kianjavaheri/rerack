@@ -7,10 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		02ADA1437413A5D80ED3088B /* WatchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CFCDDD0B91409A1556E145 /* WatchStore.swift */; };
 		049A8769ACB28AAB1D5B7704 /* AppViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74AACE1464BD985D5955A486 /* AppViewController.swift */; };
 		0E418019E830EA02360C6F85 /* RestActivityPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70AF5576758A9C5BCFB465AB /* RestActivityPlugin.swift */; };
+		0E78948519E795EA8844894C /* Logic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D2FC918089EDBED5ED705CF /* Logic.swift */; };
+		11A67E622E38AAAF3B2E3C1E /* RerackWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7387766184E0031F4FD31E7B /* RerackWatchApp.swift */; };
+		12B4D340FE31086C22109F06 /* rest-over.caf in Resources */ = {isa = PBXBuildFile; fileRef = A4259A7F6D3A909BB254FA18 /* rest-over.caf */; };
 		16EC2CDD86BB626DB84EB397 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6212EE87699ADDDD453058EA /* WidgetKit.framework */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		4A1A30E1F8D79EBCB5BC0E87 /* WorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CA20961D42C6B6B0B65FE04 /* WorkoutManager.swift */; };
 		4AC5329E7FC9833AF102BFCA /* HomeWidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE450428D7E7778A93048785 /* HomeWidgetData.swift */; };
 		4C685F54B57105816D7A6E09 /* AppHealthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB3E7CFCC1F85068165595E /* AppHealthPlugin.swift */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
@@ -27,12 +32,20 @@
 		6D21E690E1DCA98F54923848 /* RestTimerWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 36C256B51EDB61AE9C64791B /* RestTimerWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		6F29D1005B9063E7168CDF87 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A7672BB79779E6E70979594 /* SwiftUI.framework */; };
 		7B60A6DD997582BCD462E20C /* AppWidgetPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAEC62DD6CE2B0978DE4775B /* AppWidgetPlugin.swift */; };
+		7CD515991664F5C650795343 /* WatchPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 426D652C51088CDD2BB8FF67 /* WatchPlugin.swift */; };
 		80948397BA755767D45C05FB /* HomeWidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE450428D7E7778A93048785 /* HomeWidgetData.swift */; };
 		83F3AD9BB4699D9907173DE3 /* RestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6BEFB1408CBC8C8150528CC /* RestActivityAttributes.swift */; };
+		87E1AEB7F8FD58D2F4A61DFD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8AA4A6F65B0B1D7031CB0952 /* Assets.xcassets */; };
+		8AC5663D879421DBFCDAB5C2 /* AppScreenPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C640DF1FD2C983DDC86407D /* AppScreenPlugin.swift */; };
 		9138AB5BBD62F9D00A149A22 /* AppHapticsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61E9D516F63162DBD4FA9053 /* AppHapticsPlugin.swift */; };
+		9202E705771C8C7220267CFD /* WatchBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB520D1B952CBA10589473D1 /* WatchBridge.swift */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
+		96363A10F5BEA9FCBD2A3255 /* RerackWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 1943CA03AACA0A4E4029766E /* RerackWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		9B3E76BEE4C668D18C311F47 /* Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64AB9028ADEAAFEE44511372 /* Views.swift */; };
 		AF8979C838BE37B76FA6EA46 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8612F439C532D42E946B0202 /* ActivityKit.framework */; };
 		AFBD26FC26040CCD43FE06FE /* RestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6BEFB1408CBC8C8150528CC /* RestActivityAttributes.swift */; };
+		CEFE81FC0CED47AD8C42BAEB /* WatchModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5D9A3CD0F60FA6FE8A6510 /* WatchModels.swift */; };
+		E441A719253D40098C72D856 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52EABD77B6ABFDC1756EF9E6 /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -43,9 +56,27 @@
 			remoteGlobalIDString = FA7BF265F325327BD382EF3D;
 			remoteInfo = RestTimerWidget;
 		};
+		40FD307025AD0E5C48377581 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E0FA06B1A1BDA09C1403EDB6;
+			remoteInfo = RerackWatch;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		774110379394373293E4EB3B /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				96363A10F5BEA9FCBD2A3255 /* RerackWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F89C91CBCF4C4B010F5CF248 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -61,8 +92,13 @@
 
 /* Begin PBXFileReference section */
 		0E77F4452E23147CF036780E /* App.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		1943CA03AACA0A4E4029766E /* RerackWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RerackWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2C5D9A3CD0F60FA6FE8A6510 /* WatchModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchModels.swift; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		339A4F105DEAB53A560B00C4 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		34CFCDDD0B91409A1556E145 /* WatchStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchStore.swift; sourceTree = "<group>"; };
 		36C256B51EDB61AE9C64791B /* RestTimerWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RestTimerWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		426D652C51088CDD2BB8FF67 /* WatchPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchPlugin.swift; sourceTree = "<group>"; };
 		427862EE03AC581FDDB06FFA /* RestTimerWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = RestTimerWidget.entitlements; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -72,21 +108,31 @@
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		52EABD77B6ABFDC1756EF9E6 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		57BFEA82C7F1CC945C3AD9F6 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		5A7672BB79779E6E70979594 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
+		5D2FC918089EDBED5ED705CF /* Logic.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Logic.swift; sourceTree = "<group>"; };
 		61E9D516F63162DBD4FA9053 /* AppHapticsPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppHapticsPlugin.swift; sourceTree = "<group>"; };
 		6212EE87699ADDDD453058EA /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/WidgetKit.framework; sourceTree = DEVELOPER_DIR; };
+		64AB9028ADEAAFEE44511372 /* Views.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
 		6719E4583EC9A7D05101BD4B /* GoogleService-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		6C640DF1FD2C983DDC86407D /* AppScreenPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppScreenPlugin.swift; sourceTree = "<group>"; };
 		6CB3E7CFCC1F85068165595E /* AppHealthPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppHealthPlugin.swift; sourceTree = "<group>"; };
 		70AF5576758A9C5BCFB465AB /* RestActivityPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestActivityPlugin.swift; sourceTree = "<group>"; };
+		7387766184E0031F4FD31E7B /* RerackWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RerackWatchApp.swift; sourceTree = "<group>"; };
 		74AACE1464BD985D5955A486 /* AppViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppViewController.swift; sourceTree = "<group>"; };
 		8612F439C532D42E946B0202 /* ActivityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ActivityKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/ActivityKit.framework; sourceTree = DEVELOPER_DIR; };
+		8AA4A6F65B0B1D7031CB0952 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		8CA20961D42C6B6B0B65FE04 /* WorkoutManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkoutManager.swift; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		A4259A7F6D3A909BB254FA18 /* rest-over.caf */ = {isa = PBXFileReference; includeInIndex = 1; path = "rest-over.caf"; sourceTree = "<group>"; };
 		A6BEFB1408CBC8C8150528CC /* RestActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestActivityAttributes.swift; sourceTree = "<group>"; };
 		BAEC62DD6CE2B0978DE4775B /* AppWidgetPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppWidgetPlugin.swift; sourceTree = "<group>"; };
 		C722CF406C3F3475A975D6AB /* HomeWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeWidget.swift; sourceTree = "<group>"; };
 		CA3D7CA9722A577CB3340249 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CD83D507973BA2A07A521157 /* RerackWatch.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = RerackWatch.entitlements; sourceTree = "<group>"; };
+		DB520D1B952CBA10589473D1 /* WatchBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchBridge.swift; sourceTree = "<group>"; };
 		DE450428D7E7778A93048785 /* HomeWidgetData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeWidgetData.swift; sourceTree = "<group>"; };
 		FC57CE1CAA308D265794F505 /* RestTimerWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestTimerWidget.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -111,6 +157,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E1AE08A203C7ED106F7E72F2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E441A719253D40098C72D856 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -125,6 +179,14 @@
 			path = RestTimerWidget;
 			sourceTree = "<group>";
 		};
+		4F56775740AFEB80711EB1A9 /* watchOS */ = {
+			isa = PBXGroup;
+			children = (
+				52EABD77B6ABFDC1756EF9E6 /* Foundation.framework */,
+			);
+			name = watchOS;
+			sourceTree = "<group>";
+		};
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
@@ -134,6 +196,7 @@
 				5097AC70C4978B33C17631A0 /* Shared */,
 				87F682921F05275D68308F0A /* Frameworks */,
 				2142185039556359F7D5BAAC /* RestTimerWidget */,
+				EA5A4104E3B4CD18D6F08700 /* RerackWatch */,
 			);
 			sourceTree = "<group>";
 		};
@@ -142,6 +205,7 @@
 			children = (
 				504EC3041FED79650016851F /* App.app */,
 				36C256B51EDB61AE9C64791B /* RestTimerWidget.appex */,
+				1943CA03AACA0A4E4029766E /* RerackWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -165,6 +229,10 @@
 				0E77F4452E23147CF036780E /* App.entitlements */,
 				BAEC62DD6CE2B0978DE4775B /* AppWidgetPlugin.swift */,
 				6719E4583EC9A7D05101BD4B /* GoogleService-Info.plist */,
+				A4259A7F6D3A909BB254FA18 /* rest-over.caf */,
+				DB520D1B952CBA10589473D1 /* WatchBridge.swift */,
+				426D652C51088CDD2BB8FF67 /* WatchPlugin.swift */,
+				6C640DF1FD2C983DDC86407D /* AppScreenPlugin.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -182,8 +250,26 @@
 			isa = PBXGroup;
 			children = (
 				F55B8ED9CF898092025FA60D /* iOS */,
+				4F56775740AFEB80711EB1A9 /* watchOS */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		EA5A4104E3B4CD18D6F08700 /* RerackWatch */ = {
+			isa = PBXGroup;
+			children = (
+				7387766184E0031F4FD31E7B /* RerackWatchApp.swift */,
+				2C5D9A3CD0F60FA6FE8A6510 /* WatchModels.swift */,
+				5D2FC918089EDBED5ED705CF /* Logic.swift */,
+				34CFCDDD0B91409A1556E145 /* WatchStore.swift */,
+				8CA20961D42C6B6B0B65FE04 /* WorkoutManager.swift */,
+				64AB9028ADEAAFEE44511372 /* Views.swift */,
+				8AA4A6F65B0B1D7031CB0952 /* Assets.xcassets */,
+				339A4F105DEAB53A560B00C4 /* Info.plist */,
+				CD83D507973BA2A07A521157 /* RerackWatch.entitlements */,
+			);
+			name = RerackWatch;
+			path = RerackWatch;
 			sourceTree = "<group>";
 		};
 		F55B8ED9CF898092025FA60D /* iOS */ = {
@@ -208,12 +294,14 @@
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
 				F89C91CBCF4C4B010F5CF248 /* Embed Foundation Extensions */,
+				774110379394373293E4EB3B /* Embed Watch Content */,
 				0840FB38DBB14CF24BA21484 /* Upload symbols to Crashlytics */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				FCF1414C70745B44B811C01E /* PBXTargetDependency */,
+				D6D2F45DA4D6AEA9A25401E7 /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -221,6 +309,23 @@
 			);
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E0FA06B1A1BDA09C1403EDB6 /* RerackWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9473D15D268472A2A4064CCE /* Build configuration list for PBXNativeTarget "RerackWatch" */;
+			buildPhases = (
+				326486ECDF32563F600FCEF2 /* Sources */,
+				E1AE08A203C7ED106F7E72F2 /* Frameworks */,
+				222236B186BACF1669CEEC71 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RerackWatch;
+			productName = RerackWatch;
+			productReference = 1943CA03AACA0A4E4029766E /* RerackWatch.app */;
 			productType = "com.apple.product-type.application";
 		};
 		FA7BF265F325327BD382EF3D /* RestTimerWidget */ = {
@@ -275,11 +380,20 @@
 			targets = (
 				504EC3031FED79650016851F /* App */,
 				FA7BF265F325327BD382EF3D /* RestTimerWidget */,
+				E0FA06B1A1BDA09C1403EDB6 /* RerackWatch */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		222236B186BACF1669CEEC71 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				87E1AEB7F8FD58D2F4A61DFD /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3021FED79650016851F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -291,6 +405,7 @@
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
 				61B2B7BEE75E218BDB4E3BF9 /* GoogleService-Info.plist in Resources */,
+				12B4D340FE31086C22109F06 /* rest-over.caf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -331,6 +446,19 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		326486ECDF32563F600FCEF2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				11A67E622E38AAAF3B2E3C1E /* RerackWatchApp.swift in Sources */,
+				CEFE81FC0CED47AD8C42BAEB /* WatchModels.swift in Sources */,
+				0E78948519E795EA8844894C /* Logic.swift in Sources */,
+				02ADA1437413A5D80ED3088B /* WatchStore.swift in Sources */,
+				4A1A30E1F8D79EBCB5BC0E87 /* WorkoutManager.swift in Sources */,
+				9B3E76BEE4C668D18C311F47 /* Views.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3001FED79650016851F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -344,6 +472,9 @@
 				4C685F54B57105816D7A6E09 /* AppHealthPlugin.swift in Sources */,
 				7B60A6DD997582BCD462E20C /* AppWidgetPlugin.swift in Sources */,
 				4AC5329E7FC9833AF102BFCA /* HomeWidgetData.swift in Sources */,
+				9202E705771C8C7220267CFD /* WatchBridge.swift in Sources */,
+				7CD515991664F5C650795343 /* WatchPlugin.swift in Sources */,
+				8AC5663D879421DBFCDAB5C2 /* AppScreenPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -361,6 +492,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		D6D2F45DA4D6AEA9A25401E7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RerackWatch;
+			target = E0FA06B1A1BDA09C1403EDB6 /* RerackWatch */;
+			targetProxy = 40FD307025AD0E5C48377581 /* PBXContainerItemProxy */;
+		};
 		FCF1414C70745B44B811C01E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = RestTimerWidget;
@@ -399,7 +536,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RestTimerWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Rest Timer";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -425,7 +562,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RestTimerWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Rest Timer";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -496,7 +633,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -553,7 +690,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -573,7 +710,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				INFOPLIST_FILE = App/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -597,7 +734,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				INFOPLIST_FILE = App/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -608,6 +745,65 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		793F0D57B213AC058B30DF71 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = RerackWatch/RerackWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RerackWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Rerack;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kianjavaheri.fitnesstracker.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		CE064645E8C6BA2D908D4912 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = RerackWatch/RerackWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RerackWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Rerack;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kianjavaheri.fitnesstracker.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
 			};
 			name = Release;
 		};
@@ -637,6 +833,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9473D15D268472A2A4064CCE /* Build configuration list for PBXNativeTarget "RerackWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CE064645E8C6BA2D908D4912 /* Release */,
+				793F0D57B213AC058B30DF71 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

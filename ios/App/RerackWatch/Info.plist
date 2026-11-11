@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>WKApplication</key>
+	<true/>
+	<key>WKCompanionAppBundleIdentifier</key>
+	<string>com.kianjavaheri.fitnesstracker</string>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>workout-processing</string>
+	</array>
+	<key>WKSupportsLiveActivityLaunchAttributeTypes</key>
+	<array>
+		<string>RestActivityAttributes</string>
+	</array>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Rerack shows your heart rate during a workout.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Rerack saves your workouts to Apple Health, with heart rate and energy burned.</string>
+</dict>
+</plist>

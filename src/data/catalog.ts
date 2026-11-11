@@ -16,6 +16,8 @@ export interface CatalogExercise {
   equipment?: string;
   /** The dataset has no photos for it. */
   noPhotos?: true;
+  /** A one-joint lift (the dataset's "mechanic"); compound otherwise. */
+  isolation?: true;
 }
 
 /**

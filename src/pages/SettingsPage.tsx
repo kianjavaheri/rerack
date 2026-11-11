@@ -13,7 +13,7 @@ import { isImportedSession } from '../core/sessions';
 import { sessionSummary } from '../core/stats';
 import { anyNotificationOn } from '../core/notifications';
 import { pluralize } from '../core/format';
-import { DEFAULT_REST_SECONDS, type NotificationSettings, type ThemePreference, type WeightUnit } from '../core/types';
+import { DEFAULT_REST_SECONDS, DEFAULT_WEIGHT_STEP, defaultRestSeconds, weightStepFor, type NotificationSettings, type ThemePreference, type WeightUnit } from '../core/types';
 import { repo } from '../data';
 import { useSettings } from '../hooks/settings';
 import { useSessions } from '../hooks/useRepo';
@@ -119,12 +119,15 @@ export function SettingsPage() {
       <button className="back-link app-only" onClick={() => (canGoBack() ? navigate(-1) : navigate(HOME_PATH, { replace: true }))}>
         <ArrowLeft size={15} /> Back
       </button>
-      <h1 className="title">Settings</h1>
+      {/* Two parts, each with its own heading: you (Profile), then how the app works (Settings). */}
+      <h1 className="title">Profile</h1>
 
       <div className="stack" style={{ marginTop: 20, maxWidth: 680 }}>
         <ProfileHeader workouts={workoutCount} />
         <ProfileFields />
         {auth.status === 'local' && <SignInCard />}
+
+        <h2 className="title settings-heading">Settings</h2>
 
         <div className="card">
           <div className="spread">
@@ -162,13 +165,41 @@ export function SettingsPage() {
             />
           </div>
           {settings.restTimer !== false && (
-            <div className="spread" style={{ marginTop: 14 }}>
-              <div className="muted small">
-                Default length, up to 60 minutes.{' '}
-                {(settings.restSeconds ?? DEFAULT_REST_SECONDS) === 0 ? 'At 0:00 it only starts when you tap Start.' : '0:00: only when you tap Start.'}
+            <>
+              {/* Defaults only: an exercise given its own rest keeps it. */}
+              {/* Each length under its label, the same for both. */}
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>Compound lifts</div>
+                <div className="muted small">Squats, presses, rows</div>
+                <div style={{ marginTop: 8 }}>
+                  <RestLength seconds={settings.restSeconds ?? DEFAULT_REST_SECONDS} onChange={(restSeconds) => update({ restSeconds })} />
+                </div>
               </div>
-              <RestLength seconds={settings.restSeconds ?? DEFAULT_REST_SECONDS} onChange={(restSeconds) => update({ restSeconds })} />
-            </div>
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>Isolation lifts</div>
+                <div className="muted small">Curls, raises, extensions</div>
+                <div style={{ marginTop: 8 }}>
+                  <RestLength seconds={defaultRestSeconds(settings, true)} onChange={(restIsolationSeconds) => update({ restIsolationSeconds })} />
+                </div>
+              </div>
+              <p className="muted small" style={{ margin: '12px 0 0' }}>
+                Up to 60 minutes; 0:00 starts it only when you tap Start. Exercises you've given their own rest keep it.
+              </p>
+              <div className="spread" style={{ marginTop: 14, flexWrap: 'nowrap' }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>Rest after an exercise's last set</div>
+                  <div className="muted small">Off: finishing an exercise goes straight on to the next.</div>
+                </div>
+                <button
+                  type="button"
+                  className={`switch${settings.restAfterLastSet ? ' on' : ''}`}
+                  role="switch"
+                  aria-checked={!!settings.restAfterLastSet}
+                  aria-label="Rest after an exercise's last set"
+                  onClick={() => update({ restAfterLastSet: !settings.restAfterLastSet })}
+                />
+              </div>
+            </>
           )}
         </div>
 
@@ -188,6 +219,42 @@ export function SettingsPage() {
             />
           </div>
         </div>
+
+        <div className="card">
+          <div className="spread" style={{ flexWrap: 'nowrap' }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>Per side as plates</div>
+              <div className="muted small">With Per side on, a weight shows as the plates to load: 70 reads 45 + 25.</div>
+            </div>
+            <button
+              type="button"
+              className={`switch${settings.perSidePlates ? ' on' : ''}`}
+              role="switch"
+              aria-checked={!!settings.perSidePlates}
+              aria-label="Per side as plates"
+              onClick={() => update({ perSidePlates: !settings.perSidePlates })}
+            />
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="spread" style={{ flexWrap: 'nowrap' }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>Keep the screen on</div>
+              <div className="muted small">During a workout, so your phone doesn't lock between sets.</div>
+            </div>
+            <button
+              type="button"
+              className={`switch${settings.keepAwake !== false ? ' on' : ''}`}
+              role="switch"
+              aria-checked={settings.keepAwake !== false}
+              aria-label="Keep the screen on during a workout"
+              onClick={() => update({ keepAwake: settings.keepAwake === false })}
+            />
+          </div>
+        </div>
+
+        {isNative && <WeightStepCard />}
 
         <NotificationsCard />
 
@@ -272,6 +339,53 @@ export function SettingsPage() {
 }
 
 /** The privacy policy (a static page, public/privacy.html), and deleting the account. */
+/** The Apple Watch's Crown step for a set's weight, in the display unit; any amount above 0. */
+function WeightStepCard() {
+  const { settings, update } = useSettings();
+  const unit = settings.unit;
+  const step = weightStepFor(settings);
+  const [text, setText] = useState(String(step));
+  // Follows a change of unit, or one made on another device.
+  const [shown, setShown] = useState(step);
+  if (shown !== step) {
+    setShown(step);
+    setText(String(step));
+  }
+  const save = () => {
+    const value = Number(text.replace(',', '.'));
+    if (!(value > 0) || value > 1000) {
+      setText(String(step));
+      return;
+    }
+    const rounded = Math.round(value * 100) / 100;
+    setText(String(rounded));
+    if (rounded !== step) update({ weightStep: { ...settings.weightStep, [unit]: rounded } });
+  };
+  return (
+    <div className="card">
+      <div className="spread" style={{ flexWrap: 'nowrap' }}>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>Apple Watch weight step</div>
+          <div className="muted small">How much a turn of the Crown changes the weight. Default {DEFAULT_WEIGHT_STEP[unit]} {unit}.</div>
+        </div>
+        <div className="affix" style={{ width: 96, flex: 'none' }}>
+          <input
+            className="input"
+            inputMode="decimal"
+            enterKeyHint="done"
+            aria-label={`Weight step in ${unit}`}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={save}
+            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+          />
+          <span className="suffix">{unit}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PrivacyCard() {
   // In the iPhone app a link would replace the app in its web view, so it opens in Safari instead.
   const policy = isNative ? `${SITE_URL}/privacy` : '/privacy';

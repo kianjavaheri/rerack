@@ -74,22 +74,75 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
         </Modal>
       )}
       {toast && (
-        <div key={toast.id} className="toast" role="status">
-          <span>{toast.message}</span>
-          {toast.undo && (
-            <button
-              className="toast-undo"
-              onClick={() => {
-                toast.undo?.();
-                setToast(null);
-              }}
-            >
-              Undo
-            </button>
-          )}
-        </div>
+        <ToastBanner
+          key={toast.id}
+          toast={toast}
+          onUndo={() => {
+            toast.undo?.();
+            setToast(null);
+          }}
+          onDismiss={() => {
+            clearTimeout(timer.current);
+            setToast(null);
+          }}
+        />
       )}
     </FeedbackContext.Provider>
+  );
+}
+
+/** A banner that can be swiped away upwards (past 30 px or a quick flick); a short pull down springs back. */
+function ToastBanner({ toast, onUndo, onDismiss }: { toast: Toast; onUndo: () => void; onDismiss: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ y: number; t: number; dy: number } | null>(null);
+
+  const place = (dy: number, animate: boolean) => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.transition = animate ? 'transform 0.25s var(--ease), opacity 0.25s var(--ease)' : 'none';
+    // Down only gives a little (rubber band); up follows the finger and fades.
+    const y = dy > 0 ? dy / 4 : dy;
+    el.style.transform = `translate(-50%, ${y}px)`;
+    el.style.opacity = dy < 0 ? String(Math.max(0, 1 + dy / 80)) : '1';
+  };
+
+  return (
+    <div
+      ref={ref}
+      className="toast"
+      role="status"
+      onTouchStart={(e) => {
+        drag.current = { y: e.touches[0].clientY, t: e.timeStamp, dy: 0 };
+        if (ref.current) ref.current.style.animation = 'none';
+      }}
+      onTouchMove={(e) => {
+        const d = drag.current;
+        if (!d) return;
+        d.dy = e.touches[0].clientY - d.y;
+        place(d.dy, false);
+      }}
+      onTouchEnd={(e) => {
+        const d = drag.current;
+        drag.current = null;
+        if (!d) return;
+        const speed = d.dy / Math.max(1, e.timeStamp - d.t);
+        if (d.dy < -30 || (d.dy < -8 && speed < -0.4)) {
+          place(-120, true);
+          setTimeout(onDismiss, 200);
+        } else place(0, true);
+      }}
+      onTouchCancel={() => {
+        drag.current = null;
+        place(0, true);
+      }}
+    >
+      <span>{toast.message}</span>
+      {toast.undo && (
+        <button className="toast-undo" onClick={onUndo}>
+          Undo
+        </button>
+      )}
+    </div>
   );
 }
 

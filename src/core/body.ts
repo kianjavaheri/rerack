@@ -15,9 +15,11 @@ export function formatHeight(cm: number | undefined, unit: WeightUnit): string {
   return `${Math.floor(inches / 12)}′ ${inches % 12}″`;
 }
 
+/** Feet and inches, the inches to a tenth (5 ft 10.5 in). */
 export const feetInches = (cm: number) => {
-  const inches = Math.round(cm / 2.54);
-  return { ft: Math.floor(inches / 12), in: inches % 12 };
+  const inches = Math.round((cm / 2.54) * 10) / 10;
+  const ft = Math.floor(inches / 12);
+  return { ft, in: Math.round((inches - ft * 12) * 10) / 10 };
 };
 
 export const fromFeetInches = (ft: number, inches: number) => (ft * 12 + inches) * 2.54;

@@ -26,7 +26,16 @@ export function ContextMenu({ anchor, actions, onClose }: { anchor: HTMLElement;
   useEffect(() => {
     onCloseRef.current = onClose;
   });
-  const [rect] = useState(() => anchor.getBoundingClientRect());
+  // Its unscaled box: a held card is shrunk by `:active` (scale 0.98), and a copy sized to that wrapped its text onto
+  // an extra line that spilled out of the bottom.
+  const [rect] = useState(() => {
+    const r = anchor.getBoundingClientRect();
+    const width = anchor.offsetWidth || r.width;
+    const height = anchor.offsetHeight || r.height;
+    const left = r.left + (r.width - width) / 2;
+    const top = r.top + (r.height - height) / 2;
+    return { left, top, width, height, bottom: top + height };
+  });
   const [layout, setLayout] = useState<{ cardTop: number; menuTop: number; left: number; above: boolean } | null>(null);
 
   // A copy of the card stands in for it, so the real one can stay put (hidden) underneath.

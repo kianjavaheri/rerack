@@ -18,6 +18,8 @@ export default defineConfig({
         // The app's Home: `/` is the website's landing page (installs from before still start there and are sent on).
         start_url: '/home',
         display: 'standalone',
+        // Phone-only layout: the home-screen app stays upright (the iPhone app is portrait-only in Info.plist).
+        orientation: 'portrait',
         background_color: '#0f1011',
         theme_color: '#0f1011',
         icons: [

@@ -7,7 +7,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // The Apple Watch app's link, from launch: the watch can wake the app in the background (no scene, no web view)
+        // to hand over what was logged there.
+        WatchBridge.shared.activate()
         return true
     }
 

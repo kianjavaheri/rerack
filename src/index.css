@@ -139,7 +139,12 @@
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; min-height: 100%; }
 /* No double-tap zoom: the app stays at one zoom level. */
-html { touch-action: manipulation; }
+html {
+  touch-action: manipulation;
+  /* iOS enlarges paragraphs of text when the page turns sideways (and they can stay big after turning back), which made
+     the Workouts page's hint giant. Text keeps the size it's given. */
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+}
 body { background: var(--page-base); transition: background 0.3s var(--ease); }
 button, input, select, textarea { font: inherit; color: inherit; }
 a { color: inherit; text-decoration: none; }
@@ -281,6 +286,8 @@ main.swipe-peek .rest-timer { position: relative; top: auto; } /* outweighs .sta
 
 /* ---------- Typography ---------- */
 .title { font-size: clamp(24px, 3vw, 30px); font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; }
+/* Settings' second heading, under Profile: the same size, with room above it to start a new part. */
+.settings-heading { margin: 22px 0 2px; }
 .back-link {
   display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px;
   font-size: 13px; font-weight: 500; color: var(--muted);
@@ -481,6 +488,13 @@ button.chip { cursor: pointer; }
   font-weight: 600; font-size: 13px; color: var(--muted);
 }
 .segmented button.on { background: var(--paper); color: var(--text); box-shadow: 0 1px 3px #0000001f; }
+/* Five choices (the exercise form's Equipment): the full width, shared evenly, so they fit on a phone. */
+.segmented-wrap { display: flex; }
+.segmented-wrap button { flex: 1 1 auto; padding: 6px 0; min-width: 0; font-size: 12.5px; letter-spacing: -0.01em; }
+/* Workouts page: Programs | Exercises, whose list opens right under it (EditWorkoutsPage). */
+.plan-switch { min-width: 0; }
+.plan-panel { margin-top: 14px; animation: rise 0.3s var(--ease); }
+.plan-panel > .search, .plan-panel > .row:first-child { margin-top: 0 !important; }
 
 .switch {
   position: relative; width: 40px; height: 24px; border-radius: 999px; border: 0; cursor: pointer;
@@ -800,6 +814,14 @@ button.stat { cursor: pointer; transition: border-color 0.2s, transform 0.2s var
 .affix .suffix.total { font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* The number moves left so a large one can't run into the total. */
 .affix:has(.suffix.total) .input { text-align: left; padding-left: 12px; }
+/* Per side as plates ("45 + 25") while not being typed in: the plates across the top of the field in smaller type and
+   the total tucked under them, so the field's whole width is theirs. Typing goes back to the number beside the total. */
+.affix .input.as-display {
+  font-size: 13px; letter-spacing: -0.01em; text-overflow: ellipsis; padding: 0 6px 11px 8px; text-align: left;
+}
+.affix:has(.input.as-display) .suffix.total {
+  top: auto; bottom: 4px; left: 8px; right: auto; transform: none; font-size: 10px; line-height: 1;
+}
 /* Typing numbers into the Log: like the live workout's rows, weight wider (its total can show beside it). */
 .set-grid.log-entry-sets { grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1.6fr) 32px; align-items: center; }
 .log-entry-sets .icon-btn { width: 32px; height: 32px; }
@@ -966,21 +988,72 @@ button.heat-cell { cursor: pointer; }
 /* Long exercise lists stop at 4 lines with an ellipsis. */
 .clamp-4 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
 /* The word "exercises" goes first when the bar is short of room (phones, now that the live bar has a trash button too). */
-@media (max-width: 440px) { .bar-unit { display: none; } }
 .set-grid .head-done { text-align: center; white-space: nowrap; overflow: visible; justify-self: center; }
+/* Set and Done sit centred over their column; letter-spacing adds a gap after the last letter, so indent by the same. */
+.set-grid .head-set, .set-grid .head-done { text-align: center; text-indent: 0.08em; }
 /* A session's name with its Live / Done badge right after it (the input grows with the text where supported). */
 .session-name { field-sizing: content; width: auto; min-width: 3ch; max-width: 100%; flex: 0 1 auto; }
 .session-state { flex-shrink: 0; white-space: nowrap; }
 .session-head-gap { flex: 1; }
-/* "Previous": a white pill rather than another gray icon, since it's what you check before each exercise. */
+/* An exercise card's top (SessionPage EntryCard): photo with Last under it | name and "Last 3d ago" | rest and ⋮
+   with Notes under them. */
+.entry-top { display: flex; align-items: flex-start; gap: 12px; }
+.entry-side { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; }
+.entry-meta { margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Last: a white circle rather than another gray icon, since it's what you check before each exercise. */
 .prev-btn {
-  display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; border: 0;
-  border-radius: 999px; cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 650; flex-shrink: 0;
-  background: var(--text); color: var(--page-base);
+  display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%;
+  cursor: pointer; background: var(--text); color: var(--page-base);
 }
-.prev-btn:active { transform: scale(0.94); }
-/* Under an exercise's name: Previous, then its rest length (rainbow once it has its own). */
-.entry-actions { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.prev-btn:active { transform: scale(0.92); }
+/* Notes then Last, under the rest chip and ⋮ (Last the same height as the Notes chip there). */
+.entry-actions {
+  display: grid; grid-template-columns: auto 32px; grid-auto-rows: auto; gap: 6px 4px; align-items: center;
+  justify-items: center; flex-shrink: 0; margin: -1px -2px 0 0;
+}
+/* The rest chip and Notes: one column, both as wide as the wider, so they line up. */
+.entry-actions > .rest-chip, .entry-actions > .notes-chip { grid-column: 1; justify-self: stretch; justify-content: center; margin: 0; }
+.entry-actions > .notes-chip { grid-row: 2; }
+.entry-actions > .entry-menu { grid-column: 2; grid-row: 1; width: 32px; height: 30px; }
+.entry-actions > .prev-btn { grid-column: 2; grid-row: 2; width: 28px; height: 28px; }
+/* Notes on an exercise card: a gray chip with the icon and the word, under its rest and ⋮. */
+.notes-chip {
+  display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; margin-right: 8px; border: 0;
+  border-radius: 999px; cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 600;
+  background: var(--chip-bg); color: var(--text);
+}
+.notes-chip:active { transform: scale(0.94); }
+.notes-chip.notes-btn.has-notes::after { top: 1px; right: 1px; }
+/* The rep target beside the Reps header: a small gray circle, like the header's text. */
+.target-btn {
+  display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%;
+  cursor: pointer; background: var(--chip-bg); color: var(--muted);
+}
+.target-btn:active { transform: scale(0.9); }
+/* Set grid headers that are buttons: Reps opens the rep target (TargetSheet); on barbell lifts Weight is the Per side
+   switch (the whole label is the button). */
+.set-grid .reps-head, .set-grid .weight-head { display: flex; align-items: center; justify-content: center; gap: 5px; }
+.head-btn {
+  display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border: 0; border-radius: 999px;
+  cursor: pointer; font: inherit; letter-spacing: inherit; text-transform: inherit; background: var(--chip-bg); color: inherit;
+}
+.head-btn.on { background: var(--rainbow); color: var(--on-rainbow); }
+.head-btn:active { transform: scale(0.94); }
+/* A sheet of actions (components/ActionSheet.tsx): one grouped list, hairlines between rows, Remove in red. */
+.sheet-actions { display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: var(--chip-bg); }
+.sheet-action {
+  display: flex; align-items: center; gap: 16px; width: 100%; min-height: 56px; padding: 0 18px; border: 0;
+  background: transparent; color: var(--text); font: inherit; font-size: 16px; text-align: left; cursor: pointer;
+}
+.sheet-action + .sheet-action { border-top: 1px solid var(--card-border); }
+.sheet-action:active { background: var(--hover-tint); }
+.sheet-action.danger { color: var(--danger); }
+/* The rep target's sheet (components/TargetSheet.tsx). */
+.target-aim { display: flex; align-items: center; gap: 12px; font-size: 16px; }
+.target-aim > svg { flex-shrink: 0; stroke: url(#lt-ink); }
+/* Add set: a gray button across the row, its label centred, the superset link at the end. */
+.add-set-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.add-set-btn { flex: 1; justify-content: center; background: var(--chip-bg); }
 .chip.rest-chip { height: 30px; font-size: 12.5px; font-weight: 600; padding: 0 11px; border-radius: 999px; font-variant-numeric: tabular-nums; }
 .duration-field .input { padding-right: 38px; }
 .datetime .input[type='date'] { width: 150px; }
@@ -1213,6 +1286,9 @@ button.heat-cell { cursor: pointer; }
   -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter);
 }
 .account-btn:active { transform: scale(0.9); transition-duration: 0.1s; }
+/* The still copy in each slot: only on a page swiping in while the real button is scrolled out of sight. */
+.account-ghost { display: none !important; }
+.account-offscreen main.swipe-peek .account-ghost { display: grid !important; pointer-events: none; }
 /* The photo fills most of the glass, leaving a thin lens-like rim round it, and sits in it with a soft inner shade. */
 .standalone .account-btn img, .standalone .account-btn .avatar { width: 37px !important; height: 37px !important; box-shadow: 0 1px 3px #00000033; }
 .app-only { display: none !important; }
@@ -1228,6 +1304,10 @@ button.heat-cell { cursor: pointer; }
 .standalone body { min-height: calc(100vh + 1px); }
 /* Bars pinned to the bottom of a page sit above the tabs. */
 .standalone { --sticky-bottom: calc(var(--tabbar-h) + var(--tabbar-bottom) + 10px); }
+/* At the end of the page a sticky bar rests where it is in the flow, which was 38px higher than where it sticks (the
+   page's 28px padding plus the shell's tab-bar clearance, 10px more than --sticky-bottom), so it rose as you reached
+   the bottom. Pulling the space under it in by that much keeps it in one place all the way down. */
+.standalone .sticky-bar { margin-bottom: -38px; }
 
 /* ---------- Phones and the installed app: one background color ---------- */
 @media (max-width: 560px) {
@@ -1330,6 +1410,7 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
   padding: 10px 10px 10px 16px; border-radius: 26px; font-size: 14px; font-weight: 500;
   background: var(--text); color: var(--page-base); box-shadow: var(--nav-shadow);
   animation: toast-in 0.35s var(--ease);
+  touch-action: none; /* swiped up to dismiss */
 }
 .standalone .toast { top: calc(var(--top-clear) + 4px); }
 .toast span { min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
@@ -1346,7 +1427,7 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
   position: sticky; z-index: 30; top: calc(var(--nav-h) + env(safe-area-inset-top));
   display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 46px;
   margin: 0 0 14px; padding: 6px 6px 6px 14px; border-radius: 14px; font-size: 14px; font-weight: 600;
-  box-shadow: var(--nav-shadow);
+  box-shadow: var(--nav-shadow); animation: rise 0.25s var(--ease);
   /* Reaching the top, it grows out to the screen's edges and squares off its top corners in one motion. */
   transition: background 0.3s, color 0.3s, margin 0.32s var(--ease), padding 0.32s var(--ease), border-radius 0.32s var(--ease);
 }
@@ -1365,7 +1446,7 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
   padding-left: calc(14px + var(--bleed)); padding-right: calc(6px + var(--bleed));
   border-radius: 0 0 22px 22px;
 }
-.rest-timer.idle { color: var(--muted); font-weight: 500; font-size: 13px; }
+.rest-timer.paused .rest-label { color: var(--muted); }
 .rest-timer.over { color: var(--on-rainbow); border-color: transparent; }
 .rest-timer.over::before { background: var(--glass-sheen), var(--rainbow); }
 .rest-timer.over .rest-label { animation: check-pop 0.4s cubic-bezier(0.34, 1.6, 0.5, 1); }
@@ -1377,13 +1458,6 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
 .rest-btn:active { transform: scale(0.92); }
 .rest-btn.stop { color: var(--danger); background: color-mix(in srgb, var(--danger) 16%, transparent); }
 .rest-timer.over .rest-btn.stop { color: #fff; background: var(--danger); }
-/* Closed rest bar: a small white pill left in place under Back (not pinned); tapping brings the bar back. */
-.rest-pill {
-  display: inline-flex; align-items: center; gap: 6px; margin: 0 0 14px; padding: 7px 14px; border: 0; border-radius: 999px;
-  cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; background: var(--text); color: var(--page-base);
-  animation: rise 0.25s var(--ease);
-}
-.rest-pill:active { transform: scale(0.95); }
 .chip.go-up { margin-top: 6px; font-weight: 600; font-size: 12px; padding: 4px 10px; }
 
 /* ---------- Supersets: linked exercises drawn as one group ---------- */
@@ -1590,11 +1664,13 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
 .workout-summary { margin: 20px 0 16px; }
 .workout-summary.page { margin-top: 18px; }
 .summary-open { width: 32px; height: 32px; }
-.summary-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0 14px; }
-.summary-tile { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--chip-bg); min-width: 0; }
+/* Volume ("12,345 lb") gets the most room, Sets (a small number) the least. */
+.summary-tiles { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.4fr) minmax(0, 1fr); gap: 6px; margin-top: 10px; }
+.workout-summary.page .summary-tiles { margin-bottom: 14px; }
+.summary-tile { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border-radius: 12px; background: var(--chip-bg); min-width: 0; }
 .summary-label { font-size: 12px; color: var(--muted); }
-.summary-value { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.summary-delta { font-size: 12px; color: var(--muted); }
+.summary-value { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.summary-delta { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .summary-delta.up { color: var(--success); }
 .summary-exercises { display: flex; flex-direction: column; }
 .summary-exercise {
@@ -1606,9 +1682,12 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
 .summary-trend { grid-area: trend; align-self: center; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--chip-bg); color: var(--muted); }
 .summary-trend.up { color: var(--success); }
 .summary-trend.down { color: var(--danger); }
-.summary-trend.new { color: var(--accent); }
+.summary-trend.new { width: auto; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--accent); }
+/* Still one row on a phone: smaller numbers, tighter tiles. */
 @media (max-width: 560px) {
-  .summary-tiles { grid-template-columns: repeat(2, 1fr); }
+  .summary-tile { padding: 7px 8px; border-radius: 10px; }
+  .summary-label { font-size: 11px; }
+  .summary-value { font-size: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1658,7 +1737,17 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
 }
 .profile-field { display: block; margin-bottom: 14px; }
 .profile-weight { margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--card-border); }
-.profile-subhead { font-size: 15px; font-weight: 600; margin: 0; }
+.profile-subhead { font-size: 15px; font-weight: 600; margin: 0; display: inline-flex; align-items: center; gap: 4px; }
+/* Body weight's heading row is the button that shows or hides its chart and history. */
+.profile-weight-toggle {
+  width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.profile-weight-toggle:disabled { cursor: default; opacity: 1; }
+.profile-chevron { color: var(--muted); transition: transform 0.25s var(--ease); }
+.profile-chevron.open { transform: rotate(180deg); }
+.profile-weight-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.3s var(--ease); }
+.profile-weight-more.open { grid-template-rows: 1fr; }
+.profile-weight-more > div { min-height: 0; overflow: hidden; }
 .profile-chart { height: 160px; margin-top: 12px; }
 .profile-weights { list-style: none; margin: 10px 0 0; padding: 0; }
 .profile-weights li { display: grid; grid-template-columns: 1fr auto 30px; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; border-top: 1px solid var(--card-border); }
@@ -1680,5 +1769,10 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
 .btn-delete:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* The live workout bar's trash (CancelWorkoutButton icon): set apart from Exercise and Finish, and only red on a hover. */
-.bar-discard { width: 36px; padding: 0; justify-content: center; color: var(--muted); margin-right: 6px; }
-@media (hover: hover) { .bar-discard:hover { color: var(--danger); } }
+/* Under a live workout's exercises (CancelWorkoutButton `wide`); the dialog is what stops a stray tap. */
+.discard-btn { width: 100%; justify-content: center; margin-top: 18px; color: var(--danger); }
+/* The live workout bar's time so far, in the rainbow's ink (orange in dark, blue in light). */
+/* On a phone + Exercise is just +, so the time and "0/6 exercises" fit beside it. */
+@media (max-width: 440px) { .bar-add-text { display: none; } .bar-add { width: 36px; padding: 0; justify-content: center; } }
+.bar-sep { margin: 0 7px; color: var(--muted); opacity: 0.6; font-weight: 400; }
+.bar-time { background: var(--ink-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }

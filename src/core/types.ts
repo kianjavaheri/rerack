@@ -16,7 +16,10 @@ export interface Exercise {
   name: string;
   kind: ExerciseKind;
   muscleGroup?: string;
-  /** e.g. "barbell", "dumbbell", "cable" — set for exercises added from the built-in library. */
+  /**
+   * e.g. "barbell", "dumbbell", "cable": from the library, or chosen in the exercise form. Barbell gives Per side and
+   * the plate list. Missing: guessed from the name (`guessEquipment`).
+   */
   equipment?: string;
   /** free-exercise-db id when added from the built-in library, so it isn't added twice. */
   catalogId?: string;
@@ -29,6 +32,11 @@ export interface Exercise {
    * Settings (`restSecondsFor`).
    */
   restSeconds?: number;
+  /**
+   * Compound (false) or isolation (true), chosen in the exercise form; sets which default rest it gets. Missing: the
+   * library's label, else guessed from the name (`useIsIsolation`).
+   */
+  isolation?: boolean;
   /** Barbell lifts: what the bar weighs, in kg (a 35 lb or EZ bar). Missing: the standard 45 lb / 20 kg (`barWeight`). */
   barKg?: number;
   createdAt: Timestamp;
@@ -132,7 +140,14 @@ export interface Session {
   restEndsAt?: Timestamp | null;
   /** Length of the last rest started (the exercise's own), which the bar's Start and Again reuse. */
   restLength?: number;
-  /** The rest bar was closed with its ×: it's a small pill in the page instead, and sets don't start rests. */
+  /** The exercise whose set started the rest under way: changing that exercise's rest length adjusts it. */
+  restExerciseId?: ID | null;
+  /** The rest under way was paused with this many seconds left (`restEndsAt` is null meanwhile); Resume restarts it. */
+  restPausedLeft?: number | null;
+  /**
+   * Old: the rest bar used to have a × that hid it and stopped sets starting rests. Nothing sets it now; a rest started
+   * on the phone clears it (the watch still honours it).
+   */
   restHidden?: boolean;
   /** "Keep going" on the forgotten-workout prompt: delays the next prompt without changing `lastActivityAt`. */
   snoozedAt?: Timestamp;
@@ -151,6 +166,11 @@ export interface Session {
    * workout that was already logged. Dropped when it's finished again.
    */
   resumedFrom?: { finishedAt: Timestamp; durationMinutes?: number | null; entries: SessionEntry[] };
+  /**
+   * Finished on the Apple Watch, which saved it to Apple Health itself (with heart rate): the phone never saves its own
+   * copy (`saveToAppleHealth`), so it isn't there twice.
+   */
+  savedByWatch?: boolean;
   entries: SessionEntry[];
   notes?: string;
 }
@@ -162,10 +182,23 @@ export interface Settings {
   activeRoutineId?: ID | null;
   /** Rest length in seconds, started by checking off a set; 0 = only when started by hand (then 2:00). Missing: `DEFAULT_REST_SECONDS`. */
   restSeconds?: number;
+  /** Default rest for isolation lifts (curls, raises; `isIsolationLift`). Missing: the same as `restSeconds`. */
+  restIsolationSeconds?: number;
+  /** true: checking off an exercise's last set starts a rest too. Missing: no rest then (on to the next exercise). */
+  restAfterLastSet?: boolean;
   /** false: no rest timer at all (no bar, no rest lengths on exercises, nothing starts). Missing: on. */
   restTimer?: boolean;
+  /** true: a Per side weight shows as its plates while not being typed in ("45 + 25" for 70 a side). Missing: off. */
+  perSidePlates?: boolean;
   /** false: no "Go up to…" suggestions while logging. Missing: on. */
   weightSuggestions?: boolean;
+  /**
+   * How much one turn of the Apple Watch's Crown changes a set's weight, per display unit (any amount, e.g. 2.5 lb).
+   * Missing: `DEFAULT_WEIGHT_STEP` (5 lb / 2.5 kg).
+   */
+  weightStep?: Partial<Record<WeightUnit, number>>;
+  /** Keep the screen on while a live workout is open (Settings' switch); missing = on. */
+  keepAwake?: boolean;
   /** The first-run intro (components/Intro.tsx) was finished or skipped. Synced, so it shows once per account. */
   introDone?: boolean;
   /** What you've told the app about yourself (Settings → Profile). Name and photo override the sign-in's. */
@@ -201,10 +234,21 @@ export interface BodyWeight {
 
 export const DEFAULT_SETTINGS: Settings = { unit: 'lb', theme: 'system' };
 export const DEFAULT_REST_SECONDS = 120;
+export const DEFAULT_WEIGHT_STEP: Record<WeightUnit, number> = { lb: 5, kg: 2.5 };
 
-/** Rest after a set of this exercise: its own length if set, else the Settings default. */
-export const restSecondsFor = (exercise: Exercise | undefined, settings: Settings) =>
-  exercise?.restSeconds ?? settings.restSeconds ?? DEFAULT_REST_SECONDS;
+/** The Crown's weight step on the Apple Watch, in the display unit. */
+export const weightStepFor = (settings: Settings) => {
+  const step = settings.weightStep?.[settings.unit];
+  return step && step > 0 ? step : DEFAULT_WEIGHT_STEP[settings.unit];
+};
+
+/** The Settings default rest for a compound lift, or an isolation one (which falls back to the compound length). */
+export const defaultRestSeconds = (settings: Settings, isolation = false) =>
+  (isolation ? settings.restIsolationSeconds : undefined) ?? settings.restSeconds ?? DEFAULT_REST_SECONDS;
+
+/** Rest after a set of this exercise: its own length if set, else the Settings default for its kind of lift. */
+export const restSecondsFor = (exercise: Exercise | undefined, settings: Settings, isolation = false) =>
+  exercise?.restSeconds ?? defaultRestSeconds(settings, isolation);
 
 /** Whole-database snapshot used for export / import and future cloud sync. */
 export interface Snapshot {

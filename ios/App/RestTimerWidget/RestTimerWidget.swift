@@ -12,13 +12,18 @@ struct Palette {
     /// One colour from the sweep for the countdown and its bar: the system only keeps a timer ticking on the lock
     /// screen when it's drawn plainly, and a gradient (fill or mask) flattens it into a still picture.
     let accent: Color
+    /// Laid over the lock screen's own tint: the system draws the background see-through, so in light mode the
+    /// wallpaper tinted it (a lavender over a purple one); a white wash keeps it white.
+    let wash: Color
 
     static func of(dark: Bool) -> Palette {
         dark
             ? Palette(background: rgb(0x0F1011), text: .white, muted: .white.opacity(0.55),
-                      sweep: [rgb(0xF58A5C), rgb(0xF28F82), rgb(0xEF6266), rgb(0xEA5560)], accent: rgb(0xF27870))
-            : Palette(background: rgb(0xF2F1F6), text: rgb(0x111111), muted: .black.opacity(0.5),
-                      sweep: [rgb(0x3D4AD0), rgb(0x2563CF), rgb(0x1A78C4), rgb(0x1488BB)], accent: rgb(0x2563CF))
+                      sweep: [rgb(0xF58A5C), rgb(0xF28F82), rgb(0xEF6266), rgb(0xEA5560)], accent: rgb(0xF27870),
+                      wash: .clear)
+            : Palette(background: .white, text: rgb(0x111111), muted: .black.opacity(0.5),
+                      sweep: [rgb(0x3D4AD0), rgb(0x2563CF), rgb(0x1A78C4), rgb(0x1488BB)], accent: rgb(0x2563CF),
+                      wash: .white.opacity(0.6))
     }
 
     var gradient: LinearGradient { LinearGradient(colors: sweep, startPoint: .leading, endPoint: .trailing) }
@@ -41,10 +46,7 @@ struct RestTimerWidgetBundle: WidgetBundle {
 struct RestTimerLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RestActivityAttributes.self) { context in
-            let palette = Palette.of(dark: context.state.dark)
-            LockScreenView(context: context, palette: palette)
-                .activityBackgroundTint(palette.background)
-                .activitySystemActionForegroundColor(palette.text)
+            ActivityContent(context: context)
         } dynamicIsland: { context in
             // The Dynamic Island is always black, so it uses the dark colours.
             let palette = Palette.of(dark: true)
@@ -93,6 +95,88 @@ struct RestTimerLiveActivity: Widget {
             }
             .keylineTint(palette.sweep[1])
         }
+        // Also on the Apple Watch (its Smart Stack, shown on its own when the activity starts or changes), drawn by
+        // WatchActivityView. Tapping it there opens Rerack on the watch (WKSupportsLiveActivityLaunchAttributeTypes).
+        .supplementalActivityFamilies([.small])
+    }
+}
+
+/// The lock screen's layout on the iPhone; the watch's own on the Apple Watch.
+private struct ActivityContent: View {
+    @Environment(\.activityFamily) private var family
+    let context: ActivityViewContext<RestActivityAttributes>
+
+    var body: some View {
+        if family == .small {
+            WatchActivityView(context: context, palette: Palette.of(dark: true))
+                .activityBackgroundTint(Palette.of(dark: true).background)
+        } else {
+            let palette = Palette.of(dark: context.state.dark)
+            LockScreenView(context: context, palette: palette)
+                .background(palette.wash)
+                // Dark: pure black, like other workout apps' (Hevy's) on the lock screen.
+                .activityBackgroundTint(context.state.dark ? .black : palette.background)
+                .activitySystemActionForegroundColor(palette.text)
+        }
+    }
+}
+
+/// On the watch (small, always dark): while resting the countdown big with its bar, else the exercise and set with
+/// the workout's time so far.
+private struct WatchActivityView: View {
+    let context: ActivityViewContext<RestActivityAttributes>
+    let palette: Palette
+    /// The watch dimmed (wrist turned): timer text then shows dashes for seconds ("1:--"), so the rest shows when it
+    /// ends instead, and the workout's time is left out.
+    @Environment(\.isLuminanceReduced) private var dimmed
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 5) {
+                LogoMark().fill(palette.gradient).frame(width: 15, height: 11)
+                Text(context.attributes.workoutName).lineLimit(1)
+                Spacer(minLength: 4)
+                if !isResting(context) && !dimmed {
+                    Text(context.attributes.startedAt, style: .timer)
+                        .monospacedDigit()
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 56, alignment: .trailing)
+                }
+            }
+            .font(.caption2)
+            .foregroundStyle(palette.muted)
+
+            if isResting(context) {
+                HStack(alignment: .firstTextBaseline) {
+                    RestCaption(palette: palette)
+                    Spacer(minLength: 4)
+                    if dimmed, let end = context.state.restEndsAt {
+                        Text("until \(Text(end, style: .time))")
+                            .font(.system(size: 20, weight: .semibold, design: .rounded).monospacedDigit())
+                            .foregroundStyle(palette.accent)
+                    } else {
+                        Countdown(context: context)
+                            .font(.system(size: 30, weight: .semibold, design: .rounded).monospacedDigit())
+                            .foregroundStyle(palette.accent)
+                    }
+                }
+                RestBar(context: context, palette: palette)
+                Text("Next: \(context.state.exercise)")
+                    .font(.caption2)
+                    .foregroundStyle(palette.muted)
+                    .lineLimit(1)
+            } else {
+                Text(context.state.exercise)
+                    .font(.headline)
+                    .foregroundStyle(palette.text)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                Text(context.state.detail)
+                    .font(.caption)
+                    .foregroundStyle(palette.muted)
+            }
+        }
+        .padding(10)
     }
 }
 
@@ -109,18 +193,18 @@ private struct LockScreenView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 7) {
-                LogoMark().fill(palette.muted).frame(width: 19, height: 14)
+                // The logo in plain white (black in light mode), the name and time quieter beside it.
+                LogoMark().fill(palette.text).frame(width: 17, height: 12)
                 Text(context.attributes.workoutName).lineLimit(1)
                 Spacer()
-                // The workout's time so far (the stopwatch), as opposed to the rest countdown below. One piece of text:
-                // a timer takes all the width it's offered, so as separate views the icon couldn't stay beside the
-                // digits; in the same line, right-aligned, it moves along as they grow.
-                Text("\(Image(systemName: "stopwatch")) \(Text(context.attributes.startedAt, style: .timer))")
+                // The workout's time so far. A timer takes all the width it's offered, so it's capped and
+                // right-aligned.
+                Text(context.attributes.startedAt, style: .timer)
                     .monospacedDigit()
                     .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: 120, alignment: .trailing)
+                    .frame(maxWidth: 110, alignment: .trailing)
             }
-            .font(.subheadline)
+            .font(.footnote)
             .foregroundStyle(palette.muted)
 
             HStack(alignment: .center, spacing: 12) {
@@ -177,7 +261,7 @@ private struct ExercisePicture: View {
     }
 }
 
-/// "REST" over the countdown, so it's clear which of the two times it is (the other is the workout's, by the stopwatch).
+/// "REST" over the countdown, so it's clear which of the two times it is (the other, at the top right, is the workout's).
 private struct RestCaption: View {
     let palette: Palette
 

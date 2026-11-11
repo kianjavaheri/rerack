@@ -7,16 +7,18 @@ import { repo } from '../data';
 import { useFeedback } from './Feedback';
 
 /** Notes toggle. Tinted with a dot when there's something saved, so you know to look. */
-export function NotesButton({ hasNotes, open, onClick, label }: { hasNotes: boolean; open: boolean; onClick: () => void; label: string }) {
+/** `withText`: a gray chip with the icon and "Notes" (an exercise's card while logging); else just the icon. */
+export function NotesButton({ hasNotes, open, onClick, label, withText }: { hasNotes: boolean; open: boolean; onClick: () => void; label: string; withText?: boolean }) {
   return (
     <button
-      className={`icon-btn notes-btn${hasNotes ? ' has-notes' : ''}${open ? ' open' : ''}`}
+      className={`${withText ? 'notes-chip' : 'icon-btn'} notes-btn${hasNotes ? ' has-notes' : ''}${open ? ' open' : ''}`}
       onClick={onClick}
       aria-expanded={open}
       aria-label={hasNotes ? `${label} (has notes)` : label}
       title={label}
     >
-      <NotebookPen size={15} />
+      <NotebookPen size={withText ? 14 : 15} />
+      {withText && 'Notes'}
     </button>
   );
 }

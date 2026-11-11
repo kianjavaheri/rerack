@@ -69,7 +69,8 @@ const lastSaved = new Map<string, string>();
  * no time span, so any earlier copy is removed instead.
  */
 export function saveToAppleHealth(session: Session) {
-  if (!appleHealthOn() || !session.finishedAt) return;
+  // Finished on the Apple Watch, which saved it (with heart rate) itself.
+  if (!appleHealthOn() || !session.finishedAt || session.savedByWatch) return;
   const minutes = sessionDurationMinutes(session);
   if (!minutes) {
     if (lastSaved.get(session.id) !== '') removeFromAppleHealth(session.id);
@@ -84,7 +85,7 @@ export function saveToAppleHealth(session: Session) {
 
 /** Finished workouts Health can take: ones with a duration, not the past sessions made by importing notes. */
 export function healthWorkouts(sessions: Session[]): Session[] {
-  return sessions.filter((s) => s.finishedAt && !isImportedSession(s) && sessionDurationMinutes(s));
+  return sessions.filter((s) => s.finishedAt && !isImportedSession(s) && !s.savedByWatch && sessionDurationMinutes(s));
 }
 
 /**
@@ -103,7 +104,7 @@ const pendingSync = new Map<string, ReturnType<typeof setTimeout>>();
  * typing stops, and only if what Health shows changed.
  */
 export function syncToAppleHealth(session: Session) {
-  if (!appleHealthOn() || !session.finishedAt) return;
+  if (!appleHealthOn() || !session.finishedAt || session.savedByWatch) return;
   clearTimeout(pendingSync.get(session.id));
   pendingSync.set(
     session.id,

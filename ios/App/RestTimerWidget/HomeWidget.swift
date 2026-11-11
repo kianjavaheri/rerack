@@ -140,7 +140,14 @@ struct HomeWidgetView: View {
                 NextWorkout(state: state, palette: palette)
             }
         }
-        .containerBackground(for: .widget) { palette.background }
+        // Dark: the Calendar widget's own background, a soft top-to-bottom fade from #1F1F1F to #0D0D0D.
+        .containerBackground(for: .widget) {
+            if colorScheme == .dark {
+                LinearGradient(colors: [rgb(0x1F1F1F), rgb(0x0D0D0D)], startPoint: .top, endPoint: .bottom)
+            } else {
+                palette.background
+            }
+        }
         // Opens Check in (or the workout already under way), where the next workout is started: src/native/links.ts.
         .widgetURL(URL(string: "rerack://check-in"))
     }

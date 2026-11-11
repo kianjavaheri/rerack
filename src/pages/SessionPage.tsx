@@ -1,4 +1,6 @@
-import { ArrowDown, ArrowLeft, ArrowUp, ChartLine, Check, Disc3, Play, Plus, Repeat, Trash2, X } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, ArrowUp, ChartLine, Check, Disc3, MoreVertical, Play, Plus, Target, Trash2, X } from 'lucide-react';
+import { ActionSheet, type SheetAction } from '../components/ActionSheet';
+import { TargetSheet } from '../components/TargetSheet';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CancelWorkoutButton } from '../components/CancelWorkoutButton';
@@ -10,16 +12,16 @@ import { DEFAULT_SETS, HOME_PATH } from '../config';
 import { NotFound } from '../components/NotFound';
 import { ExerciseNotepad, NotesButton, WorkoutNotepad } from '../components/Notes';
 import { NumericInput } from '../components/NumericInput';
-import { ExercisePrevious, PreviousButton, WorkoutPrevious } from '../components/PreviousLog';
-import { formatRest, RestTimer } from '../components/RestTimer';
+import { ExercisePrevious, PreviousButton } from '../components/PreviousLog';
+import { formatRest, RestTimer, restShown } from '../components/RestTimer';
 import { SetMenu, type SetKind } from '../components/SetMenu';
 import { SupersetButton, SupersetPill, usePills } from '../components/SupersetLink';
 import { PageSkeleton } from '../components/Skeleton';
-import { formatDuration, relativeDay } from '../core/format';
+import { formatDate } from '../core/format';
 import { now } from '../core/ids';
 import { hasNotesOrLinks } from '../core/links';
 import { canResume, emptySet, entryFinishedAt, finalizeSession, isEntryDone, isImportedSession, newEntry, orderByProgress, resumeSession, sessionDurationMinutes } from '../core/sessions';
-import { exerciseLog, exercisesLog, isCompletedSet, lastPerformance, lastPerformanceWithDate, sessionSummary, type PastPerformance } from '../core/stats';
+import { exerciseLog, isCompletedSet, lastPerformance, lastPerformanceWithDate, sessionSummary, type PastPerformance } from '../core/stats';
 import { groupBounds, leaveSuperset, moveIntoSuperset, moveUnlinked, placeAfter, removeUnlinked, restoreLinks, restsAfter, supersetGroups, supersetWith } from '../core/supersets';
 import { DEFAULT_REST_SECONDS, restSecondsFor, type Exercise, type Session, type SessionEntry, type SetLog, type WeightUnit } from '../core/types';
 import { barWeight, isBarbellExercise, platesLabel } from '../core/plates';
@@ -36,7 +38,7 @@ import { openWorkoutSummary } from '../components/SummaryWindow';
 import { WorkoutSummary } from '../components/WorkoutSummary';
 import { workoutSummary } from '../core/summary';
 import { WeightInput } from '../components/WeightInput';
-import { useExerciseMedia } from '../hooks/useCatalog';
+import { useExerciseMedia, useIsIsolation } from '../hooks/useCatalog';
 import { useEditable } from '../hooks/useEditable';
 import { useExercises, useSessions, useWorkouts } from '../hooks/useRepo';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -48,6 +50,7 @@ export function SessionPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { settings } = useSettings();
+  const isIsolation = useIsIsolation();
   const exercises = useExercises();
   const sessions = useSessions();
   const workouts = useWorkouts();
@@ -71,15 +74,17 @@ export function SessionPage() {
     if (id && !origins.current.has(id)) origins.current.set(id, entries[index - 1]?.id ?? null);
   };
   /** The "Previous" window open: an exercise's (its id) or the whole workout's. */
-  const [previous, setPrevious] = useState<{ exerciseId: string } | 'workout' | null>(null);
+  const [previous, setPrevious] = useState<{ exerciseId: string } | null>(null);
   const { notify } = useFeedback();
   const [workoutNotesOpen, setWorkoutNotesOpen] = useState(false);
   const finishing = useRef(false);
+  /** Bumped when a finished rest has been up long enough: the bar goes away (`restShown`). */
+  const [, setRestGone] = useState(0);
 
   // Every change stamps lastActivityAt, which is how a workout left open by mistake is spotted.
   const [session, update] = useEditable<Session>(() => repo.getSession(id), (s) => repo.saveSession({ ...s, lastActivityAt: now() }), [id]);
   // Keep the screen on while logging live, so the phone doesn't lock between sets.
-  useWakeLock(!!session && !session.finishedAt && session.live !== false);
+  useWakeLock(!!session && !session.finishedAt && session.live !== false && settings.keepAwake !== false);
   // Hold an exercise's name and drag it to change the order, or drop it on a Superset pill to link it there.
   const reorder = useDragReorder(
     session?.entries.length ?? 0,
@@ -102,7 +107,6 @@ export function SessionPage() {
   const inProgress = !session.finishedAt;
   const live = session.live !== false;
   const summary = sessionSummary(session);
-  const duration = sessionDurationMinutes(session);
   // Start and Again on the bar reuse the last rest's length (the exercise's own), else the default.
   const barRest = session.restLength || settings.restSeconds || DEFAULT_REST_SECONDS;
   const restAt = (seconds: number) => new Date(Date.now() + seconds * 1000).toISOString();
@@ -111,9 +115,24 @@ export function SessionPage() {
   const restOn = settings.restTimer !== false;
   const startRest = (exerciseId: string) => {
     if (!restOn) return;
-    const seconds = restSecondsFor(exerciseById.get(exerciseId), settings);
-    if (inProgress && live && seconds > 0 && !session.restHidden) update((s) => ({ ...s, restEndsAt: restAt(seconds), restLength: seconds }));
+    const exercise = exerciseById.get(exerciseId);
+    const seconds = restSecondsFor(exercise, settings, isIsolation(exercise));
+    if (inProgress && live && seconds > 0)
+      update((s) => ({ ...s, restEndsAt: restAt(seconds), restLength: seconds, restExerciseId: exerciseId, restPausedLeft: null, restHidden: false }));
   };
+  /**
+   * An exercise's rest length changed while its rest is under way: the rest takes the new length, keeping the time
+   * already rested (3:00 with 1:30 left, changed to 2:00, has 0:30 left). Off (0) ends it.
+   */
+  const restLengthChanged = (exerciseId: string, to: number) =>
+    update((s) => {
+      if (s.restExerciseId !== exerciseId || !s.restEndsAt || !s.restLength || Date.parse(s.restEndsAt) <= Date.now()) return s;
+      if (to === 0) return { ...s, restEndsAt: null };
+      // Worked out from when it started (the end less its length, any ±15 s kept), so typing 2, then 2:3, then 2:30
+      // lands on 2:30 however quickly the saves come back.
+      const startedAt = Date.parse(s.restEndsAt) - s.restLength * 1000;
+      return { ...s, restEndsAt: new Date(startedAt + to * 1000).toISOString(), restLength: to };
+    });
   const template = workouts?.find((w) => w.id === session.workoutId);
   // Per side belongs to this logged workout, so other days can't change. The next time the workout is started it
   // follows the newest one (createSessionFromWorkout).
@@ -227,26 +246,43 @@ export function SessionPage() {
             onRestore={(restored) => update(() => restored)}
           />
         )}
-        {sessions && canResume(session, sessions) && (
-          <button className="btn btn-sm" onClick={() => update(resumeSession)} title="Pick this workout back up; the timer continues from when it started">
-            <Play size={14} /> Resume
-          </button>
+        {!inProgress && (
+          // A finished workout has no bottom bar (a progress count there read as still under way): its actions are here.
+          <div className="row" style={{ gap: 6 }}>
+            {sessions && canResume(session, sessions) && (
+              <button className="btn btn-sm" onClick={() => update(resumeSession)} title="Pick this workout back up; the timer continues from when it started">
+                <Play size={14} /> Resume
+              </button>
+            )}
+            <button className="btn btn-primary btn-sm" onClick={() => (canGoBack() ? navigate(-1) : navigate('/history'))}>
+              Done
+            </button>
+          </div>
         )}
       </div>
 
-      {/* Pinned under Back while logging live; idle until a set is checked off. */}
-      {inProgress && live && restOn && (
+      {/* Only while resting: checking off a set brings it in under Back (pinned to the top once scrolled to); Stop takes it away. */}
+      {inProgress && live && restOn && restShown(session.restEndsAt, session.restPausedLeft) && (
         <RestTimer
           endsAt={session.restEndsAt ?? null}
-          hidden={!!session.restHidden}
+          pausedLeft={session.restPausedLeft ?? null}
           startLabel={formatRest(barRest)}
-          onStart={() => update((s) => ({ ...s, restEndsAt: restAt(barRest) }))}
-          onStop={() => update((s) => ({ ...s, restEndsAt: null }))}
-          onHide={() => update((s) => ({ ...s, restHidden: true, restEndsAt: null }))}
-          onShow={() => update((s) => ({ ...s, restHidden: false }))}
-          onAdjust={(seconds) =>
-            update((s) => ({ ...s, restEndsAt: s.restEndsAt ? new Date(Math.max(Date.now(), Date.parse(s.restEndsAt)) + seconds * 1000).toISOString() : null }))
+          onStart={() => update((s) => ({ ...s, restEndsAt: restAt(barRest), restPausedLeft: null }))}
+          onStop={() => update((s) => ({ ...s, restEndsAt: null, restPausedLeft: null }))}
+          onPause={() =>
+            update((s) =>
+              s.restEndsAt ? { ...s, restPausedLeft: Math.max(1, Math.ceil((Date.parse(s.restEndsAt) - Date.now()) / 1000)), restEndsAt: null } : s,
+            )
           }
+          onResume={() => update((s) => (s.restPausedLeft != null ? { ...s, restEndsAt: restAt(s.restPausedLeft), restPausedLeft: null } : s))}
+          onAdjust={(seconds) =>
+            update((s) =>
+              s.restPausedLeft != null
+                ? { ...s, restPausedLeft: Math.max(1, s.restPausedLeft + seconds) }
+                : { ...s, restEndsAt: s.restEndsAt ? new Date(Math.max(Date.now(), Date.parse(s.restEndsAt)) + seconds * 1000).toISOString() : null },
+            )
+          }
+          onGone={() => setRestGone((n) => n + 1)}
         />
       )}
 
@@ -269,7 +305,6 @@ export function SessionPage() {
             onClick={() => setWorkoutNotesOpen(!workoutNotesOpen)}
           />
         )}
-        <PreviousButton label={`Last times: ${session.name}`} onClick={() => setPrevious('workout')} />
       </div>
       {template && workoutNotesOpen && <WorkoutNotepad key={template.id} workout={template} />}
       {!inProgress && sessions && summary.sets > 0 && (
@@ -351,10 +386,7 @@ export function SessionPage() {
                       : null
                   }
                   unit={settings.unit}
-                  isFirst={i === 0}
-                  isLast={i === session.entries.length - 1}
                   onChange={(fn) => updateEntry(entry.id, fn)}
-                  onMove={(dir) => update((s) => ({ ...s, entries: moveUnlinked(s.entries, i, i + dir) }))}
                   onRemove={() => {
                     // The order and links as they were, so Undo puts it back in its place and in its superset.
                     const before = session.entries.map((e) => ({ id: e.id, supersetNext: e.supersetNext }));
@@ -367,19 +399,23 @@ export function SessionPage() {
                     }
                   }}
                   onSwap={() => setPicking({ mode: 'swap', entryId: entry.id })}
+                  onAddSuperset={() => setSupersetFor(group[group.length - 1].item.id)}
                   onPrevious={() => setPrevious({ exerciseId: entry.exerciseId })}
                   inSuperset={group.length > 1}
                   pillShown={pills.isShown(entry.id)}
                   onSuperset={() => toggleSuperset(entry)}
                   onTogglePerSide={() => togglePerSide(entry)}
                   showRest={inProgress && live && restOn}
-                  onSetDone={(finished) => {
-                    if (restsAfter(session.entries, i)) startRest(entry.exerciseId);
+                  isolation={isIsolation(exerciseById.get(entry.exerciseId))}
+                  onRestChange={(to) => restLengthChanged(entry.exerciseId, to)}
+                  onSetDone={(finished, warmup) => {
+                    // No rest after a warm-up, or after an exercise's last set (on to the next one) unless Settings asks.
+                    if (!warmup && (!finished || settings.restAfterLastSet) && restsAfter(session.entries, i)) startRest(entry.exerciseId);
                     if (!inProgress) return;
                     if (finished) setBursts((n) => n + 1);
-                    // Finished ones first, then ones under way, then untouched (orderByProgress).
+                    // Up past the exercises less far along than it, to the next open spot (orderByProgress).
                     update((s) => {
-                      const entries = orderByProgress(s.entries);
+                      const entries = orderByProgress(s.entries, entry.id);
                       if (entries.every((e, k) => e.id === s.entries[k].id)) return s;
                       flip();
                       return { ...s, entries };
@@ -395,6 +431,7 @@ export function SessionPage() {
                             occurrence: session.entries.slice(0, i).filter((e) => e.exerciseId === entry.exerciseId).length,
                           }),
                           settings.unit,
+                          isBarbellExercise(exerciseById.get(entry.exerciseId)) ? barWeight(exerciseById.get(entry.exerciseId), settings.unit) : undefined,
                         )
                       : null
                   }
@@ -406,47 +443,51 @@ export function SessionPage() {
         ))}
       </div>
 
-      <div className="sticky-bar">
-        {/* Progress through the workout: exercises with every set checked, plus how long it's been going. */}
-        <div className="small tnum" style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          <strong>
-            {session.entries.filter(isEntryDone).length}/{session.entries.length}
-          </strong>
-          <span className="muted bar-unit"> exercises</span>
-          {inProgress && live && (
-            <>
-              {' · '}
-              <Elapsed since={session.startedAt} />
-            </>
-          )}
-          {!inProgress && duration != null && ` · ${formatDuration(duration)}`}
-        </div>
-        <div className="row" style={{ gap: 6 }}>
-          {inProgress && (
-            <CancelWorkoutButton
-              icon
-              session={session}
-              onCancelled={() => navigate('/check-in', { replace: true })}
-              onRestore={(restored) => update(() => restored)}
-            />
-          )}
-          <button className="btn btn-sm" onClick={() => setPicking({ mode: 'add' })}>
-            <Plus size={15} /> Exercise
-          </button>
-          {inProgress ? (
+      {/* Before the bar: the bar sticks at the bottom, and as the last thing on the page it never stops above this. */}
+      {inProgress && (
+        <CancelWorkoutButton
+          wide
+          session={session}
+          onCancelled={() => navigate('/check-in', { replace: true })}
+          onRestore={(restored) => update(() => restored)}
+        />
+      )}
+
+      {inProgress && (
+        <div className="sticky-bar">
+          {/* How long it's been going (to the second, in the rainbow), then exercises with every set checked. */}
+          <div className="small tnum" style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {live && (
+              <>
+                <strong className="bar-time">
+                  <Elapsed since={session.startedAt} />
+                </strong>
+                <span className="bar-sep" aria-hidden>
+                  |
+                </span>
+              </>
+            )}
+            <strong>
+              {session.entries.filter(isEntryDone).length}/{session.entries.length}
+            </strong>
+            <span className="muted bar-unit"> exercises</span>
+          </div>
+          <div className="row" style={{ gap: 6 }}>
+            <button className="btn btn-sm bar-add" onClick={() => setPicking({ mode: 'add' })} aria-label="Add exercise" title="Add exercise">
+              <Plus size={15} /> <span className="bar-add-text">Exercise</span>
+            </button>
             <button className="btn btn-primary btn-sm" onClick={finish}>
               <Check size={15} /> {live ? 'Finish' : 'Save'}
             </button>
-          ) : (
-            <button className="btn btn-primary btn-sm" onClick={() => (canGoBack() ? navigate(-1) : navigate('/history'))}>
-              Done
-            </button>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {!inProgress && (
-        <div className="row" style={{ justifyContent: 'center', marginTop: 20 }}>
+        <div className="row" style={{ justifyContent: 'center', gap: 8, marginTop: 20 }}>
+          <button className="btn btn-sm" onClick={() => setPicking({ mode: 'add' })}>
+            <Plus size={15} /> Exercise
+          </button>
           <button className="btn btn-danger btn-sm" onClick={deleteFinished}>
             <Trash2 size={14} /> Delete session
           </button>
@@ -471,16 +512,7 @@ export function SessionPage() {
         );
       })()}
 
-      {previous === 'workout' && sessions && (
-        <WorkoutPrevious
-          name={session.name}
-          log={exercisesLog(session.entries.map((e) => e.exerciseId), sessions, session.id, session.startedAt)}
-          exerciseById={exerciseById}
-          unit={settings.unit}
-          onClose={() => setPrevious(null)}
-        />
-      )}
-      {previous && previous !== 'workout' && sessions && exerciseById.get(previous.exerciseId) && (
+      {previous && sessions && exerciseById.get(previous.exerciseId) && (
         <ExercisePrevious
           exercise={exerciseById.get(previous.exerciseId)!}
           log={exerciseLog(previous.exerciseId, sessions, session.id, session.startedAt)}
@@ -517,32 +549,38 @@ interface EntryCardProps {
   exercise: Exercise | undefined;
   last: PastPerformance | null;
   unit: WeightUnit;
-  isFirst: boolean;
-  isLast: boolean;
   onChange: (fn: (e: SessionEntry) => SessionEntry) => void;
-  onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
   onSwap: () => void;
+  /** Opens the exercise search to put another exercise in a superset with this one. */
+  onAddSuperset: () => void;
   /** Opens this exercise's "Previous" window: every earlier day's sets. */
   onPrevious: () => void;
   /** In a superset with other exercises; the button at the bottom right takes it out, or shows its Superset pill. */
   inSuperset: boolean;
   pillShown: boolean;
   onSuperset: () => void;
-  /** A set was just checked off (starts the rest timer). */
-  /** A set was checked off. */
-  /** A set was checked off; `finished` when it was the exercise's last one left. */
-  onSetDone: (finished: boolean) => void;
+  /** A set was checked off; `finished` when it was the exercise's last one left, `warmup` for a warm-up. */
+  onSetDone: (finished: boolean, warmup: boolean) => void;
   onTogglePerSide: () => void;
   /** "Go up" weight for this workout (kg), when last time hit the top of the rep range on every set. */
   suggestionKg: number | null;
   /** Live and in progress: shows the exercise's rest length, which can be changed there. */
   showRest: boolean;
+  /** An isolation lift: its default rest is Settings' isolation length. */
+  isolation: boolean;
+  /** Its rest length was changed (to this many seconds). */
+  onRestChange: (seconds: number) => void;
 }
 
-function EntryCard({ handle, entry, exercise, last, unit, isFirst, isLast, onChange, onMove, onRemove, onSwap, onPrevious, inSuperset, pillShown, onSuperset, onSetDone, onTogglePerSide, suggestionKg, showRest }: EntryCardProps) {
+function EntryCard({ handle, entry, exercise, last, unit, onChange, onRemove, onSwap, onAddSuperset, onPrevious, inSuperset, pillShown, onSuperset, onSetDone, onTogglePerSide, suggestionKg, showRest, isolation, onRestChange }: EntryCardProps) {
+  const asPlates = useSettings().settings.perSidePlates === true;
   const [notesOpen, setNotesOpen] = useState(false);
   const [photosOpen, setPhotosOpen] = useState(false);
+  /** The ⋮ menu (a sheet of actions) and the rep target's sheet. */
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [targetOpen, setTargetOpen] = useState(false);
+  const navigate = useNavigate();
   const mediaFor = useExerciseMedia();
   const media = exercise ? mediaFor(exercise) : undefined;
   const bodyweight = exercise?.kind === 'bodyweight';
@@ -586,13 +624,14 @@ function EntryCard({ handle, entry, exercise, last, unit, isFirst, isLast, onCha
     const weightKg = set.weightKg ?? h?.weightKg ?? null;
     if (!reps) return; // nothing to complete yet
     setSet(set.id, { done: true, reps, weightKg, doneAt: new Date().toISOString() });
-    onSetDone(entry.sets.every((s) => s.id === set.id || s.done));
+    onSetDone(entry.sets.every((s) => s.id === set.id || s.done), !!set.warmup);
   };
   const finishedAt = entryFinishedAt(entry);
 
-  // "Go up" stays until the suggested weight is filled into every working set still to do.
+  // "Go up" stays until the suggested weight is filled into every working set still to do, or a working set is logged.
   const toDo = entry.sets.filter((s) => !s.done && !s.warmup && !s.drop);
-  const showSuggestion = suggestionKg != null && toDo.some((s) => s.weightKg !== suggestionKg);
+  const started = entry.sets.some((s) => s.done && !s.warmup);
+  const showSuggestion = suggestionKg != null && !started && toDo.some((s) => s.weightKg !== suggestionKg);
   const applySuggestion = () =>
     onChange((e) => ({ ...e, sets: e.sets.map((s) => (!s.done && !s.warmup && !s.drop ? { ...s, weightKg: suggestionKg } : s)) }));
 
@@ -602,25 +641,35 @@ function EntryCard({ handle, entry, exercise, last, unit, isFirst, isLast, onCha
       return { ...e, sets: [...e.sets, { ...emptySet(), weightKg: last?.weightKg ?? null }] };
     });
 
+  const lastText = last ? (last.undated ? 'Last: no date' : `Last ${shortAgo(last.date)}`) : 'First time';
+  const menuActions: SheetAction[] = [
+    { label: 'Replace exercise', icon: <ArrowLeftRight size={20} />, onSelect: onSwap },
+    { label: 'Add to superset', icon: <Plus size={20} />, onSelect: onAddSuperset },
+    { label: 'Progress', icon: <ChartLine size={20} />, onSelect: () => navigate(`/analytics?exercise=${entry.exerciseId}`) },
+    { label: 'Remove exercise', icon: <X size={20} />, danger: true, onSelect: onRemove },
+  ];
+
   return (
-    <div className="card" style={{ padding: '14px 16px' }}>
-      <div className="spread" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
-        {exercise && media && hasMedia(media) && (
-          // Library exercises have photos: tap to see how it's done.
-          <button className="thumb-btn" onClick={() => setPhotosOpen(true)} aria-label={`Photos of ${exercise.name}`} title="How it's done">
-            <ExerciseThumb media={media} size={44} />
-          </button>
-        )}
-        <div className="holdable" style={{ minWidth: 0, flex: 1 }} {...handle}>
-          <div className="card-title" style={{ fontSize: 16 }}>
+    // Hold anywhere on the card (but a button or field) and drag to move it.
+    <div className="card holdable" style={{ padding: '14px 16px' }} {...handle}>
+      <div className="entry-top">
+        {/* Left: its photo (tap for how it's done). */}
+        <div className="entry-side">
+          {exercise && media && hasMedia(media) && (
+            <button className="thumb-btn" onClick={() => setPhotosOpen(true)} aria-label={`Photos of ${exercise.name}`} title="How it's done">
+              <ExerciseThumb media={media} size={44} />
+            </button>
+          )}
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="card-title" style={{ fontSize: 16, paddingTop: 4 }}>
             {exercise?.name ?? 'Unknown exercise'}
           </div>
-          <div className="muted small" style={{ marginTop: 2 }}>
+          <div className="muted small entry-meta">
             {[
-              // When it was finished (sets checked off before times were kept have none).
+              // When it was finished (sets checked off before times were kept have none), then last time.
               finishedAt ? `Done ${new Date(finishedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : null,
-              entry.targetSets ? `Target ${entry.targetSets} × ${entry.targetReps || '—'}` : null,
-              last ? (last.undated ? 'Last done: no date' : `Last done ${relativeDay(last.date, true)}`) : 'First time',
+              lastText,
             ]
               .filter(Boolean)
               .join(' · ')}
@@ -636,62 +685,58 @@ function EntryCard({ handle, entry, exercise, last, unit, isFirst, isLast, onCha
             </div>
           )}
         </div>
-        <div className="row" style={{ gap: 0, margin: '-4px -6px 0 0' }}>
+        {/* Right, in two columns: its rest over Notes (the same width, lined up), ⋮ over Last (every earlier time). */}
+        <div className="entry-actions">
+          {exercise && showRest && <ExerciseRest exercise={exercise} isolation={isolation} onChange={onRestChange} />}
+          <button className="icon-btn entry-menu" onClick={() => setMenuOpen(true)} aria-label={`Options for ${exercise?.name ?? 'this exercise'}`} title="Options">
+            <MoreVertical size={18} />
+          </button>
           {exercise && (
-            <NotesButton
-              label={`Notes and links for ${exercise.name}`}
-              hasNotes={hasNotesOrLinks(exercise)}
-              open={notesOpen}
-              onClick={() => setNotesOpen(!notesOpen)}
-            />
+            <>
+              <NotesButton
+                withText
+                label={`Notes and links for ${exercise.name}`}
+                hasNotes={hasNotesOrLinks(exercise)}
+                open={notesOpen}
+                onClick={() => setNotesOpen(!notesOpen)}
+              />
+              <PreviousButton label={`Last times: ${exercise.name}`} onClick={onPrevious} />
+            </>
           )}
-          <Link to={`/analytics?exercise=${entry.exerciseId}`} className="icon-btn hide-mobile" aria-label="Analytics">
-            <ChartLine size={15} />
-          </Link>
-          <button className="icon-btn" onClick={onSwap} aria-label="Swap exercise" title="Swap exercise">
-            <Repeat size={15} />
-          </button>
-          <button className="icon-btn hide-mobile" disabled={isFirst} onClick={() => onMove(-1)} aria-label="Move up">
-            <ArrowUp size={15} />
-          </button>
-          <button className="icon-btn hide-mobile" disabled={isLast} onClick={() => onMove(1)} aria-label="Move down">
-            <ArrowDown size={15} />
-          </button>
-          <button className="icon-btn" onClick={onRemove} aria-label="Remove exercise">
-            <X size={15} />
-          </button>
         </div>
       </div>
-
-      {exercise && (
-        <div className="entry-actions">
-          <PreviousButton label={`Last times: ${exercise.name}`} onClick={onPrevious} />
-          {showRest && <ExerciseRest exercise={exercise} />}
-          {barbell && (
-            // Type one side of the bar instead of the total, in this workout. Only how it's shown changes: the same
-            // total reads 115 or 35, and that's all that's saved.
-            <button
-              className={`chip rest-chip${perSide ? ' own' : ''}`}
-              onClick={onTogglePerSide}
-              aria-pressed={perSide}
-              title="Enter the weight on one side of the bar; the total works itself out"
-            >
-              <Disc3 size={13} /> Per side
-            </button>
-          )}
-        </div>
-      )}
+      {menuOpen && <ActionSheet title={exercise?.name ?? 'Exercise'} actions={menuActions} onClose={() => setMenuOpen(false)} />}
+      {targetOpen && <TargetSheet entry={entry} onChange={(targetReps) => onChange((e) => ({ ...e, targetReps }))} onClose={() => setTargetOpen(false)} />}
 
       {exercise && notesOpen && <ExerciseNotepad key={exercise.id} exercise={exercise} />}
       {photosOpen && exercise && media && <ExercisePhotos name={exercise.name} media={media} onClose={() => setPhotosOpen(false)} />}
 
       <div className="set-grid" style={{ marginTop: 12 }}>
-        <span className="head">Set</span>
-        <span className="head" style={{ textAlign: 'center' }}>
+        <span className="head head-set">Set</span>
+        <span className="head reps-head">
           Reps
+          {/* The rep target: "Aim for 6-12 reps per set", and change it for this workout. */}
+          <button className="target-btn" onClick={() => setTargetOpen(true)} aria-label="Rep target" title="Rep target">
+            <Target size={14} strokeWidth={2.3} />
+          </button>
         </span>
-        <span className="head" style={{ textAlign: 'center' }}>
-          {bodyweight ? '+ Weight' : perSide ? 'Per side' : 'Weight'}
+        <span className="head weight-head">
+          {barbell ? (
+            // Type one side of the bar instead of the total, in this workout. Only how it's shown changes: the same
+            // total reads 115 or 35, and that's all that's saved. The whole header is the switch.
+            <button
+              className={`head-btn${perSide ? ' on' : ''}`}
+              onClick={onTogglePerSide}
+              aria-pressed={perSide}
+              title="Enter the weight on one side of the bar; the total works itself out"
+            >
+              <Disc3 size={12} /> {perSide ? 'Per side' : 'Weight'}
+            </button>
+          ) : bodyweight ? (
+            '+ Weight'
+          ) : (
+            'Weight'
+          )}
         </span>
         <span className="head head-done">Done</span>
         {entry.sets.map((set, i) => {
@@ -726,6 +771,7 @@ function EntryCard({ handle, entry, exercise, last, unit, isFirst, isLast, onCha
                 unit={unit}
                 perSide={perSide}
                 bar={bar}
+                asPlates={asPlates}
                 onChange={(weightKg) => setSet(set.id, { weightKg })}
               />
               <button
@@ -740,8 +786,8 @@ function EntryCard({ handle, entry, exercise, last, unit, isFirst, isLast, onCha
           );
         })}
       </div>
-      <div className="spread" style={{ marginTop: 8, flexWrap: 'nowrap' }}>
-        <button className="btn btn-ghost btn-sm" style={{ marginLeft: -6 }} onClick={addSet}>
+      <div className="add-set-row">
+        <button className="btn btn-sm add-set-btn" onClick={addSet}>
           <Plus size={14} /> Add set
         </button>
         <span style={{ marginRight: -6 }}>
@@ -752,11 +798,25 @@ function EntryCard({ handle, entry, exercise, last, unit, isFirst, isLast, onCha
   );
 }
 
+/** Time so far, to the second: "8m 32s", "1h 5m 3s" (short, so "0/6 exercises" still fits beside it on a phone). */
 function Elapsed({ since }: { since: string }) {
   const [, tick] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => tick((n) => n + 1), 30_000);
+    const t = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, []);
-  return <>{formatDuration(Math.max(0, Math.floor((Date.now() - Date.parse(since)) / 60000)))}</>;
+  const total = Math.max(0, Math.floor((Date.now() - Date.parse(since)) / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const sec = total % 60;
+  return <>{h ? `${h}h ${m}m ${sec}s` : m ? `${m}m ${sec}s` : `${sec}s`}</>;
+}
+
+/** Last time, short enough for one line under the name: "today", "3d ago", else "Oct 21". */
+function shortAgo(iso: string) {
+  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diff = Math.round((day(new Date()) - day(new Date(iso))) / 86_400_000);
+  if (diff <= 0) return 'today';
+  if (diff < 7) return `${diff}d ago`;
+  return formatDate(iso);
 }

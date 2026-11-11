@@ -6,8 +6,9 @@ Rerack (renamed from LiftTrack; `APP_NAME` in `src/config.ts`; the repo, bundle 
 `fitness-tracker`, and localStorage keys keep their `lifttrack:` prefix so settings survive), a
 personal workout tracker (React 19 + TypeScript + Vite). Meant to replace a notes app for logging lifts: plan
 workouts/routines, check in to log sets, view progress charts. A web app (also installable as a home-screen PWA) plus
-an iPhone app: a Capacitor shell in `ios/`, shipped through TestFlight (see **iPhone app** below and the README).
+an iPhone app: a Capacitor shell in `ios/`, shipped through TestFlight, with an Apple Watch app (see **iPhone app** below and the README).
 The user commits and deploys themselves; never offer to.
+Plans on hold (social backend on Postgres/Redis/CDN, Android) are in `TODO.md`.
 
 ## Commands
 
@@ -164,10 +165,12 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   history. Warm-ups (`SetLog.warmup`, toggled from the set-number menu) show as "W". A set's placeholders (`hint` in
   SessionPage's EntryCard; also what checking it off empty fills in) are the set above this session once anything's
   in it (11 × 10 in set 1 suggests 11 × 10), else last time's same working set. Checking a set stamps
-  `SetLog.doneAt` (cleared when unchecked): an exercise's finish time (`entryFinishedAt`, shown as "Done 5:12 PM"),
-  and the list keeps the order things were done in (`orderByProgress`): finished exercises first by finish time, then
-  ones under way by start time (first set checked), then untouched ones (start 2, then 4 → 2, 4; finish 4 → 4, 2; a
-  superset moves as one; in progress only, saved, cards slide via `useSlotFlip`). Finishing one plays
+  `SetLog.doneAt` (cleared when unchecked): an exercise's finish time (`entryFinishedAt`, a "✓ 5:12 PM" flare),
+  and the list keeps the order things were done in without undoing one you set (`orderByProgress(entries, entryId)`):
+  checking a set moves that exercise's group up past the groups just above it that are less far along (untouched <
+  under way < finished), nothing else moves. So the next one started takes the next open spot (start 2, then 4 → 2,
+  4, 1, 3; finish 4 while 2 isn't → 4, 2), and one you dragged after another stays there (a superset moves as one;
+  in progress only, saved, cards slide via `useSlotFlip`; the watch's set ops do the same). Finishing one plays
   `components/DoneBurst.tsx` (a rainbow circle whose check draws itself, a ring, two haptic taps; pointer-events none).
   `lastPerformanceWithDate` takes options: `before` (the session's own start, so back-dated logs look further back),
   `occurrence` (same exercise twice in a workout) and prefers real sessions over imported ones. The ✓ "done" flag drives
@@ -256,7 +259,8 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   routine offers to delete workouts used only by it (sessions are always kept).
 - **Press-and-hold menus**: workout cards (Plan, Check in), routine cards (Plan) and session cards (Home's Recent workouts, History) open an
   iOS-style context menu on press-and-hold or right-click (`useLongPress`, with a haptic → `components/ContextMenu.tsx`,
-  which lifts a copy of the card over a light blur; actions in `components/WorkoutActions.tsx`: Edit (opens the editor
+  which lifts a copy of the card over a light blur, sized from `offsetWidth/Height` since a held card is shrunk by
+  `:active` and a copy that size wrapped its text out of the bottom; actions in `components/WorkoutActions.tsx`: Edit (opens the editor
   with `?from=` the current page), Share and **Duplicate** for workouts/routines, Rename, Delete). Duplicating a
   workout opens the copy's editor; a routine asks first (`components/DuplicateRoutineDialog.tsx`: copy its workouts
   too, or share the same ones; `cloneRoutine` in `core/plan.ts` keeps days, every and optional), also from the
@@ -270,7 +274,7 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   while a touch moves, not only where it starts.
 - **Hold and drag to reorder** (`hooks/useDragReorder.ts`): workouts in the routine editor and exercises in the
   workout editor (held anywhere on the card but a field; `.holdable` cards keep their inputs selectable), and
-  exercises in a session (hold the exercise name). The workout editor's exercise cards also have **Replace** (⇄ beside
+  exercises in a session (anywhere on the card). Held on a button, link or field it doesn't start (`startPress`). The workout editor's exercise cards also have **Replace** (⇄ beside
   the superset link: the exercise search, keeps sets/reps/notes, Undo). After 350 ms still the item lifts with a haptic, the page stops
   scrolling by touch (touchmove `preventDefault`) and scrolls itself near the screen edges, the others slide aside, and
   letting go calls the same move as the arrow buttons (`move` / `moveUnlinked`). Moving first is a scroll. Slides
@@ -281,6 +285,12 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   the space. Reading Health is possible now that there's a paid Developer account, if it's ever revisited.
 - **Duration**: `Session.durationMinutes` overrides the timer (null = deliberately none); back-logged sessions have
   none unless typed in. Use `sessionDurationMinutes`.
+- **Exercise form** (`components/ExerciseForm.tsx`): besides name, muscle group and Weighted/Bodyweight, **Equipment**
+  (Barbell, Dumbbell, Machine, Cable, Other; weighted only; `Exercise.equipment`, the library's own spelling) and
+  **Movement** (Compound/Isolation, `Exercise.isolation`). Both show their current value (its own, the library's, or
+  guessed from the name: `guessEquipment`/`equipmentOf` in `core/lifts.ts`, `useIsIsolation`) and are saved only when
+  tapped, so untouched ones keep following the library and name. Barbell is what gives Per side and the plate list
+  (`isBarbellExercise`); Movement picks the default rest (and reaches the watch through `useIsIsolation`).
 - Defaults for new exercise slots live in `src/config.ts` (`DEFAULT_SETS = 2`, `DEFAULT_REPS = '6-12'`).
 
 ## Naming / routes (user-facing names differ from early code names)
@@ -294,12 +304,16 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   row, like Apple TV / HBO Max (`components/AccountButton.tsx`; app only, the web has the nav's account menu). It's one
   button for all the tabs (`FloatingAccountButton`, in Layout, portaled to `<body>` at page coordinates from layout
   offsets), placed over the current page's empty `AccountSlot` (in `PageHead`, and Home's greeting), so it stays still
-  while pages swipe under it and still scrolls with the page; hidden where there's no slot (a workout, Settings); it opens Settings, which in the app is a sub-page with Back and edge swipe. In the home-screen web app a solid strip
+  while pages swipe under it and still scrolls with the page. Scrolled out of sight (`html.account-offscreen`), a page
+  swiping in shows the still copy in its own slot (`.account-ghost`, only in `main.swipe-peek`), so the button comes
+  in with the page instead of popping in once the swipe ends; hidden where there's no slot (a workout, Settings); it opens Settings, which in the app is a sub-page with Back and edge swipe. In the home-screen web app a solid strip
   (`.statusbar-scrim`) covers the status bar plus ~32px because iOS blurs that band and it can't be turned off; the
   iPhone app (`html.native`) has no blur, so its strip only backs the status bar and content starts just below.
   Bottom `.sticky-bar`s sit above the tabs. To test in a browser, add the `standalone` class to `<html>`.
-- "Workouts" → `/workouts` (`PLAN_PATH`) → `pages/WorkoutsPage.tsx` is the plan only, no toggle: routines,
-  workouts, exercises, import (`WorkoutPlan` in `EditWorkoutsPage.tsx`). `/edit` redirects there; editors keep
+- "Workouts" → `/workouts` (`PLAN_PATH`) → `pages/WorkoutsPage.tsx` is the plan only: routines, workouts
+  (`WorkoutPlan` in `EditWorkoutsPage.tsx`). Its top row is a **Programs | Exercises** switch (`.plan-switch`) whose
+  list opens right under it (`ProgramList`, or `ExerciseLibrary` from `ExercisesPage.tsx`; nothing chosen at first,
+  tapping the chosen one puts it away) and **Import from text** on the right (it was "Import from notes"). `/edit` redirects there; editors keep
   `/edit/workouts/:id`, `/edit/routines/:id`, `/edit/exercises`, `/edit/import` and return to it.
 - What you've logged lives on Home: **Recent workouts** (the last 4, `RecentWorkouts` in `WorkoutLogPage.tsx`) under
   Activity, with "See all" → `/history` (`HistoryPage`: every session by month, a sub-page with Back and edge swipe).
@@ -308,44 +322,74 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   mounted; the intro's window classes): the rainbow check pops and draws itself, rings, sparks, "Workout done" and
   three haptic taps, then the summary; × or Done closes it onto the finished workout (which replaced the live page).
   Every finished session with sets shows `components/WorkoutSummary.tsx` at the top (`core/summary.ts`
-  `workoutSummary`: time/sets/volume vs the last time that workout was done, each exercise's sets and
-  up/down/same/new by best e1RM, or reps for bodyweight), so History has it for all; its expand button opens the page
-  again (no celebration). A finished session's Back/Done goes back, else to History.
+  `workoutSummary`): Time, Sets, Volume, Exercises as four small tiles in one row (Volume widest) vs the last time that
+  workout was done, so History has it for all; its expand button opens the page again (no celebration), which alone
+  adds each exercise's sets and up/down/same/"New" by best e1RM, or reps for bodyweight (the workout's own page shows
+  the sets below). No sparkle icons: they read as AI. A finished workout has no bottom bar (an "x/y exercises"
+  count read as still under way): Resume and Done are at the top right, + Exercise beside Delete session at the
+  bottom. Done goes back, else to History.
 - A logged session is `/session/:id`; check-in is `/check-in`. Use "Cancel workout" (not "Stop") for discarding an
   in-progress session — `components/CancelWorkoutButton.tsx` uses an in-app dialog, not `confirm()`; from the
-  workout's page it returns to Check in. The live workout's bottom bar has it too, as a gray trash icon (`icon`,
-  `.bar-discard`) set apart from + Exercise and Finish; the dialog is what stops an accidental tap. To make room, the bar
-  drops the word "exercises" under 440px ("1/4 · 38 min"), and its left side truncates rather than running under
+  workout's page it returns to Check in. Under a live workout's exercises the same thing is a full-width
+  **Cancel workout** too (`wide`, `.discard-btn`; it was a trash icon in the bottom bar, then "Discard workout"), with
+  the very same dialog as the top one; the dialog is what stops an accidental tap. It comes before the bottom bar, which is the page's last thing so it never parks above it; in the
+  app the bar has `margin-bottom: -38px` so it stays at its stuck spot at the page's end instead of rising. The bar
+  reads time so far first, to the second and in `--ink-grad` (`Elapsed`: "8m 32s", `.bar-time`), then a small gray
+  `|` (`.bar-sep`) and "0/6 exercises"; under 440px + Exercise is just + so that fits, and the left side truncates rather than running under
   the buttons.
 - Editor pages accept `?from=<path>` so Save returns to where the user came from (e.g. back to a routine); validate it
   with `safeReturnPath` (rejects `//host`). Session pages go back with `navigate(-1)` when `canGoBack()`.
 - **No `confirm()`/`alert()`**: `components/Feedback.tsx` (`useFeedback`) gives in-app `confirm({…})` dialogs and
   `notify(msg, { undo })` banners. Banners are `width: max-content` (with `left: 50%` a shrink-to-fit box only gets half the
-  screen) and clamp to two lines. Deletes act at once and offer Undo; only irreversible things (backup restore,
+  screen) and clamp to two lines; a pull up (past 30 px, or a flick) swipes one away, a pull down springs back
+  (`ToastBanner`). Deletes act at once and offer Undo; only irreversible things (backup restore,
   signing out with unsynced changes) ask first. Starting a workout while one is open goes through `useStartSession`.
 - **Live workout page**: no date/time row (the bottom bar has the time so far; back-logged and finished ones show the
   date fields: just Date and Time, no Today/Yesterday shortcuts, a new log starting at now) and no "tap the check" hint; the Live / Done badge sits right after the name (`.session-name` grows
-  with the text). Under each exercise's name: a white **Last** pill (info icon; it was "Previous" with a rewind
-  icon, which read as an action) and its rest length.
+  with the text). An exercise card (`EntryCard`): on the left its picture, then the name with small gray text under it ("Last 3d ago",
+  `shortAgo`, or "First time"; once finished "✓ 5:12 PM · Last …"), and on the right a two-column grid
+  (`.entry-actions`): its rest chip over a **Notes** chip (icon and the word, `NotesButton withText`), both as wide as
+  the wider so they line up, and a vertical ⋮ over **Last** (a white circle, lucide `History`; opens the history). The grid's Set and Done headers are centred over their
+  columns (`text-indent` makes up for letter-spacing's trailing gap). The ⋮ opens `components/ActionSheet.tsx` (a sheet with one grouped list, hairlines between rows: Replace
+  exercise, Add to superset (the same search as its Superset pill), Progress, Remove exercise in red). The set
+  grid's **Reps** header is plain text with a small gray target button beside it (`.target-btn`), which opens `components/TargetSheet.tsx` ("Aim for 6-12 reps per set", From / To number
+  fields since iOS's number pad has no hyphen; changes `SessionEntry.targetReps` for this workout only, not the saved
+  workout), and on barbell lifts the **Weight** header is a button (`.head-btn`), the Per side switch ("Weight" ↔ "Per side", rainbow when on). **Add set** is a gray button across
+  the row with its label centred, the superset link after it. The set menu's warm-up item says "Working set" to go
+  back.
 - **During a workout**: the set number is a menu, drawn as a small rounded button with a chevron under the number
   (a plain number didn't read as tappable) (`SetMenu`: warm-up, drop set, plates per side via `core/plates.ts`
   for barbell lifts with a Bar picker, delete). **Drop sets** (`SetLog.drop`) count like working sets everywhere
   (stats, records, Last) but show "D" and take no set number (1, D, 2); they still line up with last time's sets by
   position, and "Go up" skips them. **Bar weight** is per exercise (`Exercise.barKg`, unset = 45 lb / 20 kg;
-  `barWeight`), used by the plate list and Per side entry (`WeightInput`'s `bar`). Checking a set starts the rest timer (`Session.restEndsAt`, length `Settings.restSeconds`, default
-  120 s; any length up to 60:00, typed as minutes and seconds in Settings; 0 = only by hand). `Settings.restTimer === false` (the switch in Settings) turns it off entirely: no bar, no rest
+  `barWeight`), used by the plate list and Per side entry (`WeightInput`'s `bar`). Checking a set starts the rest timer (`Session.restEndsAt`, length `Settings.restSeconds` for compound lifts,
+  default 120 s, and `Settings.restIsolationSeconds` for isolation lifts, missing = the compound length; any length up
+  to 60:00, typed as minutes and seconds in Settings; 0 = only by hand), except a warm-up or an exercise's last set
+  (on to the next exercise) unless `Settings.restAfterLastSet` (the switch under the lengths, which are stacked under
+  their labels; the watch follows it via `WatchState.restAfterLastSet`). Isolation = the library's `isolation` flag (free-exercise-db's "mechanic", in
+  `exerciseCatalog.json`), else guessed from the name (`core/lifts.ts`; `useIsIsolation`). `Settings.restTimer === false` (the switch in Settings) turns it off entirely: no bar, no rest
 chips, nothing starts, nothing on the lock screen. Each exercise can have
 its own (`Exercise.restSeconds`, set from the rest chip under its name, `components/ExerciseRest.tsx`; same in every
-workout; `restSecondsFor`): checking off its set starts that length, and the bar's Start/Again reuse the last one
-(`Session.restLength`). `RestTimer` is a bar under Back for the whole live workout (so it never pops in and shifts
-  the page), sticky flush under the status bar / top nav (no gap for the page to show through and be mis-tapped);
-  while stuck (`.stuck`) it's edge to edge and square at the top (margin, padding and corners animate into it). Idle
-  with "Start 2:00", running with ±15 s and a red Stop (■: ends the rest, bar stays idle), rainbow when over. Its × sets `Session.restHidden`:
-  a small unpinned "Rest timer" pill stays in place (tap to bring the bar back) and sets don't start rests meanwhile.
+workout; `restSecondsFor`), which the Settings defaults never override: checking off its set starts that length, and
+the bar's Start/Again reuse the last one (`Session.restLength`). Changing it while that exercise's rest
+(`Session.restExerciseId`) runs moves the end, keeping the time rested (3:00 with 1:30 left → 2:00 leaves 0:30; worked
+out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `RestTimer` is a bar under Back, there only while resting
+  (`restShown`): by default the top is just Back, Cancel workout and the title row. Checking off a set brings it in;
+  it's sticky flush under the status bar / top nav (no gap for the page to show through and be mis-tapped);
+  while stuck (`.stuck`) it's edge to edge and square at the top (margin, padding and corners animate into it). Running
+  it has ±15 s, Pause and a red Stop at the end (■: ends the rest and the bar goes); paused
+  (`Session.restPausedLeft`, seconds left, `restEndsAt` null; the lock screen and watch show no rest meanwhile) it
+  has Resume; over, it turns rainbow with Again and goes by itself 15 s later. Coming in or going while scrolled
+  down, the page scrolls by its height so what's on screen stays still (Safari has no scroll anchoring).
+  `Session.restHidden` (the old × that hid it) is no longer set; a rest started on the phone clears it.
   In the iPhone app the rest also shows on the lock screen, buzzes when over (see **iPhone app**). "Go up to 120 lb"
   (`core/progression.ts`) suggests +5 lb / +2.5 kg when every working set last time hit the top of the rep range
+  (barbell lifts: the next load whose plates per side are a multiple of 5 lb / 2.5 kg, so 115 → 125, not 120; gone
+  once a working set is logged)
   (off with `Settings.weightSuggestions === false`, the switch in Settings). The
-  screen is kept awake (`useWakeLock`).
+  screen is kept on (`useWakeLock`) unless `Settings.keepAwake === false` (Settings' "Keep the screen on" switch):
+  in the iPhone app by turning off iOS's idle timer (`AppScreenPlugin.swift`, counted since the live page can be drawn
+  twice), on the web by the Wake Lock API.
 - **Supersets**: `supersetNext` on workout slots and session entries links an item to the next (`core/supersets.ts`),
   drawn as a group with a rainbow bar; rest starts only after the group's last exercise. Moving/removing unlinks rather than
   silently re-forming a group. Same UI in the workout editor and while logging (`components/SupersetLink.tsx`): a link
@@ -370,17 +414,20 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   barbell lifts (saved on the entry, so it carries to the next session) and an optional date (iOS draws today in an
   empty date field, so empty it's hidden behind "No date"). `data/logEntry.ts` saves a Log-only record (`dated` if a date was given) and never touches a real workout; the form's
   Remove takes it out, and a dated one is changed from its calendar (`onEdit`). Undo restores exactly what changed.
-- **Per side** (the chip beside Last and rest, barbell lifts only, `SessionEntry.perSide`): the weight field takes one
+- **Per side** (the Weight column's header is the switch, barbell lifts only, `SessionEntry.perSide`): the weight field takes one
   side of the bar and shows the total beside it ("35", "= 115 lb"; bar 45 lb / 20 kg from `core/plates.ts`;
   `components/WeightInput.tsx`). The total is always what's stored, and all that history, charts and Last ever show, so
   toggling only changes how the same number reads (115 ↔ 35). It belongs to that one logged workout, never the
-  exercise (it was once, and toggling an old day changed every other day). A new session of a workout starts each
+  exercise (it was once, and toggling an old day changed every other day). **Per side as plates**
+  (`Settings.perSidePlates`, Settings' switch, off by default): while not being typed in, a per-side weight that takes
+  two or more plates shows as them (`sidePlatesLabel`: "45 + 25" for 70; three or more packed, "45+10+10+2.5"), in
+  13px with the total tucked under it in the same field (`.input.as-display`, `NumericInput`'s `display`); focusing
+  it goes back to the plain number. A new session of a workout starts each
   exercise as the newest session of that workout had it (`createSessionFromWorkout`'s `past`).
-- **Last** (code still says Previous): no such column in the set grid (the placeholders cover it). A **Last** button
-  beside the notes button on each exercise and on the workout opens `components/PreviousLog.tsx`: every earlier day's
+- **Last** (code still says Previous; the button was briefly "History"): no such column in the set grid (the
+  placeholders cover it). Each exercise's **Last** flare opens `components/PreviousLog.tsx`: every earlier day's
   completed sets, newest first, grouped like "2 × 8 · 145 lb" (`exerciseLog`, `groupSets` in `core/stats.ts`). The
-  workout's window is `exercisesLog`: every earlier session of any workout that had one of this session's exercises,
-  showing just those, labelled with that session's name (so incline bench from a freestyle day shows for Upper B).
+  workout-wide one was removed (`exercisesLog` is left unused).
 - The exercise search (`ExercisePicker`) focuses its field only with a mouse; on a phone the keyboard waits for a tap.
 - **Swipe down to close**: every `Modal` (`hooks/useSwipeToClose.ts`; touch only, with a grabber): from anywhere on
   the sheet unless what's under the finger is scrolled down or is a textarea/select/slider. Past 110 px or a fast flick
@@ -436,21 +483,24 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   2 and 100–113 whenever the plan changes, never prompting; permission is asked by Settings' card and the intro's
   Notifications step (after the routine/program, before "You're set"; Later skips it). Local notifications only, so
   the web just stores the choice.
-- **Profile** (the top of Settings, `components/Profile.tsx`; deliberately only there): `ProfileHeader` is laid out like
+- **Profile** (the top of the Settings page, which has two headings: "Profile" at the top, then "Settings"
+  (`.settings-heading`) over the app's settings; `components/Profile.tsx`; deliberately only there): `ProfileHeader` is laid out like
   Hevy's account header (88px photo, tap to change, with a camera badge; the name over label-over-number stats: only
   Workouts for now, finished sessions with sets and not Log-only records; Followers / Following are planned), and
   `ProfileFields` edits name, height and body weight in a card right under it. Name and photo
   (`Settings.profile`; photo is a 256 px JPEG data URL from `utils/image.ts` `squarePhoto`, so it syncs with settings)
   override the sign-in's everywhere through `hooks/useAccount.ts` (`useAccountUser` for avatars and menus,
-  `useFirstName` for greetings); height (ft/in with lb, cm with kg); body weight log `Settings.bodyWeights` (one per
-  day, `core/body.ts`) with a chart and 30-day change.
+  `useFirstName` for greetings); height (ft/in with lb, cm with kg; both take one decimal, so 5 ft 10.5 in); body weight log `Settings.bodyWeights` (one per
+  day, `core/body.ts`) with a chart and 30-day change. The Body weight heading (with a chevron) folds away the chart
+  and history list, closed at first and remembered per device (localStorage `rerack:body-weight-open`); the latest
+  weight, the field and Log always show.
 - **Programs** (`data/programs.ts` `PROGRAMS`, generic names only: Beginner Strength, Full Body Starter, Upper / Lower,
   Push / Pull / Legs, Body Part Split): slots by friendly name + library id + sets × reps, weekdays or `rotateEvery`.
   `addProgram` builds a share payload and goes through `addShared` (reuses your exercises by library id or name),
   returns what it made; `removeProgram` is its Undo. `components/Programs.tsx` `ProgramList` (cards that open to
   show workouts and exercises, "Use this program"; the body is always rendered, `inert` while closed, and opens by
-  animating a grid row from `0fr` to `1fr`, the one way to animate to its natural height, then scrolls into view) is in the intro's routine step and Workouts' **Programs** window
-  (also linked from the empty routines box); using one follows it.
+  animating a grid row from `0fr` to `1fr`, the one way to animate to its natural height, then scrolls into view) is in the intro's routine step and the Workouts page's Programs side
+  (also opened from the empty routines box; `ProgramsWindow` is unused now); using one follows it.
 - **First-run intro** (`components/Intro.tsx`, mounted in Layout as `IntroGate`): its own window (full screen on a
   phone, a panel on wide screens; `.intro`, z 90, under dialogs). Explains routine → workout → exercise (a diagram
   with one colour per level, `--lvl-*`), then step 1 names the routine (presets Push / Pull / Legs, Upper / Lower,
@@ -464,7 +514,7 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
   It covers the whole screen (`inset: 0`, not the `--vv-*` area dialogs use: sized to that, iOS moving it around the
   focused field let the page show through below); with the keyboard up the bottom bar hides (`.keyboard-open`), and
   the grid's search and filters are sticky, scrolled to the top on focus so results fill down to the keyboard. Both
-  the welcome step and the routine step offer Import from notes (finishes the intro, opens `/edit/import`).
+  the welcome step and the routine step offer Import from text (finishes the intro, opens `/edit/import`).
   **Testing:** `SHOW_INTRO_TO_EXISTING = true` also shows it to existing accounts that never saw it; set false once
   tested.
 - **Swipes (installed app only)**: an edge swipe goes back on `/session/…` and `/edit/…` pages (`useEdgeSwipeBack`).
@@ -566,8 +616,10 @@ workout; `restSecondsFor`): checking off its set starts that length, and the bar
 
 ## iPhone app (`ios/`, Capacitor 8)
 
+Portrait only (Info.plist's `UISupportedInterfaceOrientations`; the PWA manifest has `orientation: 'portrait'`), and `html` has
+`-webkit-text-size-adjust: 100%` because iOS enlarged paragraphs when the page turned sideways and they stayed big.
 Bundle ID `com.kianjavaheri.fitnesstracker`; home-screen name Rerack; App Store Connect name "LiftTrack: Workout
-Log" (to be renamed there by hand) (TestFlight only, internal testing; Xcode Cloud isn't used). iOS 17+, iPhone only.
+Log" (to be renamed there by hand) (TestFlight only, internal testing; Xcode Cloud isn't used). iOS 18+, iPhone only.
 
 **Workflow.** `npm run ios:live` (scripts/ios-live.sh) points the app at the Vite dev server on this Mac and opens
 Xcode; the user presses Run once with the iPhone selected, then web edits reload on the phone in seconds. Native
@@ -577,7 +629,9 @@ on a TestFlight build. Stopping it (Ctrl+C) re-copies the bundled config, and Re
 launch screen away from home Wi-Fi. Shipping: `npm run ios` (builds the latest web app into the bundle), then
 Xcode → Any iOS Device → Product → Archive → Distribute App → **App Store Connect** (not "TestFlight Internal
 Only").
-The app bundles the web build: `npm run deploy` doesn't update it. App and widget must keep the same
+The app bundles the web build: `npm run deploy` doesn't update it. `cap sync` writes `CapApp-SPM/Package.swift` with
+the project's iOS 18, which needs swift-tools 6.0 (`swiftToolsVersion` in `capacitor.config.ts`; Capacitor's 5.9 has no
+`.v18`). App and widget must keep the same
 MARKETING_VERSION / CURRENT_PROJECT_VERSION.
 
 **Native pieces** (each a no-op on the web; `src/native/platform.ts` has `isNative` and `SITE_URL`; `index.html` adds
@@ -587,6 +641,7 @@ MARKETING_VERSION / CURRENT_PROJECT_VERSION.
   JS calls fail with `UNIMPLEMENTED`.
 - `AppViewController.swift` registers this app's plugins (`bridge?.registerPluginInstance`) and turns iOS scroll
   bounce back on (Capacitor sets `bounces = false`).
+- Keep the screen on: `hooks/useWakeLock.ts` → `AppScreenPlugin.swift` (`UIApplication.isIdleTimerDisabled`).
 - Haptics: `utils/haptics.ts` (`haptic`, `hapticAlert`, `prepareHaptic`) → `AppHapticsPlugin.swift`, which plays
   taps through **Core Haptics** (`CHHapticEngine`, fallback `AudioServicesPlaySystemSound(1519)`).
   `UIImpactFeedbackGenerator` (what @capacitor/haptics uses, removed) was accepted but silent in this app on iOS 27.
@@ -598,15 +653,19 @@ MARKETING_VERSION / CURRENT_PROJECT_VERSION.
   (the app saves a 132 px copy, a GIF's first frame, into the app group `group.com.kianjavaheri.fitnesstracker`
   (`ExerciseImages` in `Shared/RestActivityAttributes.swift`; both targets' entitlements; `prefetchImages` fetches a
   workout's ahead of time) since the widget can't download), and while resting the countdown (captioned "REST"; the
-  workout's time so far has a stopwatch icon, so the two times are told apart) and a bar in one colour
+  workout's time so far is at the top right, in a footnote-size line with the workout's name and the logo in plain
+  white) and a bar in one colour
   from the theme's sweep (`Palette.accent`). A timer `Text` takes all the width it's offered: the countdown is laid
   over a hidden "0:00" so it leaves the exercise's name room (2 lines, shrinking to 80% before truncating), and the
-  stopwatch is in the same `Text` as the time so far, right-aligned, so it stays beside the digits as they grow. Keep timers there plain: a gradient fill or mask on a `Text(timerInterval:)`
-  or timer `ProgressView` makes the system flatten it to a still picture, and it stops counting. It follows the app's light/dark theme (`dark` in the content state). (Plugin and type names still say
+  time so far is capped and right-aligned. Keep timers there plain: a gradient fill or mask on a `Text(timerInterval:)`
+  or timer `ProgressView` makes the system flatten it to a still picture, and it stops counting. It follows the app's light/dark theme (`dark` in the content state); dark is pure black, like Hevy's. The lock screen draws its background
+  see-through, so light mode adds a white wash (`Palette.wash`) or the wallpaper tints it. (Plugin and type names still say
   "Rest".) It's a Live
   Activity (`RestActivityPlugin.swift`; drawn by the `ios/App/RestTimerWidget` extension;
   `ios/App/Shared/RestActivityAttributes.swift` is in both targets), schedules a local "Rest over" notification
-  (independently, so one failing can't block the other) and plays `hapticAlert()` if the app is open.
+  (independently, so one failing can't block the other; its sound is `ios/App/App/rest-over.caf`, a soft half-second
+  two-note chime written by `node scripts/rest-sound.mjs`, bundled by `ios-setup-project.rb`; heard in earbuds, and
+  from the speaker unless on silent) and plays `hapticAlert()` if the app is open.
 - Google sign-in: Google blocks its web sign-in inside apps, so `auth/session.ts` uses the native sheet
   (`@capgo/capacitor-social-login`) → `signInWithCredential`. Sign in with Apple uses the same plugin's native sheet
   (`apple: true` in `capacitor.config.ts`, `com.apple.developer.applesignin` in `App.entitlements`) with a nonce (Apple
@@ -624,11 +683,12 @@ MARKETING_VERSION / CURRENT_PROJECT_VERSION.
   `AppWidgetPlugin.swift`, which stores `HomeWidgetData` (`ios/App/Shared/HomeWidgetData.swift`, both targets) in the
   app group's UserDefaults and reloads the timeline only when it changed. The widget works out the day itself, with an
   entry at each midnight, so it stays right while the app is closed (trained-today only updates when the app runs).
-  Follows the system light/dark, not the app's setting. Tapping it opens `rerack://check-in` (`widgetURL`; the scheme
+  Follows the system light/dark, not the app's setting; dark is the Calendar widget's background (a top-to-bottom
+  fade, #1F1F1F to #0D0D0D). Tapping it opens `rerack://check-in` (`widgetURL`; the scheme
   is written into Info.plist by `scripts/ios-google-scheme.mjs` with Google's): `native/links.ts` `useAppLinks`
   (Layout, `@capacitor/app` launch URL + `appUrlOpen`, waits for the sessions) goes to the open workout, else Check in.
   Compile-checked only.
-- Apple Health: `native/health.ts` → `AppHealthPlugin.swift` saves a finished workout (with a duration) as
+- Apple Health: `native/health.ts` → `AppHealthPlugin.swift` (skips sessions the Apple Watch saved, `savedByWatch`) saves a finished workout (with a duration) as
   strength training, tagged with the session id (`HKMetadataKeyExternalUUID`) so finishing again replaces it and
   deleting removes it (even with saving turned off). Calls run one at a time (two saves at once would each add one);
   editing a finished workout's name, date or duration re-saves it (`syncToAppleHealth`, debounced). Off until turned on in Settings (per phone, localStorage `lifttrack:apple-health`; Health
@@ -664,9 +724,86 @@ inline the shapes rather than relying on `<use>`. No simulator runtime is instal
 and leave real testing to the user's phone:
 
 ```bash
-xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator \
+xcodebuild -project ios/App/App.xcodeproj -scheme App \
   -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO -quiet
 ```
+
+(No `-sdk iphonesimulator`: it forces the iOS SDK onto the embedded watch app too, which then fails on its icon.)
+
+**Apple Watch app** (`ios/App/RerackWatch`, SwiftUI, watchOS 10+, bundle `….watchkitapp`, a single-target watch
+app embedded in the iPhone app's `Watch` folder; added by `scripts/ios-setup-project.rb`, so list new watch Swift files
+in its `WATCH_FILES`). A whole live workout from the watch: start one (the followed routine's Up next, then every
+workout), log each set (weight and reps prefilled from the set's placeholders, tap one and turn the Crown: one rep, or
+`Settings.weightStep[unit]` (Settings' "Apple Watch weight step" card, app only, any amount; default 5 lb / 2.5 kg,
+`weightStepFor`, sent as `WatchState.weightStep`); watchOS doesn't snap the Crown's value, so `SetView` counts whole
+steps from where the set opened, the first one to the next multiple: 117 → 120), check it off (the ✓ is gray until
+checked, then the sweep; tapping it on a checked set unchecks it and stops the rest it started; a checked set's
+changed numbers save a second after the Crown rests), Per side for barbell lifts (`WatchExercise.bar`; toggled in
+an exercise's set list, a `perSide` op; the weight box then shows and turns one side, "per side · 115 lb" (the total small), and above the
+heaviest plate, unless "Show as plates" is off (watch-only `@AppStorage`), as its plates: 70 → "45+25"), ‹ › between sets or pick any from the exercises page (and add a set), rest with ±15 s
+and stop, finish or cancel. Three vertical pages: the set (or the rest while it runs; "Next: …" under the countdown
+peeks at the set), the exercises, the workout (time, heart rate, Start rest, Finish, Cancel workout).
+- **Watch-first, queued** (chosen so it works with the phone locked in a pocket, the app killed, or no phone nearby):
+  the web view doesn't run then (a background wake starts only native code: no scene, no JS), so the watch logs on
+  its own copy. The phone sends a `WatchState` (`src/core/watch.ts` `watchState`: the open live session without
+  `resumedFrom`, last time's sets per entry, each exercise's name / rest (`restSecondsFor` with compound/isolation) /
+  bodyweight / picture, the rest default, and every workout as `createSessionFromWorkout` would make it, with last
+  time's sets per slot) as the WatchConnectivity application context. Each change on the watch is a `WatchOp` (`start`
+  with the whole session built on the watch, `set` (a set as it is now, added if new), `rest`, `finish`, `cancel`,
+  `presence`), values not changes, so replaying one twice is harmless. The watch applies it at once, keeps it in
+  `pending` and shows the state with pending ops replayed over it (`WatchStore.replay`, mirroring `applyWatchOp`).
+  Ops go by `transferUserInfo` (FIFO, delivered even to a killed app) plus a `sendMessage` ping when reachable, which
+  wakes the phone app in the background.
+- Phone, native (`WatchBridge.swift`, activated in `AppDelegate` so a background launch has it): keeps ops in
+  UserDefaults in order until JS acknowledges them, ignores repeats by `src` (one id per watch install) + `seq`, and
+  updates the lock screen itself from each op's `display` (`RestActivityPlugin.updateRunning`: only an activity
+  already showing; one can't be started from the background), cancelling the phone's "Rest over" (id 1) on rest ops,
+  ending it on finish/cancel. `WatchPlugin.swift` (`Watch` in JS). JS (`src/native/watch.ts` `useAppleWatch`, in
+  Layout): once the sessions have loaded, applies ops through `repo` (`applyWatchOp`: set ops reorder with
+  `orderByProgress`, finish is `finalizeSession` at the watch's time), acks each, then sends a fresh state read
+  straight from the repo. The context carries `applied` (the last op applied), and the watch drops its pending ops up
+  to it; an ack never sends the old state (that would undo them on the watch until the next). So the cloud and the
+  phone's screens catch up when the phone app next runs (opening it does it).
+- **Timers on the watch are `TimelineView`s** ticking each second with the text formatted by hand: a timer `Text`
+  (`timerInterval:` / `style: .timer`) shows "1:--" when the watch dims (wrist turned), and the workout session lets
+  a timeline keep 1 Hz then. The Smart Stack's Live Activity (`WatchActivityView`) can't do that: dimmed
+  (`isLuminanceReduced`) it shows "until 5:12 PM" and drops the workout's time.
+- **Rest**: same rules on the watch (`WatchStore.check`: none after a warm-up, an exercise's last set, or inside a
+  superset; per-exercise and compound/isolation lengths from the state; `restHidden` blocks auto rests; Start uses
+  `restLength` else the default). While its workout session runs the watch schedules its own "Rest over"
+  notification and taps the wrist when it ends: its `willPresent` plays `.notification` and holds the banner back (returning
+nothing there was silent, wrist down counts as in front); with no notification scheduled the rest screen taps it, and tells the
+  phone (`presence`): `useAppleWatch` returns that session id and Layout stops the phone's rest notification for it,
+  so it doesn't buzz twice.
+- **Workout session and Health** (`WorkoutManager.swift`): an `HKWorkoutSession` (strength training, backdated to the
+  session's start) runs while a workout is open on the watch: keeps the app in front, heart rate on the workout page,
+  recovered after a relaunch. Finishing on the watch saves it to Health with heart rate and energy, tagged with the
+  session id (`HKMetadataKeyExternalUUID`), and the finish op says so: the session gets `savedByWatch`, and the
+  phone's `saveToAppleHealth` / `syncToAppleHealth` / `healthWorkouts` skip it. Finished or cancelled on the phone,
+  the watch discards its workout and the phone saves its own as before. Deleting removes copies from both sources
+  (`AppHealthPlugin.removeCopies` matches any source whose bundle id starts with the app's).
+- **Starting on the phone opens the watch** (like Hevy): `useAppleWatch` calls `Watch.startWatchApp` (WatchPlugin →
+  `HKHealthStore.startWatchApp` with a strength-training configuration) once for a live workout started in the last
+  2 min (remembered in localStorage `rerack:watch-launched`; not for ones started on the watch, `startedOnWatch`),
+  after sending its state. watchOS launches the watch app (`WatchAppDelegate.handle(_ workoutConfiguration:)` →
+  `WatchStore.launchedForWorkout`): a `.start` tap, and the workout session starts at once with no app session yet
+  (`WorkoutManager.isUnassigned`), which brings the app to the front; when the workout arrives in the state,
+  `adopt` tags it with the session id and name. Dropped after 2 min if it never comes.
+- **The iPhone's Live Activity on the watch**: `supplementalActivityFamilies([.small])` with its own layout
+  (`WatchActivityView` in `RestTimerWidget.swift`: the countdown and bar while resting, else exercise, set and time),
+  so it appears in the watch's Smart Stack by itself; the watch app's `WKSupportsLiveActivityLaunchAttributeTypes`
+  (`RestActivityAttributes`) makes tapping it open Rerack there. That API needs iOS 18, so the widget extension's
+  deployment target is 18, and so is the app's (`DEPLOYMENT` in the setup script). Only exists when the phone started the activity (it can't be started from the background), so a
+  workout started on the watch with the phone asleep has none until the phone app opens.
+- Watch buttons are drawn by hand (`RoundButton`, the sweep capsule for ✓): toolbar `.bottomBar` items came out as
+  blank tinted circles on watchOS 27.
+- Running on the watch from Xcode needs it paired in **Device Hub** (Xcode 27's devices window, ⇧⌘2): watchOS 27
+  watches pair by hand ("user-driven network pairing"), not through the iPhone. If it never shows up, `sudo pkill -9
+  remotepairingd` and keep the watch unlocked on the same Wi-Fi; Developer Mode appears on the watch after pairing.
+  "Could not get trait set for device Watch7,9" from the asset catalog is Xcode not knowing the Series 10: harmless.
+- Not handled: starting on the watch while the phone has a different workout open that the watch hasn't heard of
+  (both stay open); the watch keeps the last account's state after signing out; no exercise pictures on the watch.
+  Compile-checked only (watchOS SDK; no watch simulator runtime).
 
 **Judging animation from screen recordings.** The user sends iPhone screen recordings (often alongside Apple's Health
 app as the reference). iOS writes a frame only when the screen changes, so gaps between frame timestamps longer than

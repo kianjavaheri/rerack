@@ -240,7 +240,7 @@ function Intro() {
                 <NotebookPen size={20} />
                 <span style={{ flex: 1 }}>
                   <span className="card-title" style={{ display: 'block' }}>
-                    Import from notes
+                    Import from text
                   </span>
                   <span className="muted small">Paste a plan you’ve written down and it becomes workouts.</span>
                 </span>

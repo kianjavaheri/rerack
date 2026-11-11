@@ -93,11 +93,11 @@ public class AppHealthPlugin: CAPPlugin, CAPBridgedPlugin {
 
     /// Deletes this app's workouts saved for the session, then carries on (even if there were none or it failed).
     private func removeCopies(of id: String, then next: @escaping () -> Void) {
-        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
-            HKQuery.predicateForObjects(withMetadataKey: HKMetadataKeyExternalUUID, allowedValues: [id]),
-            HKQuery.predicateForObjects(from: .default()),
-        ])
-        let query = HKSampleQuery(sampleType: workoutType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { [weak self] _, samples, _ in
+        // This app's copies, and the Apple Watch app's (it saves workouts finished there, with heart rate).
+        let predicate = HKQuery.predicateForObjects(withMetadataKey: HKMetadataKeyExternalUUID, allowedValues: [id])
+        let ownBundle = Bundle.main.bundleIdentifier ?? ""
+        let query = HKSampleQuery(sampleType: workoutType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { [weak self] _, found, _ in
+            let samples = found?.filter { $0.sourceRevision.source.bundleIdentifier.hasPrefix(ownBundle) }
             guard let self = self, let samples = samples, !samples.isEmpty else { return next() }
             self.store.delete(samples) { _, error in
                 if let error = error { NSLog("[AppHealth] couldn't remove the earlier copy: %@", error.localizedDescription) }

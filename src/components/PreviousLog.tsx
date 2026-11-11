@@ -1,5 +1,5 @@
-import { Info } from 'lucide-react';
-import { groupSets, type PastSets, type PastWorkout } from '../core/stats';
+import { History } from 'lucide-react';
+import { groupSets, type PastSets } from '../core/stats';
 import type { Exercise, SetLog, WeightUnit } from '../core/types';
 import { formatWeight } from '../core/units';
 import { Modal } from './Modal';
@@ -8,10 +8,11 @@ import { Modal } from './Modal';
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 
 /** The "Previous" button, beside the notes button on an exercise and on the workout. */
+/** Last: a white circle with the history icon (under the exercise's photo); opens every earlier time it was done. */
 export function PreviousButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button className="prev-btn" onClick={onClick} aria-label={label} title={label}>
-      <Info size={14} strokeWidth={2.4} /> Last
+    <button className="prev-btn" onClick={onClick} aria-label={label} title="Last times">
+      <History size={15} strokeWidth={2.4} />
     </button>
   );
 }
@@ -45,48 +46,6 @@ export function ExercisePrevious({ exercise, log, unit, onClose }: { exercise: E
             <div key={p.sessionId} className="past-day">
               <div className="past-date">{p.undated ? 'No date' : day(p.date)}</div>
               <SetChips sets={p.sets} unit={unit} bodyweight={exercise.kind === 'bodyweight'} />
-            </div>
-          ))}
-        </div>
-      )}
-    </Modal>
-  );
-}
-
-/** This workout's exercises in earlier sessions of any workout: date and that session's name, then each one's sets. */
-export function WorkoutPrevious({
-  name,
-  log,
-  exerciseById,
-  unit,
-  onClose,
-}: {
-  name: string;
-  log: PastWorkout[];
-  exerciseById: Map<string, Exercise>;
-  unit: WeightUnit;
-  onClose: () => void;
-}) {
-  return (
-    <Modal title={name} onClose={onClose} expandable>
-      {log.length === 0 ? (
-        <p className="muted">None of these exercises have been logged before.</p>
-      ) : (
-        <div className="past-list">
-          {log.map((p) => (
-            <div key={p.sessionId} className="past-day">
-              <div className="past-date">
-                {p.undated ? 'No date' : day(p.date)} <span className="muted past-session">· {p.name}</span>
-              </div>
-              {p.exercises.map((e, i) => {
-                const exercise = exerciseById.get(e.exerciseId);
-                return (
-                  <div key={`${e.exerciseId}-${i}`} className="past-exercise">
-                    <div className="past-name">{exercise?.name ?? 'Unknown exercise'}</div>
-                    <SetChips sets={e.sets} unit={unit} bodyweight={exercise?.kind === 'bodyweight'} />
-                  </div>
-                );
-              })}
             </div>
           ))}
         </div>

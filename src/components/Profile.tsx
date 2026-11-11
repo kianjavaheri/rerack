@@ -1,4 +1,4 @@
-import { Camera, User, X } from 'lucide-react';
+import { Camera, ChevronDown, User, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../auth/AuthProvider';
@@ -14,6 +14,16 @@ import { NumericInput } from './NumericInput';
 
 // The top of Settings, like an app's profile page (after Hevy's): your photo, name and counts, then your name, height
 // and body weight to edit right there. The name and photo override the sign-in's everywhere (hooks/useAccount.ts).
+
+/** Body weight's chart and history shown (per device); closed at first, since together they're a whole screen. */
+const WEIGHTS_OPEN_KEY = 'rerack:body-weight-open';
+const readOpen = () => {
+  try {
+    return localStorage.getItem(WEIGHTS_OPEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
 
 function useProfile() {
   const { settings, update } = useSettings();
@@ -91,6 +101,16 @@ export function ProfileFields() {
   const unit = settings.unit;
   const weights = settings.bodyWeights ?? [];
   const [weightText, setWeightText] = useState('');
+  const [weightsOpen, setWeightsOpen] = useState(readOpen);
+  const toggleWeights = () => {
+    const open = !weightsOpen;
+    setWeightsOpen(open);
+    try {
+      localStorage.setItem(WEIGHTS_OPEN_KEY, open ? '1' : '0');
+    } catch {
+      // Private mode: it just won't be remembered.
+    }
+  };
   const name = profile.name ?? '';
 
   const today = dayString(new Date());
@@ -118,10 +138,11 @@ export function ProfileFields() {
           <div className="affix" style={{ maxWidth: 140 }}>
             <NumericInput
               ariaLabel="Height in centimetres"
-              value={profile.heightCm ? Math.round(profile.heightCm) : null}
+              value={profile.heightCm ? Math.round(profile.heightCm * 10) / 10 : null}
               placeholder="cm"
+              decimal
               format={(v) => (v == null ? '' : String(v))}
-              parse={(t) => (t ? parseInt(t, 10) : null)}
+              parse={(t) => { const n = parseFloat(t.replace(',', '.')); return Number.isFinite(n) ? Math.round(n * 10) / 10 : null; }}
               onChange={(cm) => setProfile({ heightCm: cm && cm > 0 ? cm : undefined })}
             />
             <span className="suffix">cm</span>
@@ -144,9 +165,10 @@ export function ProfileFields() {
                 ariaLabel="Height, inches"
                 value={ft ? ft.in : null}
                 placeholder="10"
+                decimal
                 format={(v) => (v == null ? '' : String(v))}
-                parse={(t) => (t ? parseInt(t, 10) : null)}
-                onChange={(i) => setProfile({ heightCm: fromFeetInches(ft?.ft ?? 0, Math.min(11, i ?? 0)) || undefined })}
+                parse={(t) => { const n = parseFloat(t.replace(',', '.')); return Number.isFinite(n) ? Math.round(n * 10) / 10 : null; }}
+                onChange={(i) => setProfile({ heightCm: fromFeetInches(ft?.ft ?? 0, Math.min(11.9, Math.max(0, i ?? 0))) || undefined })}
               />
               <span className="suffix">in</span>
             </div>
@@ -155,15 +177,25 @@ export function ProfileFields() {
       </div>
 
       <section className="profile-weight">
-        <div className="spread">
-          <h3 className="profile-subhead">Body weight</h3>
+        {/* The heading opens and closes the chart and history; the latest weight and field stay either way. */}
+        <button
+          className="spread profile-weight-toggle"
+          onClick={toggleWeights}
+          aria-expanded={weightsOpen}
+          disabled={weights.length === 0}
+          aria-label={weightsOpen ? 'Hide body weight chart and history' : 'Show body weight chart and history'}
+        >
+          <h3 className="profile-subhead">
+            Body weight
+            {weights.length > 0 && <ChevronDown size={16} className={`profile-chevron${weightsOpen ? ' open' : ''}`} />}
+          </h3>
           {latest && (
             <span className="muted small tnum">
               {formatWeight(latest.kg, unit)} {unit}
               {change != null && Math.abs(change) >= 0.05 && ` · ${change > 0 ? '+' : '−'}${formatWeight(Math.abs(change), unit)} in 30 days`}
             </span>
           )}
-        </div>
+        </button>
         <div className="row" style={{ gap: 8, marginTop: 8 }}>
           <div className="affix" style={{ flex: 1 }}>
             <input
@@ -182,58 +214,63 @@ export function ProfileFields() {
             Log
           </button>
         </div>
-        {data.length >= 2 && (
-          <div className="profile-chart">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
-                <XAxis
-                  dataKey="t"
-                  type="number"
-                  scale="time"
-                  domain={['dataMin', 'dataMax']}
-                  tickFormatter={(t: number) => formatDate(new Date(t).toISOString())}
-                  tick={{ fill: 'var(--muted)', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                  minTickGap={28}
-                />
-                <YAxis domain={['dataMin - 2', 'dataMax + 2']} tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
-                <Tooltip
-                  cursor={{ stroke: 'var(--faint)', strokeWidth: 1 }}
-                  content={({ active, payload, label }) =>
-                    active && payload?.length ? (
-                      <div className="chart-tooltip small tnum">
-                        <div className="muted">{formatDateLong(new Date(Number(label)).toISOString())}</div>
-                        <strong>
-                          {String(payload[0].value)} {unit}
-                        </strong>
-                      </div>
-                    ) : null
-                  }
-                />
-                <Line type="monotone" dataKey="v" stroke={ACCENT[resolvedTheme]} strokeWidth={2} dot={data.length <= 30 ? { r: 3, fill: ACCENT[resolvedTheme], strokeWidth: 0 } : false} isAnimationActive={false} />
-              </LineChart>
-            </ResponsiveContainer>
+        {/* Chart and history, folded away by the heading (animated from 0fr to 1fr, like the program cards). */}
+        <div className={`profile-weight-more${weightsOpen ? ' open' : ''}`} inert={!weightsOpen}>
+          <div>
+            {data.length >= 2 && (
+              <div className="profile-chart">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
+                    <XAxis
+                      dataKey="t"
+                      type="number"
+                      scale="time"
+                      domain={['dataMin', 'dataMax']}
+                      tickFormatter={(t: number) => formatDate(new Date(t).toISOString())}
+                      tick={{ fill: 'var(--muted)', fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      minTickGap={28}
+                    />
+                    <YAxis domain={['dataMin - 2', 'dataMax + 2']} tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
+                    <Tooltip
+                      cursor={{ stroke: 'var(--faint)', strokeWidth: 1 }}
+                      content={({ active, payload, label }) =>
+                        active && payload?.length ? (
+                          <div className="chart-tooltip small tnum">
+                            <div className="muted">{formatDateLong(new Date(Number(label)).toISOString())}</div>
+                            <strong>
+                              {String(payload[0].value)} {unit}
+                            </strong>
+                          </div>
+                        ) : null
+                      }
+                    />
+                    <Line type="monotone" dataKey="v" stroke={ACCENT[resolvedTheme]} strokeWidth={2} dot={data.length <= 30 ? { r: 3, fill: ACCENT[resolvedTheme], strokeWidth: 0 } : false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            {weights.length > 0 && (
+              <ul className="profile-weights">
+                {[...weights]
+                  .reverse()
+                  .slice(0, 8)
+                  .map((w) => (
+                    <li key={w.date}>
+                      <span>{w.date === today ? 'Today' : formatDate(`${w.date}T12:00:00`, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      <span className="tnum">
+                        {formatWeight(w.kg, unit)} {unit}
+                      </span>
+                      <button className="icon-btn" aria-label={`Remove ${w.date}`} onClick={() => update({ bodyWeights: withoutWeight(weights, w.date) })}>
+                        <X size={14} />
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+            )}
           </div>
-        )}
-        {weights.length > 0 && (
-          <ul className="profile-weights">
-            {[...weights]
-              .reverse()
-              .slice(0, 8)
-              .map((w) => (
-                <li key={w.date}>
-                  <span>{w.date === today ? 'Today' : formatDate(`${w.date}T12:00:00`, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                  <span className="tnum">
-                    {formatWeight(w.kg, unit)} {unit}
-                  </span>
-                  <button className="icon-btn" aria-label={`Remove ${w.date}`} onClick={() => update({ bodyWeights: withoutWeight(weights, w.date) })}>
-                    <X size={14} />
-                  </button>
-                </li>
-              ))}
-          </ul>
-        )}
+        </div>
       </section>
     </div>
   );

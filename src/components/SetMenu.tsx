@@ -60,7 +60,7 @@ export function SetMenu({ label, kind, plates, weightText, bar, onKind, onDelete
       {open && (
         <div className="menu set-menu" role="menu">
           <button className="menu-item" role="menuitemcheckbox" aria-checked={kind === 'warmup'} onClick={() => choose(() => onKind(kind === 'warmup' ? 'working' : 'warmup'))}>
-            <Flame size={15} /> {kind === 'warmup' ? 'Make it a working set' : 'Warm-up set'}
+            <Flame size={15} /> {kind === 'warmup' ? 'Working set' : 'Warm-up set'}
           </button>
           <button className="menu-item" role="menuitemcheckbox" aria-checked={kind === 'drop'} onClick={() => choose(() => onKind(kind === 'drop' ? 'working' : 'drop'))}>
             <ArrowDownRight size={15} /> {kind === 'drop' ? 'Make it a normal set' : 'Drop set'}

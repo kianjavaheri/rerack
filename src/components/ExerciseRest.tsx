@@ -1,7 +1,7 @@
 import { Timer } from 'lucide-react';
 import { useState } from 'react';
 import { now } from '../core/ids';
-import { DEFAULT_REST_SECONDS, type Exercise } from '../core/types';
+import { defaultRestSeconds, type Exercise } from '../core/types';
 import { repo } from '../data';
 import { useSettings } from '../hooks/settings';
 import { Modal } from './Modal';
@@ -12,13 +12,26 @@ import { RestLength } from './RestLength';
  * An exercise's rest as a chip ("2:00", "Off"); tapping it sets that exercise's own rest, which is stored on the
  * exercise so it's the same in every workout. Checking off one of its sets starts a rest of that length.
  */
-export function ExerciseRest({ exercise }: { exercise: Exercise }) {
+export function ExerciseRest({
+  exercise,
+  isolation,
+  onChange,
+}: {
+  exercise: Exercise;
+  /** An isolation lift: the default is Settings' isolation length. */
+  isolation: boolean;
+  /** The length changed (to this many seconds): a rest of this exercise under way follows it. */
+  onChange?: (seconds: number) => void;
+}) {
   const { settings } = useSettings();
   const [open, setOpen] = useState(false);
-  const fallback = settings.restSeconds ?? DEFAULT_REST_SECONDS;
+  const fallback = defaultRestSeconds(settings, isolation);
   const seconds = exercise.restSeconds ?? fallback;
   const own = exercise.restSeconds != null;
-  const save = (restSeconds: number | undefined) => void repo.saveExercise({ ...exercise, restSeconds, updatedAt: now() });
+  const save = (restSeconds: number | undefined) => {
+    void repo.saveExercise({ ...exercise, restSeconds, updatedAt: now() });
+    onChange?.(restSeconds ?? fallback);
+  };
 
   return (
     <>

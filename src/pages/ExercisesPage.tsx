@@ -13,6 +13,22 @@ import { mergeExercises } from '../data/merge';
 import { useExercises, useSessions } from '../hooks/useRepo';
 
 export function ExercisesPage() {
+  return (
+    <>
+      <Link to={PLAN_PATH} className="back-link">
+        <ArrowLeft size={15} /> Workouts
+      </Link>
+      <h1 className="title">Exercises</h1>
+      <ExerciseLibrary />
+    </>
+  );
+}
+
+/**
+ * Your exercises by muscle group, with search, New exercise and merging of names listed more than once. Its own page
+ * (`/edit/exercises`) and the Exercises side of the Workouts page's Programs | Exercises switch.
+ */
+export function ExerciseLibrary() {
   const exercises = useExercises();
   const sessions = useSessions();
   const { notify } = useFeedback();
@@ -65,19 +81,14 @@ export function ExercisesPage() {
 
   return (
     <>
-      <Link to={PLAN_PATH} className="back-link">
-        <ArrowLeft size={15} /> Workouts
-      </Link>
-      <div className="spread">
-        <h1 className="title">Exercises</h1>
-        <button className="btn btn-sm" onClick={startNew}>
+      <div className="row" style={{ gap: 8, marginTop: 18 }}>
+        <div className="search" style={{ maxWidth: 360, flex: 1 }}>
+          <Search size={16} />
+          <input className="input" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
+        </div>
+        <button className="btn btn-sm" onClick={startNew} style={{ flexShrink: 0 }}>
           <Plus size={15} /> New exercise
         </button>
-      </div>
-
-      <div className="search" style={{ maxWidth: 360, marginTop: 18 }}>
-        <Search size={16} />
-        <input className="input" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
 
       {duplicates.length > 0 && (

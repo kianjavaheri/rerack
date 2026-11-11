@@ -124,10 +124,44 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func stop(_ call: CAPPluginCall) {
         Task {
-            for activity in Activity<RestActivityAttributes>.activities {
-                await activity.end(nil, dismissalPolicy: .immediate)
-            }
+            await Self.endAll()
             call.resolve()
         }
+    }
+
+    static func endAll() async {
+        for activity in Activity<RestActivityAttributes>.activities {
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
+    }
+
+    /// From the Apple Watch (WatchBridge), possibly with the app in the background: updates the workout already on the
+    /// lock screen (one can't be started from the background), keeping its theme. Same rest rules as `start`.
+    static func updateRunning(exercise: String, detail: String, restEndsAt: Date?, image address: String?) async {
+        guard let current = Activity<RestActivityAttributes>.activities.first(where: { $0.activityState == .active }) else { return }
+        let previous = current.content.state
+        var restStartedAt: Date? = nil
+        if let restEndsAt {
+            if let start = previous.restStartedAt, let end = previous.restEndsAt, end > Date(), start < restEndsAt {
+                restStartedAt = start
+            } else {
+                restStartedAt = Date()
+            }
+        }
+        // Only a picture already saved (no downloading in the background); else the one showing if it's the same exercise.
+        var image: String? = previous.exercise == exercise ? previous.image : nil
+        if let address, !address.isEmpty, let file = ExerciseImages.file(named: ExerciseImages.fileName(for: address)),
+           FileManager.default.fileExists(atPath: file.path) {
+            image = ExerciseImages.fileName(for: address)
+        }
+        let state = RestActivityAttributes.ContentState(
+            exercise: exercise,
+            detail: detail,
+            restStartedAt: restStartedAt,
+            restEndsAt: restEndsAt,
+            dark: previous.dark,
+            image: image
+        )
+        await current.update(ActivityContent(state: state, staleDate: nil))
     }
 }

@@ -5,6 +5,7 @@ import { barWeight, isBarbellExercise } from '../core/plates';
 import { emptySet } from '../core/sessions';
 import type { Exercise, ID, SetLog, WeightUnit } from '../core/types';
 import { removeLoggedNumbers, saveLoggedNumbers } from '../data/logEntry';
+import { useSettings } from '../hooks/settings';
 import { useFeedback } from './Feedback';
 import { Modal } from './Modal';
 import { NumericInput } from './NumericInput';
@@ -35,6 +36,7 @@ export function LogEntryForm({
   existing?: { sessionId: ID; sets: SetLog[]; perSide: boolean; date: string | null };
   onClose: () => void;
 }) {
+  const asPlates = useSettings().settings.perSidePlates === true;
   const { notify } = useFeedback();
   const [rows, setRows] = useState<SetLog[]>(() => existing?.sets ?? Array.from({ length: Math.max(1, targetSets) }, emptySet));
   const [perSide, setPerSide] = useState(existing?.perSide ?? false);
@@ -114,6 +116,7 @@ export function LogEntryForm({
                   unit={unit}
                   perSide={barbell && perSide}
                   bar={barWeight(exercise, unit)}
+                  asPlates={asPlates}
                   onChange={(weightKg) => setRow(row.id, { weightKg })}
                 />
                 <button className="icon-btn" disabled={rows.length === 1} onClick={() => setRows((list) => list.filter((r) => r.id !== row.id))} aria-label={`Remove set ${i + 1}`}>

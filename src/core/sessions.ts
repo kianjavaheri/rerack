@@ -136,20 +136,25 @@ export function entryFinishedAt(entry: SessionEntry): number | null {
 }
 
 /**
- * The order things were done in, so doing them out of order never means scrolling around: finished exercises first,
- * by when each was finished; then ones under way, by when each was started (its first set checked off); then the
- * untouched ones as they were. A superset moves as one. So: start 2, then 4 → 2, 4; finish 4 while 2 isn't → 4, 2.
- * Sets checked before times were kept count as the earliest.
+ * Keeps the order things were done in, so doing them out of order never means scrolling around, without undoing an
+ * order you set yourself. Called when a set of `entryId` is checked off: its group (a superset moves as one) moves up
+ * past the groups just above it that are less far along (untouched < under way < finished), and nothing else moves.
+ * So the next exercise you start goes to the next open spot (start 2, then 4 → 2, 4, 1, 3; finish 4 while 2 isn't →
+ * 4, 2), and an exercise you dragged after another stays there.
  */
-export function orderByProgress(entries: SessionEntry[]): SessionEntry[] {
+export function orderByProgress(entries: SessionEntry[], entryId: ID): SessionEntry[] {
   const groups = supersetGroups(entries).map((g) => g.map((x) => x.item));
-  const times = (group: SessionEntry[]) => group.flatMap((e) => e.sets.filter((s) => s.done).map((s) => (s.doneAt ? Date.parse(s.doneAt) : 0)));
-  const finishedAt = (group: SessionEntry[]) => (group.every(isEntryDone) ? Math.max(...times(group)) : null);
-  const startedAt = (group: SessionEntry[]) => (times(group).length ? Math.min(...times(group)) : null);
-  const finished = groups.filter((g) => finishedAt(g) !== null).sort((a, b) => finishedAt(a)! - finishedAt(b)!);
-  const started = groups.filter((g) => finishedAt(g) === null && startedAt(g) !== null).sort((a, b) => startedAt(a)! - startedAt(b)!);
-  const untouched = groups.filter((g) => startedAt(g) === null);
-  return [...finished, ...started, ...untouched].flat();
+  const rank = (group: SessionEntry[]) => (group.every(isEntryDone) ? 2 : group.some((e) => e.sets.some((s) => s.done)) ? 1 : 0);
+  let at = groups.findIndex((g) => g.some((e) => e.id === entryId));
+  if (at < 0) return entries;
+  const moving = groups[at];
+  const r = rank(moving);
+  while (at > 0 && rank(groups[at - 1]) < r) {
+    groups[at] = groups[at - 1];
+    at--;
+  }
+  groups[at] = moving;
+  return groups.flat();
 }
 
 /**

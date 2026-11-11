@@ -62,7 +62,8 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
 
   const startPress = (i: number, e: PointerEvent) => {
     if (e.button !== 0 || drag.current) return;
-    if ((e.target as Element).closest('input, textarea, select')) return;
+    // Held anywhere on the item but a field or something with its own tap (a button, a link, a menu).
+    if ((e.target as Element).closest('input, textarea, select, button, a, [role="button"]')) return;
     end.current();
     justDragged.current = false;
     const start = { x: e.clientX, y: e.clientY };

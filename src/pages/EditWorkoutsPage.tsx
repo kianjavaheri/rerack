@@ -1,9 +1,10 @@
-import { Check, ClipboardPaste, LayoutList, Library, Pencil, Plus } from 'lucide-react';
+import { Check, ClipboardPaste, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useFeedback } from '../components/Feedback';
 import { NewWorkoutWindow } from '../components/NewWorkout';
-import { ProgramsWindow } from '../components/Programs';
+import { ProgramList } from '../components/Programs';
+import { ExerciseLibrary } from './ExercisesPage';
 import { PageSkeleton } from '../components/Skeleton';
 import { RoutineActions, WorkoutActions, type Held } from '../components/WorkoutActions';
 import { everyLabel, pluralize } from '../core/format';
@@ -35,8 +36,8 @@ export function WorkoutPlan() {
   const hold = useLongPress(setHeld);
   const holdRoutine = useLongPress(setHeldRoutine);
   const { notify } = useFeedback();
-  /** The Programs window, and the program being added. */
-  const [programs, setPrograms] = useState(false);
+  /** Which list the Programs | Exercises switch shows under it (none until one is tapped), and the program being added. */
+  const [panel, setPanel] = useState<'programs' | 'exercises' | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
 
   // A program becomes a routine of yours, and the one you follow (that's why you'd pick one).
@@ -47,7 +48,7 @@ export function WorkoutPlan() {
       const before = settings.activeRoutineId;
       const added = await addProgram(program);
       updateSettings({ activeRoutineId: added.routineId });
-      setPrograms(false);
+      setPanel(null);
       notify(`Added ${program.name}`, {
         undo: async () => {
           await removeProgram(added);
@@ -77,17 +78,29 @@ export function WorkoutPlan() {
 
   return (
     <>
-      <div className="row-wrap" style={{ gap: 6, marginTop: 20 }}>
-        <button className="btn btn-sm" onClick={() => setPrograms(true)}>
-          <LayoutList size={15} /> Programs
-        </button>
-        <Link to="/edit/import" className="btn btn-sm">
-          <ClipboardPaste size={15} /> Import from notes
-        </Link>
-        <Link to="/edit/exercises" className="btn btn-ghost btn-sm">
-          <Library size={15} /> Exercises
+      {/* Programs | Exercises shows that list right here (tap the chosen one again to put it away); Import on the right. */}
+      <div className="spread" style={{ gap: 8, marginTop: 20, flexWrap: 'nowrap' }}>
+        <div className="segmented plan-switch" role="tablist" aria-label="Programs and exercises">
+          {(['programs', 'exercises'] as const).map((p) => (
+            <button key={p} role="tab" aria-selected={panel === p} className={panel === p ? 'on' : ''} onClick={() => setPanel(panel === p ? null : p)}>
+              {p === 'programs' ? 'Programs' : 'Exercises'}
+            </button>
+          ))}
+        </div>
+        <Link to="/edit/import" className="btn btn-sm" style={{ flexShrink: 0 }}>
+          <ClipboardPaste size={15} /> Import from text
         </Link>
       </div>
+      {panel === 'programs' && (
+        <div className="plan-panel">
+          <ProgramList onUse={startProgram} busy={adding} />
+        </div>
+      )}
+      {panel === 'exercises' && (
+        <div className="plan-panel">
+          <ExerciseLibrary />
+        </div>
+      )}
 
       <section className="section" style={{ marginTop: 24 }}>
         <div className="spread" style={{ marginBottom: 12 }}>
@@ -101,7 +114,7 @@ export function WorkoutPlan() {
         {routines?.length === 0 && (
           <div className="empty">
             No routines yet. A routine groups workouts you rotate through.{' '}
-            <button className="link-btn" onClick={() => setPrograms(true)}>
+            <button className="link-btn" onClick={() => { setPanel('programs'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
               Start from a program
             </button>
           </div>
@@ -195,7 +208,6 @@ export function WorkoutPlan() {
       )}
       {held && <WorkoutActions held={held} workouts={workouts} routines={routines} exercises={exercises ?? []} onClose={() => setHeld(null)} />}
       {creating && <NewWorkoutWindow onClose={() => setCreating(false)} />}
-      {programs && <ProgramsWindow onUse={startProgram} busy={adding} onClose={() => setPrograms(false)} />}
     </>
   );
 }

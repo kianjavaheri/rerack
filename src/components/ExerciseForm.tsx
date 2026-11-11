@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { now } from '../core/ids';
+import { EQUIPMENT, equipmentOf } from '../core/lifts';
 import { findEquivalent, findSimilar } from '../core/similarity';
 import type { Exercise } from '../core/types';
 import { repo } from '../data';
 import { linkToCatalog, loadCatalog, similarInCatalog, type CatalogExercise } from '../data/catalog';
 import { mergeExercises } from '../data/merge';
+import { useIsIsolation } from '../hooks/useCatalog';
 import { useExercises } from '../hooks/useRepo';
 import { ExercisePicker } from './ExercisePicker';
 import { useFeedback } from './Feedback';
@@ -35,6 +37,11 @@ export function ExerciseForm({
   const [draft, setDraft] = useState(exercise);
   const [similar, setSimilar] = useState<SimilarOption[] | null>(null);
   const [mergingInto, setMergingInto] = useState(false);
+  const isIsolation = useIsIsolation();
+  // What it's done with and what kind of lift: shown as they stand (its own, the library's, or guessed from the name)
+  // and only saved once tapped, so an untouched one keeps following the library and its name.
+  const equipment = equipmentOf(draft);
+  const isolation = isIsolation(draft);
 
   useEffect(() => {
     void loadCatalog().then(setCatalog);
@@ -169,6 +176,35 @@ export function ExerciseForm({
             <button className={draft.kind === 'bodyweight' ? 'on' : ''} onClick={() => setDraft({ ...draft, kind: 'bodyweight' })}>
               Bodyweight
             </button>
+          </div>
+        </div>
+        {draft.kind === 'weighted' && (
+          <div>
+            <span className="label">Equipment</span>
+            <div className="segmented segmented-wrap">
+              {EQUIPMENT.map((e) => (
+                <button key={e} className={equipment === e ? 'on' : ''} onClick={() => setDraft({ ...draft, equipment: e })}>
+                  {e[0].toUpperCase() + e.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="muted small" style={{ marginTop: 6 }}>
+              {equipment === 'barbell' ? 'Barbell lifts can be logged per side, with the plates to load.' : 'Barbell gives Per side and the plates to load.'}
+            </div>
+          </div>
+        )}
+        <div>
+          <span className="label">Movement</span>
+          <div className="segmented">
+            <button className={!isolation ? 'on' : ''} onClick={() => setDraft({ ...draft, isolation: false })}>
+              Compound
+            </button>
+            <button className={isolation ? 'on' : ''} onClick={() => setDraft({ ...draft, isolation: true })}>
+              Isolation
+            </button>
+          </div>
+          <div className="muted small" style={{ marginTop: 6 }}>
+            {isolation ? 'One joint, like curls and raises.' : 'Several joints, like squats, presses and rows.'} Picks which default rest it gets.
           </div>
         </div>
         <label>

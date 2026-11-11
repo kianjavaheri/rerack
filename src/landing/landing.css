@@ -5,6 +5,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,300..800&display=swap');
 
 html.landing {
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%; /* iOS enlarges text when turned sideways */
   --lp-bg: #f2f1f6;
   --lp-text: #0b0b0c;
   --lp-muted: #5f6168;

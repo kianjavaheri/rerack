@@ -1,4 +1,5 @@
 import type { Exercise, WeightUnit } from './types';
+import { guessEquipment } from './lifts';
 import { fromKg, toKg } from './units';
 
 /** Standard bar and plates per unit. */
@@ -40,6 +41,19 @@ export function platesLabel(total: number | null, unit: WeightUnit, bar = BAR[un
 }
 
 /**
+ * A per-side weight as the plates that make it, when it takes more than one: 70 lb a side → "45 + 25". Null for one
+ * plate or none, or a weight standard plates can't make exactly (then the number reads better).
+ */
+export function sidePlatesLabel(kg: number | null, unit: WeightUnit, bar = BAR[unit]): string | null {
+  if (kg == null) return null;
+  const total = Math.round(fromKg(kg, unit) * 10) / 10;
+  const result = platesPerSide(total, unit, bar);
+  if (!result || !result.exact || result.plates.length < 2) return null;
+  // Two read like you'd say them ("45 + 25"); more are packed so they fit in a set's weight field ("45+10+10+2.5").
+  return result.plates.join(result.plates.length > 2 ? '+' : ' + ');
+}
+
+/**
  * "Per side" entry (`SessionEntry.perSide`): you type what's on one side of the bar and the total (both sides plus the
  * bar) is what's stored, so history, charts and records never change meaning: 35 lb a side is 115 lb. A total lighter
  * than the bar shows as 0.
@@ -59,7 +73,5 @@ export function parsePerSide(text: string, unit: WeightUnit, bar = BAR[unit]): n
 export function isBarbellExercise(exercise: Exercise | undefined): boolean {
   if (!exercise || exercise.kind === 'bodyweight') return false;
   if (exercise.equipment) return exercise.equipment.toLowerCase() === 'barbell';
-  const name = exercise.name.toLowerCase();
-  if (/dumbbell|\bdb\b|machine|cable|smith|goblet|kettlebell|band/.test(name)) return false;
-  return /barbell|\bbb\b|squat|deadlift|bench press|overhead press|military press|barbell row|pendlay|hip thrust|clean|snatch/.test(name);
+  return guessEquipment(exercise.name) === 'barbell';
 }

@@ -51,9 +51,13 @@ function show(activity: WorkoutActivity, alert: boolean) {
     let permission = await LocalNotifications.checkPermissions();
     if (permission.display.startsWith('prompt')) permission = await LocalNotifications.requestPermissions();
     if (permission.display !== 'granted') return;
-    // The buzz when rest is over: the phone delivers it on time even when locked or with the app closed.
+    // The buzz when rest is over: the phone delivers it on time even when locked or with the app closed. Its sound is a
+    // short soft chime (ios/App/App/rest-over.caf, scripts/rest-sound.mjs) in place of the default alert: heard in
+    // earbuds, and from the speaker unless the phone is on silent.
     await LocalNotifications.schedule({
-      notifications: [{ id: NOTIFICATION_ID, title: 'Rest over', body: `Next: ${activity.exercise}`, schedule: { at: new Date(activity.restEndsAt) } }],
+      notifications: [
+        { id: NOTIFICATION_ID, title: 'Rest over', body: `Next: ${activity.exercise}`, sound: 'rest-over.caf', schedule: { at: new Date(activity.restEndsAt) } },
+      ],
     });
   });
 }
@@ -89,7 +93,7 @@ export function useNativeRestTimer(
 ) {
   const loading = open === undefined || exercises === undefined;
   const live = !!open && open.live !== false && !open.finishedAt;
-  const endsAt = live && restOn && !open.restHidden ? (open.restEndsAt ?? null) : null;
+  const endsAt = live && restOn ? (open.restEndsAt ?? null) : null;
   const now = live ? currentSet(open) : null;
   const exercise = now ? (exercises?.find((e) => e.id === now.entry.exerciseId)?.name ?? 'Exercise') : 'All sets done';
   const detail = now?.label ?? (open ? `${open.entries.length} exercises` : '');

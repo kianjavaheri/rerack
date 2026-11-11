@@ -1,13 +1,17 @@
 # One-time (idempotent) setup of ios/App/App.xcodeproj beyond what `cap add ios` generates: the app's own Swift files
-# (RestActivityPlugin, AppHapticsPlugin, AppHealthPlugin, AppWidgetPlugin, AppViewController, the shared
+# (RestActivityPlugin, AppHapticsPlugin, AppScreenPlugin, AppHealthPlugin, AppWidgetPlugin, AppViewController, the shared
 # RestActivityAttributes and HomeWidgetData), the HealthKit and app group entitlements, the RestTimerWidget extension
-# that draws the rest timer on the lock screen and the home-screen widget, and Crashlytics' config and symbol upload. Needs the xcodeproj gem: `gem install --user-install xcodeproj`.
+# that draws the rest timer on the lock screen and the home-screen widget, the RerackWatch Apple Watch app (embedded
+# in the iPhone app), and Crashlytics' config and symbol upload. Needs the xcodeproj gem: `gem install --user-install xcodeproj`.
 # Run: ruby scripts/ios-setup-project.rb
 require 'xcodeproj'
 
 PROJECT = File.expand_path('../ios/App/App.xcodeproj', __dir__)
 BUNDLE_ID = 'com.kianjavaheri.fitnesstracker'
-DEPLOYMENT = '17.0'
+# iOS 18: the widget extension needs it for its Live Activity to show on the Apple Watch (supplementalActivityFamilies),
+# and the app matches it.
+DEPLOYMENT = '18.0'
+WIDGET_DEPLOYMENT = DEPLOYMENT
 
 project = Xcodeproj::Project.open(PROJECT)
 app = project.targets.find { |t| t.name == 'App' } or abort 'No App target'
@@ -22,7 +26,10 @@ end
 
 # The app's own Swift files.
 app_group = project.main_group['App']
-%w[RestActivityPlugin.swift AppHapticsPlugin.swift AppHealthPlugin.swift AppWidgetPlugin.swift AppViewController.swift].each { |f| add_source(app, file_ref(app_group, f)) }
+%w[RestActivityPlugin.swift AppHapticsPlugin.swift AppScreenPlugin.swift AppHealthPlugin.swift AppWidgetPlugin.swift AppViewController.swift WatchBridge.swift WatchPlugin.swift].each { |f| add_source(app, file_ref(app_group, f)) }
+
+# The "rest over" notification's sound (scripts/rest-sound.mjs), bundled so a notification can name it.
+app.resources_build_phase.add_file_reference(file_ref(app_group, 'rest-over.caf'), true)
 
 # Shared between the app and the widget.
 shared = project.main_group['Shared'] || project.main_group.new_group('Shared', 'Shared')
@@ -67,7 +74,7 @@ widget.build_configurations.each do |config|
   s['CURRENT_PROJECT_VERSION'] = app_settings['CURRENT_PROJECT_VERSION'] || '1'
   s['SWIFT_VERSION'] = '5.0'
   s['TARGETED_DEVICE_FAMILY'] = '1'
-  s['IPHONEOS_DEPLOYMENT_TARGET'] = DEPLOYMENT
+  s['IPHONEOS_DEPLOYMENT_TARGET'] = WIDGET_DEPLOYMENT
   s['CODE_SIGN_STYLE'] = 'Automatic'
   s['SKIP_INSTALL'] = 'YES'
   s['LD_RUNPATH_SEARCH_PATHS'] = ['$(inherited)', '@executable_path/Frameworks', '@executable_path/../../Frameworks']
@@ -75,6 +82,49 @@ widget.build_configurations.each do |config|
   s['CODE_SIGN_ENTITLEMENTS'] = 'RestTimerWidget/RestTimerWidget.entitlements'
 end
 file_ref(project.main_group['RestTimerWidget'], 'RestTimerWidget.entitlements')
+
+# The Apple Watch app (ios/App/RerackWatch): a single-target watchOS app, embedded in the iPhone app's Watch folder.
+WATCH_DEPLOYMENT = '10.0'
+WATCH_FILES = %w[RerackWatchApp.swift WatchModels.swift Logic.swift WatchStore.swift WorkoutManager.swift Views.swift]
+watch_group = project.main_group['RerackWatch'] || project.main_group.new_group('RerackWatch', 'RerackWatch')
+watch = project.targets.find { |t| t.name == 'RerackWatch' }
+unless watch
+  watch = project.new_target(:application, 'RerackWatch', :watchos, WATCH_DEPLOYMENT, nil, :swift)
+  app.add_dependency(watch)
+  embed_watch = app.copy_files_build_phases.find { |p| p.name == 'Embed Watch Content' } ||
+                app.new_copy_files_build_phase('Embed Watch Content')
+  embed_watch.dst_subfolder_spec = '16' # Products directory
+  embed_watch.dst_path = '$(CONTENTS_FOLDER_PATH)/Watch'
+  build_file = embed_watch.add_file_reference(watch.product_reference, true)
+  build_file.settings = { 'ATTRIBUTES' => ['RemoveHeadersOnCopy'] }
+end
+WATCH_FILES.each { |f| add_source(watch, file_ref(watch_group, f)) }
+watch.resources_build_phase.add_file_reference(file_ref(watch_group, 'Assets.xcassets'), true)
+file_ref(watch_group, 'Info.plist')
+file_ref(watch_group, 'RerackWatch.entitlements')
+watch.build_configurations.each do |config|
+  s = config.build_settings
+  s['PRODUCT_BUNDLE_IDENTIFIER'] = "#{BUNDLE_ID}.watchkitapp"
+  s['PRODUCT_NAME'] = '$(TARGET_NAME)'
+  s['INFOPLIST_FILE'] = 'RerackWatch/Info.plist'
+  s['GENERATE_INFOPLIST_FILE'] = 'YES'
+  s['INFOPLIST_KEY_CFBundleDisplayName'] = 'Rerack'
+  s['INFOPLIST_KEY_UISupportedInterfaceOrientations'] = 'UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown'
+  s['MARKETING_VERSION'] = app_settings['MARKETING_VERSION'] || '1.0'
+  s['CURRENT_PROJECT_VERSION'] = app_settings['CURRENT_PROJECT_VERSION'] || '1'
+  s['SWIFT_VERSION'] = '5.0'
+  s['SDKROOT'] = 'watchos'
+  s['WATCHOS_DEPLOYMENT_TARGET'] = WATCH_DEPLOYMENT
+  s['TARGETED_DEVICE_FAMILY'] = '4'
+  s['ASSETCATALOG_COMPILER_APPICON_NAME'] = 'AppIcon'
+  s['CODE_SIGN_STYLE'] = 'Automatic'
+  s['SKIP_INSTALL'] = 'YES'
+  s['ENABLE_PREVIEWS'] = 'NO'
+  s['ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME'] = ''
+  s['LD_RUNPATH_SEARCH_PATHS'] = ['$(inherited)', '@executable_path/Frameworks']
+  # HealthKit, for the workout session (heart rate, saving the workout).
+  s['CODE_SIGN_ENTITLEMENTS'] = 'RerackWatch/RerackWatch.entitlements'
+end
 
 # Apple Health (AppHealthPlugin) needs the HealthKit entitlement. (`import HealthKit` links the framework by itself; the
 # gem's add_system_framework would pin a path into one SDK version.)
@@ -116,4 +166,4 @@ app.build_phases.delete(dsym)
 app.build_phases << dsym
 
 project.save
-puts 'ios/App/App.xcodeproj: RestTimerWidget extension, app Swift files and Crashlytics set up'
+puts 'ios/App/App.xcodeproj: RestTimerWidget extension, RerackWatch app, app Swift files and Crashlytics set up'

@@ -21,8 +21,10 @@ class AppViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(RestActivityPlugin())
         bridge?.registerPluginInstance(AppHapticsPlugin())
+        bridge?.registerPluginInstance(AppScreenPlugin())
         bridge?.registerPluginInstance(AppHealthPlugin())
         bridge?.registerPluginInstance(AppWidgetPlugin())
+        bridge?.registerPluginInstance(WatchPlugin())
     }
 
     override func viewDidLoad() {

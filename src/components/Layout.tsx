@@ -14,6 +14,7 @@ import { useScheduledNotifications } from '../native/notifications';
 import { useHomeWidget } from '../native/widget';
 import { useAppLinks } from '../native/links';
 import { useNativeRestTimer } from '../native/rest';
+import { useAppleWatch } from '../native/watch';
 import { notificationOn } from '../core/notifications';
 import { preloadTabPages, TAB_PATHS } from '../pages/tabPages';
 import { AccountMenu } from './AccountMenu';
@@ -77,13 +78,15 @@ export function Layout() {
     const media = exercise ? mediaFor(exercise) : {};
     return media.gif ?? (media.photoId ? exercisePhotos(media.photoId)[0] : undefined);
   };
+  // The Apple Watch app: what was logged there, and what it shows. While it runs this workout it alerts rest itself.
+  const watchRunning = useAppleWatch(sessions, exercises, settings, pictureOf);
   useNativeRestTimer(
     sessions === undefined ? undefined : (open ?? null),
     exercises,
     settings.restTimer !== false,
     resolvedTheme === 'dark',
     pictureOf,
-    notificationOn(settings, 'rest'),
+    notificationOn(settings, 'rest') && !(open && watchRunning === open.id),
   );
   // Workout reminders and the workout-left-open alert, scheduled ahead on the phone.
   useScheduledNotifications(sessions, settings);

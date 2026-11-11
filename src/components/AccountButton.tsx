@@ -18,9 +18,18 @@ export function AccountButton({ style }: { style?: React.CSSProperties }) {
   );
 }
 
-/** The account button's place in a tab page's title row: kept empty, since FloatingAccountButton is drawn over it. */
+/**
+ * The account button's place in a tab page's title row. FloatingAccountButton is drawn over it on the current page;
+ * the slot holds a still copy that shows only on a page swiping in while the floating one is scrolled out of sight
+ * (`html.account-offscreen`), so the button comes in with its page instead of popping in once the swipe ends.
+ */
 export function AccountSlot() {
-  return <span className="account-slot" aria-hidden />;
+  const user = useAccountUser();
+  return (
+    <span className="account-slot" aria-hidden>
+      <span className="account-btn account-ghost">{user ? <Avatar user={user} size={32} /> : <Settings size={20} />}</span>
+    </span>
+  );
 }
 
 /** A tab page's title row: the title (and anything beside it) on the left, the account button's place on the right. */
@@ -76,6 +85,21 @@ export function FloatingAccountButton() {
       window.removeEventListener('resize', onResize);
     };
   }, [pathname]);
+
+  // Whether it's scrolled out of sight (under the status bar's strip, or above the screen): then a page swiping in
+  // brings its own copy along (AccountSlot).
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const check = () => {
+      const top = at ? at.top - window.scrollY : 0;
+      const covered = document.querySelector('.statusbar-scrim')?.getBoundingClientRect().bottom ?? 0;
+      root.classList.toggle('account-offscreen', !at || top + 44 <= covered);
+    };
+    check();
+    window.addEventListener('scroll', check, { passive: true });
+    return () => window.removeEventListener('scroll', check);
+  }, [at]);
+  useLayoutEffect(() => () => document.documentElement.classList.remove('account-offscreen'), []);
 
   if (!at || at.pathname !== pathname) return null;
   return createPortal(<AccountButton style={{ position: 'absolute', top: at.top, left: at.left, zIndex: 40 }} />, document.body);
