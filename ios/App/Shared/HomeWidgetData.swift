@@ -19,6 +19,8 @@ struct HomeWidgetData: Codable {
     var days: [Day]
     /// When the app wrote it (ms), to know which days' "done" is still unknown.
     var writtenAt: Double
+    /// The app's dark-mode accent ("purple"), or nil for the warm one (`Settings.darkAccent`).
+    var accent: String?
 
     static let key = "homeWidget"
 

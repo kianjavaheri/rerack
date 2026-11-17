@@ -128,7 +128,7 @@ struct HomeWidgetView: View {
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
-        let palette = Palette.of(dark: colorScheme == .dark)
+        let palette = Palette.of(dark: colorScheme == .dark, purple: entry.data?.accent == "purple")
         let state = HomeState(data: entry.data, now: entry.date)
         Group {
             if family == .systemMedium {
@@ -140,10 +140,11 @@ struct HomeWidgetView: View {
                 NextWorkout(state: state, palette: palette)
             }
         }
-        // Dark: the Calendar widget's own background, a soft top-to-bottom fade from #1F1F1F to #0D0D0D.
+        // Dark: black. iOS draws a widget's background much lighter than asked on the home screen: #1F1F1F to #0D0D0D
+        // came out #393939 to #1B1B1B, and #0F0F0F to #050505 still #2A2A2A to #121212, so it asks for the darkest.
         .containerBackground(for: .widget) {
             if colorScheme == .dark {
-                LinearGradient(colors: [rgb(0x1F1F1F), rgb(0x0D0D0D)], startPoint: .top, endPoint: .bottom)
+                Color.black
             } else {
                 palette.background
             }

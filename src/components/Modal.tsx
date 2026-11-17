@@ -2,9 +2,10 @@ import { X } from 'lucide-react';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useSwipeToClose } from '../hooks/useSwipeToClose';
+import { lockScroll } from '../utils/scrollLock';
 
-// Open dialogs, newest last. Only the top one answers Escape, and the page scrolls again once the last one closes
-// (each saving and restoring body overflow would leave it locked when two close together).
+// Open dialogs, newest last. Only the top one answers Escape. The page scrolls again once the last thing locking it
+// (any dialog, menu or window: utils/scrollLock) closes.
 const stack: symbol[] = [];
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -25,7 +26,7 @@ export function Modal({ title, onClose, children, expandable = false }: { title:
   useEffect(() => {
     const me = Symbol('modal');
     stack.push(me);
-    document.body.style.overflow = 'hidden';
+    const unlock = lockScroll();
     const returnFocus = document.activeElement as HTMLElement | null;
     const dialog = dialogRef.current;
     // Focus moves into the dialog (unless a field asked for it with autoFocus) and comes back when it closes. Only a
@@ -55,7 +56,7 @@ export function Modal({ title, onClose, children, expandable = false }: { title:
     return () => {
       document.removeEventListener('keydown', onKey);
       stack.splice(stack.indexOf(me), 1);
-      if (stack.length === 0) document.body.style.overflow = '';
+      unlock();
       returnFocus?.focus?.();
     };
   }, []);

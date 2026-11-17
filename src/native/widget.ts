@@ -29,7 +29,8 @@ export function useHomeWidget(sessions: Session[] | undefined, settings: Setting
       return { date: dayString(date), planned, done: doneOn(sessions, date).size > 0 };
     });
     // writtenAt changes every render, so it's left out of the comparison below and added when sending.
-    json = JSON.stringify({ routine: routine?.name ?? null, days });
+    // accent: dark mode's purple, so the widget's colours follow the app's (Palette.of(dark:purple:)).
+    json = JSON.stringify({ routine: routine?.name ?? null, days, accent: settings.darkAccent ?? null });
   }
 
   useEffect(() => {

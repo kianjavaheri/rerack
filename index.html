@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <!-- ?v= forces browsers to fetch a changed icon: they keep favicons in a cache of their own. Bump it with the icon. -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=4" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=5" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0f1011" />
@@ -26,6 +26,8 @@
       try { themeChoice = localStorage.getItem('lifttrack:theme'); } catch {}
       const dark = themeChoice === 'dark' || (themeChoice !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
       document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      // Dark mode's accent, if another is being tried (hooks/settings.tsx).
+      try { if (localStorage.getItem('rerack:dark-accent') === 'purple') document.documentElement.dataset.accent = 'purple'; } catch {}
       // Opened from the home screen: app-style bottom tabs instead of the website's top bar.
       // The iPhone app (Capacitor injects window.Capacitor before this runs) looks the same.
       const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
@@ -68,6 +70,9 @@
       /* Like the app's accent: cool colours in light mode, warm in dark. */
       html[data-theme='dark'] .boot-spin::after {
         background: conic-gradient(from 0deg, transparent 0deg, #ed7543 70deg, #ec7c6e 170deg, #e8635c 270deg, #d93a45 340deg, transparent 360deg);
+      }
+      html[data-theme='dark'][data-accent='purple'] .boot-spin::after {
+        background: conic-gradient(from 0deg, transparent 0deg, #ea74fc 70deg, #c168ff 170deg, #a870ff 270deg, #6e81ff 340deg, transparent 360deg);
       }
       @keyframes boot-in { to { opacity: 1; } }
       @keyframes boot-spin { to { transform: rotate(360deg); } }

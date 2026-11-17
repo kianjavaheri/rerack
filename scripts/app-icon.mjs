@@ -5,9 +5,9 @@
 //
 // The mark: an abstract bench press that reads as Rerack. A barbell through the middle, with an r on the left (its
 // arm at the top) and the same r turned half a turn on the right (its foot at the bottom), a thin gap where the bar
-// crosses them. After the Apple TV mark: each piece is white, with a rainbow accent gathering towards its bottom
-// right. Split along that diagonal into quarters, the first is white and each after is much more colourful than the
-// last (a power curve); a soft band of the same colour runs just inside the edges.
+// crosses them. Now plain: the mark in solid white on the dark tile (2026-11-17). The glass-and-rainbow version (after
+// the Apple TV mark: white with a rainbow gathering towards each piece's bottom right, bevelled edges, a glow) is
+// still here as `icon()`, and its files are kept in archive/icon-rainbow-glass/.
 // RestTimerWidget.swift's LogoMark draws the same outline: change both together.
 import { writeFileSync } from 'node:fs';
 
@@ -151,9 +151,35 @@ function icon({ comment, tile, round, base, bevel, rainbow, glow, max, power, st
 `;
 }
 
+/** The mark in one flat colour on the tile: no rainbow, edges or glow. */
+function flatIcon({ comment, tile, round, base }) {
+  return `<!-- ${comment} Drawn by scripts/app-icon.mjs: edit that, not this. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${tile[0]}"/><stop offset="1" stop-color="${tile[1]}"/>
+    </linearGradient>
+    <!-- A thin gap in the letters where the bar crosses them. -->
+    <mask id="gap" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <path d="M${plL + PW} ${BAR} H${plR}" stroke="#000" stroke-width="84" stroke-linecap="round"/>
+    </mask>
+  </defs>
+
+  <rect width="1024" height="1024"${round ? ' rx="512"' : ''} fill="url(#tile)"/>
+  <g>
+    ${mark(base)}
+  </g>
+</svg>
+`;
+}
+
+/** Which look the files get: 'flat' (solid white) now; 'glass' is the archived rainbow one. */
+const STYLE = 'flat';
+
 const dark = {
   tile: ['#151516', '#050505'],
-  base: '#f6f6f8',
+  base: STYLE === 'flat' ? '#ffffff' : '#f6f6f8',
   bevel: { rim: 13, sheen: 0.3, line: 0.14, blur: 6, scale: 8, ks: 1.1, shade: 0.22 },
   // The original logo's rainbow, at full strength.
   rainbow: [[0, '#9a7bff'], [0.25, '#5ec8ff'], [0.45, '#5fe3a1'], [0.62, '#ffd25a'], [0.8, '#ff8f6b'], [1, '#ff8fc8']],
@@ -165,12 +191,13 @@ const dark = {
   full: 0.7,
 };
 
-writeFileSync(`${root}public/app-icon.svg`, icon({
+const draw2 = (o) => (STYLE === 'flat' ? flatIcon(o) : icon(o));
+writeFileSync(`${root}public/app-icon.svg`, draw2({
   ...dark,
   comment: 'App icon (npm run icons turns it into the home-screen, install and iPhone app icons; favicon.svg is the same in a circle).',
 }));
-writeFileSync(`${root}public/favicon.svg`, icon({ ...dark, round: true, comment: 'The app icon in a circle: favicon, loader, splash and sign-in.' }));
-writeFileSync(`${root}public/app-icon-light.svg`, icon({
+writeFileSync(`${root}public/favicon.svg`, draw2({ ...dark, round: true, comment: 'The app icon in a circle: favicon, loader, splash and sign-in.' }));
+writeFileSync(`${root}public/app-icon-light.svg`, draw2({
   comment: "A white version of the app icon, for the portfolio's light logo image (scripts/portfolio-logo.mjs). Not in the iPhone icon set: there it showed even in dark mode. Near-black lettering with a deeper rainbow that comes in a little sooner, since dark over colour goes muddy.",
   tile: ['#ffffff', '#e9e9ec'],
   base: '#1c1c1e',

@@ -5,11 +5,12 @@ export const ACCENT = { light: '#2a78d6', dark: '#3987e5' };
 
 /**
  * Categorical palette (fixed order, never cycled). Validated for adjacent-pair
- * colour-blind separation in both modes; the dark column is stepped for the dark surface.
+ * colour-blind separation in both modes; the dark column is stepped for the dark surface. Dark's 5th was #d55181,
+ * which read as the 2nd's orange on a phone (and was close to the green for deuteranopes); #e07ad0 is lighter and pinker.
  */
 export const CATEGORICAL = {
   light: ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'],
-  dark: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'],
+  dark: ['#3987e5', '#d95926', '#199e70', '#c98500', '#e07ad0', '#008300', '#9085e9', '#e66767'],
 };
 
 export const RANGES = [

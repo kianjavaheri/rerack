@@ -8,6 +8,7 @@ import { useSettings } from '../hooks/settings';
 import { useExercises, useSessions } from '../hooks/useRepo';
 import { haptic } from '../utils/haptics';
 import { WorkoutSummary } from './WorkoutSummary';
+import { lockScroll } from '../utils/scrollLock';
 
 // Which workout's summary is open, from anywhere: Finish opens it (celebrating) as the page turns into the finished
 // workout, and the summary card on a finished workout opens it again. Rendered once, in Layout, so it doesn't depend on
@@ -46,12 +47,11 @@ function SummaryPage({ sessionId, celebrate }: { sessionId: ID; celebrate: boole
   const close = () => set(null);
 
   useEffect(() => {
-    const before = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const unlock = lockScroll();
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
     document.addEventListener('keydown', onKey);
     return () => {
-      document.body.style.overflow = before;
+      unlock();
       document.removeEventListener('keydown', onKey);
     };
   }, []);

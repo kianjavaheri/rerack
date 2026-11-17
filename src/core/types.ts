@@ -178,6 +178,11 @@ export interface Session {
 export interface Settings {
   unit: WeightUnit;
   theme: ThemePreference;
+  /**
+   * Dark mode's accent, being tried out: 'purple' swaps the warm sweep (orange, salmon, red) for a pink-to-violet-to-blue
+   * one. Missing = warm. Light mode is unaffected. Set in Settings → Appearance.
+   */
+  darkAccent?: 'purple' | null;
   /** The routine being followed: drives "Up next", planned days and check-in badges. See `followedRoutine`. */
   activeRoutineId?: ID | null;
   /** Rest length in seconds, started by checking off a set; 0 = only when started by hand (then 2:00). Missing: `DEFAULT_REST_SECONDS`. */

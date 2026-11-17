@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import type { ID } from '../core/types';
 import { saveNewWorkout } from '../data/newWorkout';
 import { ExerciseGrid, type GridItem } from './ExerciseGrid';
+import { lockScroll } from '../utils/scrollLock';
 
 /** A workout's name, the exercises picked so far (numbered, tap to drop), and the grid to pick them from. */
 export function WorkoutFields({
@@ -58,11 +59,7 @@ export function NewWorkoutWindow({ routine, from, onClose }: { routine?: { id: I
 
   // A window of its own: the page behind doesn't scroll.
   useEffect(() => {
-    const before = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = before;
-    };
+    return lockScroll();
   }, []);
 
   const save = async () => {

@@ -48,9 +48,9 @@
   /* The bottom tab bar's own glass, after YouTube's: in light a see-through cool gray (white read as a solid bar),
      lightly blurred so what's behind still shows, set off by a darker hairline and a soft shadow; the current tab a
      darker pill. Dark mode is the mirror image (below). */
-  --tabbar-glass: linear-gradient(180deg, #ffffff4d 0%, #ffffff0d 55%, #ffffff00 100%), #c9ccd459;
-  --tabbar-filter: blur(14px) saturate(1.8);
-  --tabbar-edge: inset 0 1px 0 #ffffffb3, inset 0 0 0 0.5px #ffffff59, 0 0 0 0.5px #00000024;
+  --tabbar-glass: #d4d6dc99;
+  --tabbar-filter: blur(20px) saturate(1.8);
+  --tabbar-edge: inset 0 0 0 0.5px #ffffff80, 0 0 0 0.5px #00000024;
   --tabbar-shadow: 0 10px 30px #00000029, 0 1px 3px #0000001a;
   --tabbar-pill: #00000017;
   --tabbar-pill-checkin: #00000033; /* the ring round the + on Check in: a darker grey */
@@ -119,9 +119,9 @@
   --glass-filter: blur(28px) saturate(1.9) brightness(1.12);
   --glass-tint: #28292d73;
   --sheet-tint: #202124b8;
-  --tabbar-glass: linear-gradient(180deg, #ffffff0f 0%, #ffffff00 45%), #0c0c0dc7;
-  --tabbar-filter: blur(16px) saturate(1.8);
-  --tabbar-edge: inset 0 1px 0 #ffffff21, inset 0 0 0 0.5px #ffffff17, 0 0 0 0.5px #000000b3;
+  --tabbar-glass: #141416b8;
+  --tabbar-filter: blur(20px) saturate(1.8);
+  --tabbar-edge: inset 0 0 0 0.5px #ffffff24, 0 0 0 0.5px #000000b3;
   --tabbar-shadow: 0 10px 32px #000000a6, 0 1px 3px #00000080;
   --tabbar-pill: #ffffff26;
   --tabbar-pill-checkin: #ffffff12;
@@ -134,6 +134,17 @@
   --orb-border: #ffffff0f;
   --orb-shadow: none;
   color-scheme: dark;
+}
+
+/* Dark mode's purple accent, being tried out (Settings → Appearance, `Settings.darkAccent`): pink through violet to
+   blue, after a swatch the user picked. Same roles as the warm one above: --rb-* fills (dark text on top), --ink-*
+   text and icons, a little lighter so it reads on the dark background. */
+[data-theme='dark'][data-accent='purple'] {
+  --accent: #b06cff;
+  --accent-soft: #b06cff26;
+  --accent-fill: #b06cff;
+  --rb-1: #ea74fc; --rb-2: #d66cff; --rb-3: #c168ff; --rb-4: #a870ff; --rb-5: #8c78ff; --rb-6: #6e81ff;
+  --ink-1: #f08afd; --ink-2: #dd84ff; --ink-3: #cc82ff; --ink-4: #b688ff; --ink-5: #9d8eff; --ink-6: #8697ff;
 }
 
 * { box-sizing: border-box; }
@@ -180,6 +191,10 @@ p { margin: 0; }
 }
 .badge svg, .avatar svg, .log-date.dated svg, .chip.rest-chip.own svg, .chip.go-up svg, .superset-btn.on svg,
 .superset-btn.open svg, .superset-pill.drop-over svg, .tab.active svg, .notes-btn.has-notes svg { stroke: url(#lt-ink); }
+.tab.active svg .fill { fill: url(#lt-ink); }
+/* Like YouTube's bar: the current tab's icon filled in, the others outlines (components/TabIcons.tsx). */
+.tab .tab-filled, .tab.active .tab-outline { display: none; }
+.tab.active .tab-filled { display: block; }
 .badge, .avatar, .log-date.dated, .day-cal-day.done:not(.selected), .chip.rest-chip.own, .chip.go-up, .superset-btn.on,
 .superset-pill.drop-over { position: relative; isolation: isolate; }
 .badge::before, .avatar::before, .log-date.dated::before, .day-cal-day.done:not(.selected)::before, .chip.rest-chip.own::before,

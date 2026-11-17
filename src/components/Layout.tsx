@@ -1,5 +1,5 @@
 import { ChartLine, Dumbbell, House, Moon, NotebookText, Plus, Settings, Sun, type LucideIcon } from 'lucide-react';
-import { useEffect, type CSSProperties } from 'react';
+import { useEffect, type ComponentType, type CSSProperties } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigationType } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { APP_NAME, APP_USER_KEY, HOME_PATH } from '../config';
@@ -24,12 +24,14 @@ import { SummaryWindow } from './SummaryWindow';
 import { FloatingAccountButton } from './AccountButton';
 import { SyncIndicator } from './SyncIndicator';
 import { TabPager } from './TabPager';
+import { ChartLineFill, DumbbellFill, HouseFill, NotebookTextFill } from './TabIcons';
 
-const LINKS: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
-  { to: HOME_PATH, label: 'Home', icon: House, end: true },
-  { to: '/workouts', label: 'Workouts', icon: Dumbbell },
-  { to: '/analytics', label: 'Analytics', icon: ChartLine },
-  { to: '/log', label: 'Log', icon: NotebookText },
+/** `filled`: the tab bar's icon on the current tab (TabIcons.tsx); elsewhere the outline. */
+const LINKS: { to: string; label: string; icon: LucideIcon; filled: ComponentType<{ size?: number; className?: string }>; end?: boolean }[] = [
+  { to: HOME_PATH, label: 'Home', icon: House, filled: HouseFill, end: true },
+  { to: '/workouts', label: 'Workouts', icon: Dumbbell, filled: DumbbellFill },
+  { to: '/analytics', label: 'Analytics', icon: ChartLine, filled: ChartLineFill },
+  { to: '/log', label: 'Log', icon: NotebookText, filled: NotebookTextFill },
 ];
 const [HOME, WORKOUTS, ANALYTICS, LOG] = LINKS;
 
@@ -230,7 +232,8 @@ export function Layout() {
           <span className="tab-indicator" style={{ '--i': Math.max(0, tab), '--c': tab === 2 ? 1 : 0, opacity: tab < 0 ? 0 : 1 } as CSSProperties} aria-hidden />
           {[HOME, WORKOUTS].map((l, i) => (
             <NavLink key={l.to} to={l.to} end={l.end} className={`tab${tab === i ? ' active' : ''}`} aria-label={l.label} title={l.label}>
-              <l.icon size={24} aria-hidden />
+              <l.icon size={24} className="tab-outline" aria-hidden />
+              <l.filled size={24} className="tab-filled" />
             </NavLink>
           ))}
           <div className="tab">
@@ -246,10 +249,12 @@ export function Layout() {
             </Link>
           </div>
           <NavLink to={ANALYTICS.to} className={`tab${tab === 3 ? ' active' : ''}`} aria-label={ANALYTICS.label} title={ANALYTICS.label}>
-            <ANALYTICS.icon size={24} aria-hidden />
+            <ANALYTICS.icon size={24} className="tab-outline" aria-hidden />
+            <ANALYTICS.filled size={24} className="tab-filled" />
           </NavLink>
           <NavLink to={LOG.to} className={`tab${tab === 4 ? ' active' : ''}`} aria-label={LOG.label} title={LOG.label}>
-            <LOG.icon size={24} aria-hidden />
+            <LOG.icon size={24} className="tab-outline" aria-hidden />
+            <LOG.filled size={24} className="tab-filled" />
           </NavLink>
         </div>
       </nav>

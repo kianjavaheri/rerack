@@ -280,7 +280,12 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   letting go calls the same move as the arrow buttons (`move` / `moveUnlinked`). Moving first is a scroll. Slides
   and the drop use an even 280 ms ease-in-out (the app's front-loaded `--ease` at 0.2 s looked like popping), and
   offsets are cleared with transitions off before the list re-renders (else cards jump past and slide back). Every
-  press-and-hold in the app gives a haptic when it takes effect.
+  press-and-hold in the app gives a haptic when it takes effect. A press must never outlive its touch: while one is
+  going its document `touchmove` handler blocks scrolling, and once a press whose `pointerup` never arrived (the
+  element under the finger removed, e.g. deleting sets) left the page unscrollable while tab swipes still worked. So
+  it also ends on `touchend`/`touchcancel`, any other pointer going down, blur or the page hiding, and a new press
+  ends a stale one. Page scroll locks behind dialogs, menus and windows go through `utils/scrollLock.ts` (counted;
+  each saving and restoring `body.style.overflow` could restore "hidden").
 - **No calories**: tracking them (typed in, or from Apple Health) was tried and dropped; typing them in wasn't worth
   the space. Reading Health is possible now that there's a paid Developer account, if it's ever revisited.
 - **Duration**: `Session.durationMinutes` overrides the timer (null = deliberately none); back-logged sessions have
@@ -565,10 +570,13 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
   `[data-theme='dark']` (set by `hooks/settings.tsx`, which also keeps the theme choice in localStorage
   `lifttrack:theme` so `index.html` and the loader use it before settings load, not the phone's setting). Look and feel mirrors kianjavaheri.com: Google Sans Flex,
   gradient cards, full-width glass navbar, uppercase underlined CTAs; Antigravity-style round icon "orbs" on Home.
-- **The bottom tab bar has its own glass**, after YouTube's bar (`--tabbar-glass/-filter/-edge/-shadow/-pill`): dark
-  is a deep, nearly black tint with a lighter blur (16px) so what's behind still shows, a faint top highlight and a
-  lighter gray pill on the current tab; light is a see-through cool gray (~35%; white, and a heavy blur over
-  the light page, both read as a solid bar), a darker hairline and soft shadow, a darker pill.
+- **The bottom tab bar has its own glass**, after YouTube's bar (`--tabbar-glass/-filter/-edge/-shadow/-pill`): one
+  flat tint, no top-to-bottom gradient or top highlight (the user didn't like the light-to-dark fade), a 20px blur and
+  an even hairline rim; dark a nearly black tint (`#141416b8`) with a lighter gray pill on the current tab, light a
+  see-through cool gray (`#d4d6dc99`) with a darker pill. The current tab's icon is **filled** and the others are
+  outlines, like YouTube's (`components/TabIcons.tsx`: filled drawings of lucide's House, Dumbbell, ChartLine,
+  NotebookText, in the accent's `#lt-ink`). Each tab draws both and CSS shows one by `.tab.active`, because a swipe
+  marks the tab by its class without a re-render (`markTab`).
 - **Liquid glass** (iOS 26 look) on the bottom bars, rest bar, sheets and the hold menu: `--glass-filter`
   (strong saturated blur), a light `--glass-tint` (`--sheet-tint` for sheets and menus, which hold more text), a
   `--glass-sheen` gradient and a bright `--glass-edge` rim. Always on a `::before` layer behind the content (text on
@@ -587,13 +595,19 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
   (a masked `::after`). Dark mode is a warm sweep (orange, salmon, red; little pink); light mode a
   mostly-blue sweep with some depth (indigo, blue, sky; deeper ink for contrast). The lock screen
   (`RestTimerWidget.swift` `Palette`) mirrors both.
+  **Purple in dark mode** (being tried out; Settings → Appearance switch, `Settings.darkAccent: 'purple'`, null =
+  warm): `[data-theme='dark'][data-accent='purple']` in `index.css` swaps `--accent` and `--rb-*`/`--ink-*` for a
+  pink → violet → blue sweep (#ea74fc … #6e81ff, from a swatch the user picked). `hooks/settings.tsx` sets
+  `html[data-accent]` and mirrors it to localStorage `rerack:dark-accent`, which `index.html` reads for the first frame
+  and the loader ring. The home-screen widget follows it too (`HomeWidgetData.accent`, sent by `native/widget.ts`;
+  `Palette.of(dark:purple:)`); the lock screen and landing page stay warm.
   The loading ring in `index.html` follows the same split. The logo itself keeps the full rainbow. `--accent` is one solid colour from it (blue in light, pink in dark) for what can't
   take a gradient (focus ring, checkboxes, selection, dashed outlines). Heatmap squares show their part of one
   rainbow across the grid (`--gx/--gy/--gw/--gh`). `--danger` is rose/red. Easing tokens: `--ease`,
   and `--ease-swipe` (`cubic-bezier(0.22, 1, 0.36, 1)`) for page swipes. Charts do **not** use `--accent`: their
   colors are in `components/chartTheme.ts` (blue single-series
   accent and a fixed-order 8-color categorical palette validated for colour-blind separation — don't cycle or
-  reorder; >8 series must be capped).
+  reorder; >8 series must be capped; dark's 5th is #e07ad0, since #d55181 read as the orange 2nd on a phone).
 - Home's Activity heatmap has 1W / 1M / 6M (remembered per device in localStorage): 6M is the compact grid with
   weeks as columns; 1W (a week, captioned "Oct 19 – 25", `weekRange`) and 1M (a calendar month, captioned with its
   name, padded to whole Monday–Sunday weeks with the neighbouring months' dates, faded) are calendars that show the
@@ -683,8 +697,9 @@ MARKETING_VERSION / CURRENT_PROJECT_VERSION.
   `AppWidgetPlugin.swift`, which stores `HomeWidgetData` (`ios/App/Shared/HomeWidgetData.swift`, both targets) in the
   app group's UserDefaults and reloads the timeline only when it changed. The widget works out the day itself, with an
   entry at each midnight, so it stays right while the app is closed (trained-today only updates when the app runs).
-  Follows the system light/dark, not the app's setting; dark is the Calendar widget's background (a top-to-bottom
-  fade, #1F1F1F to #0D0D0D). Tapping it opens `rerack://check-in` (`widgetURL`; the scheme
+  Follows the system light/dark, not the app's setting; dark is black. iOS draws a
+  widget's background much lighter than asked: Calendar's own #1F1F1F to #0D0D0D came out #393939 to #1B1B1B, and
+  #0F0F0F to #050505 still #2A2A2A to #121212 (measured from home-screen screenshots). Tapping it opens `rerack://check-in` (`widgetURL`; the scheme
   is written into Info.plist by `scripts/ios-google-scheme.mjs` with Google's): `native/links.ts` `useAppLinks`
   (Layout, `@capacitor/app` launch URL + `appUrlOpen`, waits for the sessions) goes to the open workout, else Check in.
   Compile-checked only.
@@ -708,15 +723,14 @@ written by `node scripts/app-icon.mjs`, so edit that, then `npm run icons`) is a
 Rerack: a barbell through the middle with an r on the left (its arm at the top) and the same r turned half a turn on
 the right (its foot at the bottom), with a thin gap where the bar crosses them (an L and a T before the rename;
 `LogoMark` in `RestTimerWidget.swift` draws the same outline). Each piece is a single outline (overlapping shapes
-showed as seams under the translucent colour). Styled after the Apple TV mark: white at each piece's top left, the original logo's rainbow coming in along
-its diagonal (top left to bottom right; the barbell's runs mostly downwards, as one gradient) and at full strength
-by 70% of the way (the user tried a mostly white version and went back to strong colour), with glass edges: a rim
-washed with white, a faint line where it meets the face, a specular highlight from the top left
-(`feSpecularLighting` on the blurred alpha) and a soft inner shadow opposite, plus a gentle glow behind, on a
-near-black gradient tile (`#151516` → `#050505`). The hues run left to right (violet, blue, green, yellow, orange,
-pink).
+showed as seams under the translucent colour). Since 2026-11-17 the mark is **solid white**, flat (no colour, edges or
+glow), on the near-black gradient tile (`#151516` → `#050505`): `STYLE = 'flat'` in the script. The earlier look
+(`STYLE = 'glass'`, still drawn by `icon()`): after the Apple TV mark, white at each piece's top left with the logo's
+rainbow coming in along its diagonal, glass edges (rim, specular highlight, inner shadow) and a glow; its SVGs, PNGs,
+iPhone icon set, portfolio images and script are kept in `archive/icon-rainbow-glass/` (README there says how to bring
+it back). The widget and Live Activity still draw `LogoMark` in the theme's sweep.
 The iPhone icon set has this dark icon plus a grey one for tinted home screens. `public/app-icon-light.svg` is a white
-version (white tile, near-black lettering, a deeper rainbow that rises sooner, since dark over colour goes muddy), used
+version (white tile, near-black lettering; in the glass style a deeper rainbow that rises sooner), used
 only for the portfolio: as the iPhone's default it showed on every Default home screen even in dark mode (iOS has no
 light-only icon slot, and its Dark style is a home-screen setting, not dark mode), so dark stayed the default. `node scripts/portfolio-logo.mjs` redraws
 `portfolio/rerack-logo{,-light}-1080p.png` from both. Rendered to PNG by sharp (librsvg), so
@@ -740,7 +754,7 @@ steps from where the set opened, the first one to the next multiple: 117 → 120
 checked, then the sweep; tapping it on a checked set unchecks it and stops the rest it started; a checked set's
 changed numbers save a second after the Crown rests), Per side for barbell lifts (`WatchExercise.bar`; toggled in
 an exercise's set list, a `perSide` op; the weight box then shows and turns one side, "per side · 115 lb" (the total small), and above the
-heaviest plate, unless "Show as plates" is off (watch-only `@AppStorage`), as its plates: 70 → "45+25"), ‹ › between sets or pick any from the exercises page (and add a set), rest with ±15 s
+heaviest plate, unless "Show as plates" is off (watch-only `@AppStorage`), as its plates when three or fewer: 70 → "45+25", 115 → "45+45+25" shrunk to fit; four or more show the number), ‹ › between sets or pick any from the exercises page (and add a set), rest with ±15 s
 and stop, finish or cancel. Three vertical pages: the set (or the rest while it runs; "Next: …" under the countdown
 peeks at the set), the exercises, the workout (time, heart rate, Start rest, Finish, Cancel workout).
 - **Watch-first, queued** (chosen so it works with the phone locked in a pocket, the app killed, or no phone nearby):

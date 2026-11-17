@@ -274,6 +274,20 @@ export function SettingsPage() {
               ))}
             </div>
           </div>
+          <div className="spread" style={{ flexWrap: 'nowrap', marginTop: 14 }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>Purple in dark mode</div>
+              <div className="muted small">Pink to violet to blue instead of the warm orange and red. Light mode stays blue.</div>
+            </div>
+            <button
+              type="button"
+              className={`switch${settings.darkAccent === 'purple' ? ' on' : ''}`}
+              role="switch"
+              aria-checked={settings.darkAccent === 'purple'}
+              aria-label="Purple in dark mode"
+              onClick={() => update({ darkAccent: settings.darkAccent === 'purple' ? null : 'purple' })}
+            />
+          </div>
         </div>
 
         <div className="card">

@@ -307,9 +307,11 @@ struct SetView: View {
                 .font(.system(size: 30, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
-            Text(title).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.5)
+            Text(title).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.5)
         }
+        // Kept off the rounded corners, which clipped "per side · 155 lb".
+        .padding(.horizontal, 6)
         .frame(maxWidth: .infinity, minHeight: 58)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(focused ? 0.16 : 0.08)))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(focused ? Theme.accent : .clear, lineWidth: 2))
@@ -336,7 +338,8 @@ struct SetView: View {
 
     /// Per side above the heaviest plate, as plates when that's on ("45+25" for 70 lb); else the number.
     private var weightText: String {
-        if bar != nil, platesShown, weight > (isKg ? 25 : 45), let parts = plateParts(weight, isKg: isKg) {
+        // Up to three plates ("45+45+25" shrinks to fit); more can't be read in half the screen, so the number.
+        if bar != nil, platesShown, weight > (isKg ? 25 : 45), let parts = plateParts(weight, isKg: isKg), parts.count <= 3 {
             return parts.map(formatNumber).joined(separator: "+")
         }
         return formatNumber(weight)

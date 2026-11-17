@@ -61,10 +61,12 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
   };
 
   const startPress = (i: number, e: PointerEvent) => {
-    if (e.button !== 0 || drag.current) return;
+    // A press still going here never got its end (the finger lifted where no event reached us): drop it, or it would
+    // keep blocking the page's scrolling.
+    end.current();
+    if (e.button !== 0) return;
     // Held anywhere on the item but a field or something with its own tap (a button, a link, a menu).
     if ((e.target as Element).closest('input, textarea, select, button, a, [role="button"]')) return;
-    end.current();
     justDragged.current = false;
     const start = { x: e.clientX, y: e.clientY };
     prepareHaptic();
@@ -135,7 +137,8 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
     const lift = () => {
       const all = els();
       const el = all[i];
-      if (!el) return;
+      // Gone (or the touch that held it is): nothing to lift.
+      if (!el?.isConnected || !(e.target as Node).isConnected) return finish(false);
       const boxes = all.map((item) => {
         const r = item?.getBoundingClientRect();
         return { top: (r?.top ?? 0) + window.scrollY, height: r?.height ?? 0 };
@@ -173,6 +176,15 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
     const onTouchMove = (ev: TouchEvent) => {
       if (drag.current) ev.preventDefault();
     };
+    // Backstops, so a press can never outlive the touch: pointer events can stop arriving when the element under the
+    // finger is removed (a set deleted, a card re-drawn), and a press left going blocked every scroll after it.
+    const onTouchEnd = (ev: TouchEvent) => {
+      if (ev.touches.length === 0) finish(ev.type === 'touchend');
+    };
+    const onOtherDown = (ev: globalThis.PointerEvent) => {
+      if (ev.pointerId !== e.pointerId) finish(false);
+    };
+    const onHide = () => finish(false);
     const onUp = (ev: globalThis.PointerEvent) => {
       if (ev.pointerId === e.pointerId) finish(true);
     };
@@ -188,6 +200,11 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onCancel);
       document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd, true);
+      document.removeEventListener('touchcancel', onTouchEnd, true);
+      window.removeEventListener('pointerdown', onOtherDown, true);
+      window.removeEventListener('blur', onHide);
+      document.removeEventListener('visibilitychange', onHide);
       end.current = () => {};
       const d = drag.current;
       drag.current = null;
@@ -239,6 +256,11 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onCancel);
     document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd, true);
+    document.addEventListener('touchcancel', onTouchEnd, true);
+    window.addEventListener('pointerdown', onOtherDown, true);
+    window.addEventListener('blur', onHide);
+    document.addEventListener('visibilitychange', onHide);
     end.current = () => finish(false);
   };
 

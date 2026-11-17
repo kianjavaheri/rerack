@@ -30,13 +30,23 @@ function storedTheme(): ThemePreference {
   }
 }
 
+/** Dark mode's accent, kept on this device too so the first frame uses it (index.html sets data-accent). */
+const ACCENT_KEY = 'rerack:dark-accent';
+function storedAccent(): Settings['darkAccent'] {
+  try {
+    return localStorage.getItem(ACCENT_KEY) === 'purple' ? 'purple' : null;
+  } catch {
+    return null;
+  }
+}
+
 function systemTheme(): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const loaded = useRepoQuery((r) => r.getSettings());
-  const settings = loaded ?? { ...DEFAULT_SETTINGS, theme: storedTheme() };
+  const settings = loaded ?? { ...DEFAULT_SETTINGS, theme: storedTheme(), darkAccent: storedAccent() };
   const [system, setSystem] = useState(systemTheme);
 
   useEffect(() => {
@@ -56,6 +66,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       // Private mode etc.: the first frame just follows the phone's setting.
     }
   }, [loaded?.theme]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Only dark mode reads it (index.css: [data-theme='dark'][data-accent='purple']).
+  const accent = settings.darkAccent;
+  useEffect(() => {
+    if (accent) document.documentElement.dataset.accent = accent;
+    else delete document.documentElement.dataset.accent;
+    if (!loaded) return;
+    try {
+      if (accent) localStorage.setItem(ACCENT_KEY, accent);
+      else localStorage.removeItem(ACCENT_KEY);
+    } catch {
+      // Private mode etc.: the first frame is warm until settings load.
+    }
+  }, [accent, !!loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;

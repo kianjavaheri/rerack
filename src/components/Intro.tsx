@@ -19,6 +19,7 @@ import type { GridItem } from './ExerciseGrid';
 import { NotificationChoice } from './NotificationChoice';
 import { ProgramList } from './Programs';
 import { togglePicked, WorkoutFields } from './NewWorkout';
+import { lockScroll } from '../utils/scrollLock';
 
 /**
  * TESTING: also shows the intro to accounts that already have workouts (the developer's own, to try it). Set to false
@@ -78,11 +79,7 @@ function Intro() {
 
   // A window of its own: the page behind doesn't scroll.
   useEffect(() => {
-    const before = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = before;
-    };
+    return lockScroll();
   }, []);
 
   // Each step starts at the top.

@@ -16,8 +16,14 @@ struct Palette {
     /// wallpaper tinted it (a lavender over a purple one); a white wash keeps it white.
     let wash: Color
 
-    static func of(dark: Bool) -> Palette {
-        dark
+    /// `purple`: the app's "Purple in dark mode" (`[data-accent='purple']` in index.css, its --ink-* colours); dark only.
+    static func of(dark: Bool, purple: Bool = false) -> Palette {
+        if dark && purple {
+            return Palette(background: rgb(0x0F1011), text: .white, muted: .white.opacity(0.55),
+                           sweep: [rgb(0xF08AFD), rgb(0xCC82FF), rgb(0x9D8EFF), rgb(0x8697FF)], accent: rgb(0xC182FF),
+                           wash: .clear)
+        }
+        return dark
             ? Palette(background: rgb(0x0F1011), text: .white, muted: .white.opacity(0.55),
                       sweep: [rgb(0xF58A5C), rgb(0xF28F82), rgb(0xEF6266), rgb(0xEA5560)], accent: rgb(0xF27870),
                       wash: .clear)

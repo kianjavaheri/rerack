@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { lockScroll } from '../utils/scrollLock';
 
 export interface ContextAction {
   label: string;
@@ -48,13 +49,13 @@ export function ContextMenu({ anchor, actions, onClose }: { anchor: HTMLElement;
     Object.assign(clone.style, { display, margin: '0', width: '100%', height: '100%', transform: 'none', transition: 'none' });
     previewRef.current?.appendChild(clone);
     anchor.style.visibility = 'hidden';
-    document.body.style.overflow = 'hidden';
+    const unlock = lockScroll();
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCloseRef.current();
     document.addEventListener('keydown', onKey);
     return () => {
       clone.remove();
       anchor.style.visibility = '';
-      document.body.style.overflow = '';
+      unlock();
       document.removeEventListener('keydown', onKey);
     };
   }, [anchor]);
