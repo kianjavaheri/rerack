@@ -18,6 +18,8 @@ interface WorkoutActivity {
   restEndsAt: number;
   /** Matches the app's theme: light or dark colours. */
   dark: boolean;
+  /** Dark mode's purple accent (`Settings.darkAccent`): the watch's Smart Stack follows it; the lock screen stays warm. */
+  purple: boolean;
   /** The exercise's picture (its address; the app keeps a small copy the lock screen can show), or '' for none. */
   image: string;
 }
@@ -88,6 +90,7 @@ export function useNativeRestTimer(
   exercises: Exercise[] | undefined,
   restOn: boolean,
   dark: boolean,
+  purple: boolean,
   pictureOf: (exerciseId: string) => string | undefined,
   restAlert: boolean,
 ) {
@@ -122,7 +125,7 @@ export function useNativeRestTimer(
       clearTimeout(buzz);
       const left = at - Date.now();
       const resting = left > -OVER_SHOWN_MS && at > 0;
-      show({ workoutName: name, startedAt, exercise, detail, restEndsAt: resting ? at : 0, dark, image }, restAlert);
+      show({ workoutName: name, startedAt, exercise, detail, restEndsAt: resting ? at : 0, dark, purple, image }, restAlert);
       if (left > 0) {
         // With the app open, the end of the rest is felt too (the notification covers a locked phone).
         buzz = setTimeout(() => document.visibilityState === 'visible' && hapticAlert(), left);
@@ -135,5 +138,5 @@ export function useNativeRestTimer(
       clearTimeout(timer);
       clearTimeout(buzz);
     };
-  }, [loading, live, endsAt, name, startedAt, exercise, detail, dark, image, restAlert]);
+  }, [loading, live, endsAt, name, startedAt, exercise, detail, dark, purple, image, restAlert]);
 }

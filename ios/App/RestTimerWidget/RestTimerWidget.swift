@@ -114,8 +114,9 @@ private struct ActivityContent: View {
 
     var body: some View {
         if family == .small {
-            WatchActivityView(context: context, palette: Palette.of(dark: true))
-                .activityBackgroundTint(Palette.of(dark: true).background)
+            let palette = Palette.of(dark: true, purple: context.state.purple == true)
+            WatchActivityView(context: context, palette: palette)
+                .activityBackgroundTint(palette.background)
         } else {
             let palette = Palette.of(dark: context.state.dark)
             LockScreenView(context: context, palette: palette)
@@ -321,36 +322,36 @@ private struct RestBar: View {
 /// on the right (foot at the bottom). Drawn from the icon's 1024-unit coordinates, scaled to fit.
 struct LogoMark: Shape {
     func path(in rect: CGRect) -> Path {
-        // Same outline as the app icon (scripts/app-icon.mjs): the mark spans x 180…844 and y 256…768 there.
-        let box = CGRect(x: 180, y: 256, width: 664, height: 512)
+        // Same outline as the app icon (scripts/app-icon.mjs, its GEOM): the mark spans x 165…859 and y 246…778 there.
+        let box = CGRect(x: 165, y: 246, width: 694, height: 532)
         let scale = min(rect.width / box.width, rect.height / box.height)
         let dx = rect.midX - box.midX * scale
         let dy = rect.midY - box.midY * scale
         func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x * scale + dx, y: y * scale + dy) }
 
         var mark = Path()
-        // The left r, then the same turned half a turn about the centre (512, 512) for the right one.
+        // The left r (strokes 100 wide), then the same turned half a turn about the centre (512, 512) for the right one.
         for flip in [false, true] {
             func q(_ x: CGFloat, _ y: CGFloat) -> CGPoint { flip ? p(1024 - x, 1024 - y) : p(x, y) }
-            mark.move(to: q(300, 728))
-            mark.addLine(to: q(300, 356))
-            mark.addQuadCurve(to: q(400, 256), control: q(300, 256))
-            mark.addLine(to: q(486, 256))
-            mark.addLine(to: q(486, 336))
-            mark.addLine(to: q(400, 336))
-            mark.addQuadCurve(to: q(380, 356), control: q(380, 336))
-            mark.addLine(to: q(380, 728))
+            mark.move(to: q(290, 728))
+            mark.addLine(to: q(290, 356))
+            mark.addQuadCurve(to: q(400, 246), control: q(290, 246))
+            mark.addLine(to: q(490, 246))
+            mark.addLine(to: q(490, 346))
+            mark.addLine(to: q(414, 346))
+            mark.addQuadCurve(to: q(390, 370), control: q(390, 346))
+            mark.addLine(to: q(390, 728))
             mark.closeSubpath()
         }
-        // The barbell: plates 84 × 196 and a bar 46 thick through the middle.
-        for x in [180.0, 760.0] {
-            mark.addRoundedRect(in: CGRect(origin: p(x, 414), size: CGSize(width: 84 * scale, height: 196 * scale)),
-                                cornerSize: CGSize(width: 22 * scale, height: 22 * scale))
+        // The barbell: plates 92 × 208 and a bar 56 thick through the middle.
+        for x in [165.0, 767.0] {
+            mark.addRoundedRect(in: CGRect(origin: p(x, 408), size: CGSize(width: 92 * scale, height: 208 * scale)),
+                                cornerSize: CGSize(width: 26 * scale, height: 26 * scale))
         }
         // The bar in three pieces, between the plates and the stems, so nothing overlaps (overlapping subpaths that
         // wind opposite ways would leave holes).
-        for (from, to) in [(264.0, 300.0), (380.0, 644.0), (724.0, 760.0)] {
-            mark.addRect(CGRect(origin: p(from, 489), size: CGSize(width: (to - from) * scale, height: 46 * scale)))
+        for (from, to) in [(257.0, 290.0), (390.0, 634.0), (734.0, 767.0)] {
+            mark.addRect(CGRect(origin: p(from, 484), size: CGSize(width: (to - from) * scale, height: 56 * scale)))
         }
         return mark
     }

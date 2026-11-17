@@ -87,6 +87,7 @@ export function Layout() {
     exercises,
     settings.restTimer !== false,
     resolvedTheme === 'dark',
+    settings.darkAccent === 'purple',
     pictureOf,
     notificationOn(settings, 'rest') && !(open && watchRunning === open.id),
   );

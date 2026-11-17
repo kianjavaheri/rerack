@@ -600,7 +600,9 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
   pink → violet → blue sweep (#ea74fc … #6e81ff, from a swatch the user picked). `hooks/settings.tsx` sets
   `html[data-accent]` and mirrors it to localStorage `rerack:dark-accent`, which `index.html` reads for the first frame
   and the loader ring. The home-screen widget follows it too (`HomeWidgetData.accent`, sent by `native/widget.ts`;
-  `Palette.of(dark:purple:)`); the lock screen and landing page stay warm.
+  `Palette.of(dark:purple:)`), and so does the Apple Watch app (`WatchState.accent` → `Theme` in
+  `RerackWatchApp.swift`); the Live Activity's watch layout (Smart Stack) too (`ContentState.purple`, from `useNativeRestTimer`); the
+  lock screen, Dynamic Island and landing page stay warm.
   The loading ring in `index.html` follows the same split. The logo itself keeps the full rainbow. `--accent` is one solid colour from it (blue in light, pink in dark) for what can't
   take a gradient (focus ring, checkboxes, selection, dashed outlines). Heatmap squares show their part of one
   rainbow across the grid (`--gx/--gy/--gw/--gh`). `--danger` is rose/red. Easing tokens: `--ease`,
@@ -724,12 +726,16 @@ Rerack: a barbell through the middle with an r on the left (its arm at the top) 
 the right (its foot at the bottom), with a thin gap where the bar crosses them (an L and a T before the rename;
 `LogoMark` in `RestTimerWidget.swift` draws the same outline). Each piece is a single outline (overlapping shapes
 showed as seams under the translucent colour). Since 2026-11-17 the mark is **solid white**, flat (no colour, edges or
-glow), on the near-black gradient tile (`#151516` → `#050505`): `STYLE = 'flat'` in the script. The earlier look
+glow), on the near-black gradient tile (`#151516` → `#050505`): `STYLE = 'flat'` in the script. Its strokes were then
+made bolder, like Hevy's and Threads' (draft B of three: strokes 100 units, was 80; bar 56; drawn 1.1× so it fills
+more of the tile; `GEOM` and `MARK_SCALE`). `node scripts/app-icon.mjs drafts` writes variants from its `DRAFTS` to
+`drafts/icon/` without touching the real files. The earlier look
 (`STYLE = 'glass'`, still drawn by `icon()`): after the Apple TV mark, white at each piece's top left with the logo's
 rainbow coming in along its diagonal, glass edges (rim, specular highlight, inner shadow) and a glow; its SVGs, PNGs,
 iPhone icon set, portfolio images and script are kept in `archive/icon-rainbow-glass/` (README there says how to bring
 it back). The widget and Live Activity still draw `LogoMark` in the theme's sweep.
-The iPhone icon set has this dark icon plus a grey one for tinted home screens. `public/app-icon-light.svg` is a white
+The iPhone icon set has this dark icon plus a grey one for tinted home screens; `npm run icons` also writes the watch
+app's (`RerackWatch/Assets.xcassets`, watchOS rounds it itself). `public/app-icon-light.svg` is a white
 version (white tile, near-black lettering; in the glass style a deeper rainbow that rises sooner), used
 only for the portfolio: as the iPhone's default it showed on every Default home screen even in dark mode (iOS has no
 light-only icon slot, and its Dark style is a home-screen setting, not dark mode), so dark stayed the default. `node scripts/portfolio-logo.mjs` redraws
@@ -752,9 +758,10 @@ workout), log each set (weight and reps prefilled from the set's placeholders, t
 `weightStepFor`, sent as `WatchState.weightStep`); watchOS doesn't snap the Crown's value, so `SetView` counts whole
 steps from where the set opened, the first one to the next multiple: 117 → 120), check it off (the ✓ is gray until
 checked, then the sweep; tapping it on a checked set unchecks it and stops the rest it started; a checked set's
-changed numbers save a second after the Crown rests), Per side for barbell lifts (`WatchExercise.bar`; toggled in
-an exercise's set list, a `perSide` op; the weight box then shows and turns one side, "per side · 115 lb" (the total small), and above the
-heaviest plate, unless "Show as plates" is off (watch-only `@AppStorage`), as its plates when three or fewer: 70 → "45+25", 115 → "45+45+25" shrunk to fit; four or more show the number), ‹ › between sets or pick any from the exercises page (and add a set), rest with ±15 s
+changed numbers save a second after the Crown rests; the numbers shown follow the set's values or placeholder
+when they change elsewhere, e.g. typed on the phone, `SetView.sourceKey`), Per side for barbell lifts (`WatchExercise.bar`; toggled in
+an exercise's set list, a `perSide` op; the weight box then shows and turns one side, "135 lb total" small under it, and above the
+heaviest plate, unless "Show as plates" is off (watch-only `@AppStorage`), as its plates, the same plate counted with a small "×n" (`plateGroups`): 70 → "45+25", 115 → "45×2+25", 425 → "45×4+10"; more than three kinds of plate show the number), ‹ › between sets or pick any from the exercises page (and add a set), rest with ±15 s
 and stop, finish or cancel. Three vertical pages: the set (or the rest while it runs; "Next: …" under the countdown
 peeks at the set), the exercises, the workout (time, heart rate, Start rest, Finish, Cancel workout).
 - **Watch-first, queued** (chosen so it works with the phone locked in a pocket, the app killed, or no phone nearby):

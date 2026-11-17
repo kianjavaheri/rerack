@@ -197,6 +197,8 @@ struct WatchState: Codable, Equatable {
     var restAfterLastSet: Bool?
     /// A turn of the Crown on a set's weight, in `unit` (missing from older phones: 5 lb / 2.5 kg).
     var weightStep: Double?
+    /// The app's dark-mode accent ("purple"), or nil for the warm one (`Settings.darkAccent`).
+    var accent: String?
     var session: Session?
     var last: [String: [WatchSet]]
     var exercises: [String: WatchExercise]
@@ -302,4 +304,17 @@ func plateParts(_ side: Double, isKg: Bool) -> [Double]? {
         }
     }
     return left < 1e-6 ? parts : nil
+}
+
+/// Runs of the same plate: [45, 45, 45, 45, 10] → 45 × 4, 10 × 1.
+func plateGroups(_ parts: [Double]) -> [(plate: Double, count: Int)] {
+    var groups: [(plate: Double, count: Int)] = []
+    for plate in parts {
+        if let last = groups.last, last.plate == plate {
+            groups[groups.count - 1].count += 1
+        } else {
+            groups.append((plate, 1))
+        }
+    }
+    return groups
 }

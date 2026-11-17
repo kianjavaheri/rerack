@@ -216,7 +216,7 @@ struct SetView: View {
             HStack(spacing: 6) {
                 valueBox(title: weightTitle, value: weightText, field: .weight)
                     .digitalCrownRotation($weightCrown, from: -(base.weight + step), through: 1500, by: step, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
-                valueBox(title: "reps", value: String(Int(reps)), field: .reps)
+                valueBox(title: "reps", value: Text(String(Int(reps))), field: .reps)
                     .digitalCrownRotation($repsCrown, from: -base.reps - 1, through: 200, by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
             }
             .onChange(of: weightCrown) { _, crown in weight = weightTurned(crown) ; changed() }
@@ -251,6 +251,8 @@ struct SetView: View {
         }
         .padding(.horizontal, 2)
         .onAppear(perform: load)
+        // Changed elsewhere (typed on the phone, or the set above changed its placeholder): show the new numbers.
+        .onChange(of: sourceKey) { _, _ in reload() }
         .onDisappear(perform: saveNow)
     }
 
@@ -300,10 +302,10 @@ struct SetView: View {
         return parts.joined(separator: " · ")
     }
 
-    private func valueBox(title: String, value: String, field: Field) -> some View {
+    private func valueBox(title: String, value: Text, field: Field) -> some View {
         let focused = self.field == field
         return VStack(spacing: 0) {
-            Text(value)
+            value
                 .font(.system(size: 30, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .lineLimit(1)
@@ -332,17 +334,28 @@ struct SetView: View {
         let unit = isKg ? "kg" : "lb"
         if bodyweight { return "+" + unit }
         guard let bar else { return unit }
-        // One side shown big, the bar's total small: "per side · 115 lb".
-        return "per side · \(formatNumber(weight * 2 + bar)) \(unit)"
+        // One side shown big, the bar's total small: "135 lb total" (watch users know Per side).
+        return "\(formatNumber(weight * 2 + bar)) \(unit) total"
     }
 
     /// Per side above the heaviest plate, as plates when that's on ("45+25" for 70 lb); else the number.
-    private var weightText: String {
-        // Up to three plates ("45+45+25" shrinks to fit); more can't be read in half the screen, so the number.
-        if bar != nil, platesShown, weight > (isKg ? 25 : 45), let parts = plateParts(weight, isKg: isKg), parts.count <= 3 {
-            return parts.map(formatNumber).joined(separator: "+")
+    /// Per side above the heaviest plate, as plates when that's on: the same plate counted ("45" with a small "×4"),
+    /// then the rest ("+10"): 425 lb → 45×4+10. Up to three kinds of plate; more can't be read, so the number.
+    private var weightText: Text {
+        if bar != nil, platesShown, weight > (isKg ? 25 : 45), let parts = plateParts(weight, isKg: isKg) {
+            let groups = plateGroups(parts)
+            if groups.count <= 3 {
+                var text = Text("")
+                for (i, group) in groups.enumerated() {
+                    text = text + Text((i > 0 ? "+" : "") + formatNumber(group.plate))
+                    if group.count > 1 {
+                        text = text + Text("×\(group.count)").font(.system(size: 17, weight: .semibold, design: .rounded)).foregroundColor(.secondary)
+                    }
+                }
+                return text
+            }
         }
-        return formatNumber(weight)
+        return Text(formatNumber(weight))
     }
 
     private var weightKg: Double? {
@@ -355,6 +368,21 @@ struct SetView: View {
     private func load() {
         guard !loaded else { return }
         loaded = true
+        reload()
+        field = bodyweight ? .reps : .weight
+    }
+
+    /// What the numbers start from: the set's own values, else its placeholder, and the bar (per side).
+    private var sourceKey: String {
+        let suggested = hint(entry, index, previous: store.last(for: entry.id))
+        let kg = set.weightKg ?? suggested?.weightKg
+        let reps = set.reps ?? suggested?.reps
+        return "\(kg.map { String($0) } ?? "-")|\(reps.map { String($0) } ?? "-")|\(bar.map { String($0) } ?? "-")"
+    }
+
+    private func reload() {
+        saveTask?.cancel()
+        saveTask = nil
         let suggested = hint(entry, index, previous: store.last(for: entry.id))
         let kg = set.weightKg ?? suggested?.weightKg
         weight = displayWeight(kg, kg: isKg) ?? 0
@@ -364,7 +392,6 @@ struct SetView: View {
         base = (weight, reps)
         weightCrown = 0
         repsCrown = 0
-        field = bodyweight ? .reps : .weight
     }
 
     /// The low end of the target ("8" of "8-12") when there's nothing else to go on.

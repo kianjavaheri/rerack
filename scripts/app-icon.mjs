@@ -13,11 +13,26 @@ import { writeFileSync } from 'node:fs';
 
 const root = new URL('..', import.meta.url).pathname;
 
-const L = 340, TOP = 296, BOT = 728, BAR = 512, HALF = 40; // stem centre, letter top/bottom, bar centre, half a stroke
-const ARM = 146; // stem centre to the arm's end
-const OUTER = 100, INNER = 20; // the r's outer and inner corner sizes
-const PW = 84, PH = 196, PR = 22, BH = 23; // plate width / height / corner, half the bar's thickness
-const plL = L - HALF - 36 - PW, plR = 1024 - plL - PW; // plates 36 clear of the stems
+/**
+ * The mark's proportions. `L` stem centre, `TOP`/`BOT` the letters' top and bottom, `BAR` the bar's centre, `HALF` half
+ * a letter's stroke, `ARM` stem centre to the arm's end, `OUTER`/`INNER` the r's corner sizes, `PW`/`PH`/`PR` a
+ * plate's width, height and corner, `BH` half the bar's thickness, `CLEAR` from the stems to the plates, `GAP` the cut
+ * in the letters where the bar crosses (its full height, bar included).
+ */
+// Draft B (2026-11-17), bolder like Hevy's and Threads' marks: strokes 100 (were 80), bar 56 (46), plates 92 × 208
+// (84 × 196), drawn 1.1× (`MARK_SCALE`). The thinner original was L 340, TOP 296, BOT 728, HALF 40, ARM 146, OUTER 100,
+// INNER 20, PW 84, PH 196, PR 22, BH 23, CLEAR 36, GAP 84 at 1×.
+const GEOM = { L: 340, TOP: 296, BOT: 728, BAR: 512, HALF: 50, ARM: 150, OUTER: 110, INNER: 24, PW: 92, PH: 208, PR: 26, BH: 28, CLEAR: 33, GAP: 92 };
+/** The whole mark drawn this much larger about the centre. */
+const MARK_SCALE = 1.1;
+let L, TOP, BOT, BAR, HALF, ARM, OUTER, INNER, PW, PH, PR, BH, CLEAR, GAP, plL, plR;
+/** Sets the proportions every drawing below uses. */
+function setGeom(g) {
+  ({ L, TOP, BOT, BAR, HALF, ARM, OUTER, INNER, PW, PH, PR, BH, CLEAR, GAP } = { ...GEOM, ...g });
+  plL = L - HALF - CLEAR - PW;
+  plR = 1024 - plL - PW;
+}
+setGeom({});
 
 /** The left r as one outline; the right one is the same turned half a turn about the centre. */
 function rOutline(flip) {
@@ -42,11 +57,13 @@ function barbellOutline() {
 
 // Each piece's diagonal runs from its own top left to its own bottom right. The barbell's runs mostly downwards
 // (white along the top, colour underneath), slightly tilted, as one gradient so there's no seam at the plates.
-const pieces = [
+let pieces = [];
+const makePieces = () => (pieces = [
   { d: rOutline(false), gap: true, box: [L - HALF, TOP - HALF, L + ARM, BOT] },
   { d: rOutline(true), gap: true, box: [1024 - L - ARM, TOP, 1024 - L + HALF, BOT + HALF] },
   { d: barbellOutline(), box: [512 - 15, BAR - PH / 2, 512 + 15, BAR + PH / 2] },
-];
+]);
+makePieces();
 
 const draw = (p, paint) => `<path d="${p.d}" fill="${paint}"${p.gap ? ' mask="url(#gap)"' : ''}/>`;
 const mark = (paint) => pieces.map((p) => draw(p, paint)).join('\n    ');
@@ -89,7 +106,7 @@ function icon({ comment, tile, round, base, bevel, rainbow, glow, max, power, st
     <!-- A thin gap in the letters where the bar crosses them. -->
     <mask id="gap" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
       <rect width="1024" height="1024" fill="#fff"/>
-      <path d="M${plL + PW} ${BAR} H${plR}" stroke="#000" stroke-width="84" stroke-linecap="round"/>
+      <path d="M${plL + PW} ${BAR} H${plR}" stroke="#000" stroke-width="${GAP}" stroke-linecap="round"/>
     </mask>
     <!-- Glass edges, after the Apple TV mark: a rim ${bevel.rim} units wide round every piece that catches the light.
          The rim is washed with white (so on the coloured parts it reads as a lighter, reflecting edge), a faint
@@ -152,7 +169,7 @@ function icon({ comment, tile, round, base, bevel, rainbow, glow, max, power, st
 }
 
 /** The mark in one flat colour on the tile: no rainbow, edges or glow. */
-function flatIcon({ comment, tile, round, base }) {
+function flatIcon({ comment, tile, round, base, scale = 1 }) {
   return `<!-- ${comment} Drawn by scripts/app-icon.mjs: edit that, not this. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
@@ -162,12 +179,12 @@ function flatIcon({ comment, tile, round, base }) {
     <!-- A thin gap in the letters where the bar crosses them. -->
     <mask id="gap" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
       <rect width="1024" height="1024" fill="#fff"/>
-      <path d="M${plL + PW} ${BAR} H${plR}" stroke="#000" stroke-width="84" stroke-linecap="round"/>
+      <path d="M${plL + PW} ${BAR} H${plR}" stroke="#000" stroke-width="${GAP}" stroke-linecap="round"/>
     </mask>
   </defs>
 
   <rect width="1024" height="1024"${round ? ' rx="512"' : ''} fill="url(#tile)"/>
-  <g>
+  <g${scale !== 1 ? ` transform="translate(512 512) scale(${scale}) translate(-512 -512)"` : ''}>
     ${mark(base)}
   </g>
 </svg>
@@ -178,6 +195,7 @@ function flatIcon({ comment, tile, round, base }) {
 const STYLE = 'flat';
 
 const dark = {
+  scale: MARK_SCALE,
   tile: ['#151516', '#050505'],
   base: STYLE === 'flat' ? '#ffffff' : '#f6f6f8',
   bevel: { rim: 13, sheen: 0.3, line: 0.14, blur: 6, scale: 8, ks: 1.1, shade: 0.22 },
@@ -192,6 +210,29 @@ const dark = {
 };
 
 const draw2 = (o) => (STYLE === 'flat' ? flatIcon(o) : icon(o));
+
+// `node scripts/app-icon.mjs drafts`: bolder versions of the flat icon to compare (thicker strokes, like Hevy's and
+// Threads'), written to drafts/icon/ only. The real icon files are left alone. Each keeps the cut where the bar
+// crosses the letters at about the same width, scales corners and plates with the stroke, and draws the whole mark a
+// little larger (`scale`): Hevy's and Threads' marks fill ~80% of the tile, ours ~65%.
+const DRAFTS = {
+  current: { HALF: 40, ARM: 146, OUTER: 100, INNER: 20, PW: 84, PH: 196, PR: 22, BH: 23, CLEAR: 36, GAP: 84, scale: 1 },
+  'a-bolder': { HALF: 46, BH: 26, GAP: 88, OUTER: 106, INNER: 22, ARM: 148, PW: 88, PH: 204, PR: 24, CLEAR: 34, scale: 1.06 },
+  'b-bold': { HALF: 50, BH: 28, GAP: 92, OUTER: 110, INNER: 24, ARM: 150, PW: 92, PH: 208, PR: 26, CLEAR: 33, scale: 1.1 },
+  'c-boldest': { HALF: 54, BH: 30, GAP: 96, OUTER: 114, INNER: 25, ARM: 152, PW: 96, PH: 214, PR: 27, CLEAR: 32, scale: 1.14 },
+};
+if (process.argv[2] === 'drafts') {
+  const { mkdirSync } = await import('node:fs');
+  const dir = `${root}drafts/icon/`;
+  mkdirSync(dir, { recursive: true });
+  for (const [name, g] of Object.entries(DRAFTS)) {
+    setGeom(g);
+    makePieces();
+    writeFileSync(`${dir}${name}.svg`, flatIcon({ ...dark, scale: g.scale, comment: `Draft "${name}": ${JSON.stringify(g)}.` }));
+  }
+  console.log('wrote drafts/icon/*.svg');
+  process.exit(0);
+}
 writeFileSync(`${root}public/app-icon.svg`, draw2({
   ...dark,
   comment: 'App icon (npm run icons turns it into the home-screen, install and iPhone app icons; favicon.svg is the same in a circle).',
@@ -199,6 +240,7 @@ writeFileSync(`${root}public/app-icon.svg`, draw2({
 writeFileSync(`${root}public/favicon.svg`, draw2({ ...dark, round: true, comment: 'The app icon in a circle: favicon, loader, splash and sign-in.' }));
 writeFileSync(`${root}public/app-icon-light.svg`, draw2({
   comment: "A white version of the app icon, for the portfolio's light logo image (scripts/portfolio-logo.mjs). Not in the iPhone icon set: there it showed even in dark mode. Near-black lettering with a deeper rainbow that comes in a little sooner, since dark over colour goes muddy.",
+  scale: MARK_SCALE,
   tile: ['#ffffff', '#e9e9ec'],
   base: '#1c1c1e',
   bevel: { rim: 13, sheen: 0.12, line: 0.25, blur: 6, scale: 8, ks: 0.9, shade: 0.3 },

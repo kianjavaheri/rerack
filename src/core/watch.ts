@@ -55,6 +55,8 @@ export interface WatchState {
   defaultRest: number;
   /** Settings' "Rest after an exercise's last set". Missing (older phones): off. */
   restAfterLastSet?: boolean;
+  /** Dark mode's accent (`Settings.darkAccent`): 'purple' for the pink-to-blue sweep, missing for the warm one. */
+  accent?: 'purple';
   /** What a turn of the Crown adds to a set's weight, in `unit` (Settings' weight step). Missing (older phones): 5 lb / 2.5 kg. */
   weightStep?: number;
   /** The open live workout, if any (without `resumedFrom`, which the watch never needs). */
@@ -166,6 +168,7 @@ export function watchState(input: {
     defaultRest: settings.restSeconds || DEFAULT_REST_SECONDS,
     restAfterLastSet: !!settings.restAfterLastSet,
     weightStep: weightStepFor(settings),
+    ...(settings.darkAccent === 'purple' ? { accent: 'purple' as const } : {}),
     session,
     last,
     exercises: watchExercises,

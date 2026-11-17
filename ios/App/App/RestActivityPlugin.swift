@@ -57,6 +57,7 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
                 restStartedAt: restStartedAt,
                 restEndsAt: restEndsAt,
                 dark: call.getBool("dark") ?? true,
+                purple: call.getBool("purple") ?? false,
                 image: image
             )
             let content = ActivityContent(state: state, staleDate: nil)
@@ -160,6 +161,7 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             restStartedAt: restStartedAt,
             restEndsAt: restEndsAt,
             dark: previous.dark,
+            purple: previous.purple,
             image: image
         )
         await current.update(ActivityContent(state: state, staleDate: nil))

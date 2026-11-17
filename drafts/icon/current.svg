@@ -1,0 +1,20 @@
+<!-- Draft "current": {}. Drawn by scripts/app-icon.mjs: edit that, not this. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#151516"/><stop offset="1" stop-color="#050505"/>
+    </linearGradient>
+    <!-- A thin gap in the letters where the bar crosses them. -->
+    <mask id="gap" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <path d="M264 512 H760" stroke="#000" stroke-width="84" stroke-linecap="round"/>
+    </mask>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#tile)"/>
+  <g>
+    <path d="M300 728 L300 356 Q300 256 400 256 L486 256 L486 336 L400 336 Q380 336 380 356 L380 728 Z" fill="#ffffff" mask="url(#gap)"/>
+    <path d="M724 296 L724 668 Q724 768 624 768 L538 768 L538 688 L624 688 Q644 688 644 668 L644 296 Z" fill="#ffffff" mask="url(#gap)"/>
+    <path d="M202 414 H242 A22 22 0 0 1 264 436 V489 H760 V436 A22 22 0 0 1 782 414 H822 A22 22 0 0 1 844 436 V588 A22 22 0 0 1 822 610 H782 A22 22 0 0 1 760 588 V535 H264 V588 A22 22 0 0 1 242 610 H202 A22 22 0 0 1 180 588 V436 A22 22 0 0 1 202 414 Z" fill="#ffffff"/>
+  </g>
+</svg>

@@ -34,18 +34,25 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
     }
 }
 
-/// The app's dark theme (src/index.css, and `Palette` on the lock screen): the warm sweep, orange to red.
+/// The app's dark theme (src/index.css, and `Palette` in the widget): the warm sweep, orange to red, or with Settings'
+/// "Purple in dark mode" (`WatchState.accent`) pink through violet to blue. Views redraw when the state changes, since
+/// they all watch the store.
+@MainActor
 enum Theme {
-    static let accent = Color(red: 0xF2 / 255, green: 0x78 / 255, blue: 0x70 / 255)
-    static let sweep = LinearGradient(
-        colors: [
-            Color(red: 0xF5 / 255, green: 0x8A / 255, blue: 0x5C / 255),
-            Color(red: 0xF2 / 255, green: 0x8F / 255, blue: 0x82 / 255),
-            Color(red: 0xEF / 255, green: 0x62 / 255, blue: 0x66 / 255),
-            Color(red: 0xEA / 255, green: 0x55 / 255, blue: 0x60 / 255),
-        ],
-        startPoint: .leading, endPoint: .trailing
-    )
+    static var purple: Bool { WatchStore.shared.state?.accent == "purple" }
+    static var accent: Color { purple ? hex(0xC182FF) : hex(0xF27870) }
+    static var sweep: LinearGradient {
+        LinearGradient(
+            colors: purple
+                ? [hex(0xF08AFD), hex(0xCC82FF), hex(0x9D8EFF), hex(0x8697FF)]
+                : [hex(0xF58A5C), hex(0xF28F82), hex(0xEF6266), hex(0xEA5560)],
+            startPoint: .leading, endPoint: .trailing
+        )
+    }
+
+    private static func hex(_ value: Int) -> Color {
+        Color(red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255, blue: Double(value & 0xFF) / 255)
+    }
     /// Dark text on the sweep (`--on-rainbow`).
     static let onSweep = Color(red: 0x1A / 255, green: 0x0D / 255, blue: 0x0B / 255)
 }

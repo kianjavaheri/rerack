@@ -6,17 +6,19 @@ const assets = 'ios/App/App/Assets.xcassets';
 const background = '#0f1011';
 
 // Rendered straight at 1024 px, whatever size the SVG is drawn at (density is dots per 72 SVG units).
-async function render(svg, file, { gray = false } = {}) {
+async function render(svg, file, { gray = false, to = `${assets}/AppIcon.appiconset` } = {}) {
   const { width: drawnAt = 64 } = await sharp(svg).metadata();
   let image = sharp(svg, { density: (72 * 1024) / drawnAt }).resize(1024, 1024).flatten({ background });
   if (gray) image = image.grayscale();
-  await image.png().toFile(`${assets}/AppIcon.appiconset/${file}`);
+  await image.png().toFile(`${to}/${file}`);
 }
 
 // The dark icon everywhere, plus a grey one for tinted home screens, which iOS colours itself (Contents.json). No
 // white light-mode icon: iOS has no light-only slot, so it would show on every Default home screen, dark mode or not.
 await render('public/app-icon.svg', 'AppIcon-512@2x.png');
 await render('public/app-icon.svg', 'AppIcon-tinted.png', { gray: true });
+// The Apple Watch app's (watchOS rounds it into a circle itself).
+await render('public/app-icon.svg', 'AppIcon.png', { to: 'ios/App/RerackWatch/Assets.xcassets/AppIcon.appiconset' });
 
 const splash = sharp({ create: { width: 2732, height: 2732, channels: 3, background } }).png();
 for (const name of ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-2732x2732-2.png']) {

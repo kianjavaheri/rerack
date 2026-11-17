@@ -7,14 +7,14 @@
     <!-- A thin gap in the letters where the bar crosses them. -->
     <mask id="gap" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
       <rect width="1024" height="1024" fill="#fff"/>
-      <path d="M264 512 H760" stroke="#000" stroke-width="84" stroke-linecap="round"/>
+      <path d="M257 512 H767" stroke="#000" stroke-width="92" stroke-linecap="round"/>
     </mask>
   </defs>
 
   <rect width="1024" height="1024" fill="url(#tile)"/>
-  <g>
-    <path d="M300 728 L300 356 Q300 256 400 256 L486 256 L486 336 L400 336 Q380 336 380 356 L380 728 Z" fill="#1c1c1e" mask="url(#gap)"/>
-    <path d="M724 296 L724 668 Q724 768 624 768 L538 768 L538 688 L624 688 Q644 688 644 668 L644 296 Z" fill="#1c1c1e" mask="url(#gap)"/>
-    <path d="M202 414 H242 A22 22 0 0 1 264 436 V489 H760 V436 A22 22 0 0 1 782 414 H822 A22 22 0 0 1 844 436 V588 A22 22 0 0 1 822 610 H782 A22 22 0 0 1 760 588 V535 H264 V588 A22 22 0 0 1 242 610 H202 A22 22 0 0 1 180 588 V436 A22 22 0 0 1 202 414 Z" fill="#1c1c1e"/>
+  <g transform="translate(512 512) scale(1.1) translate(-512 -512)">
+    <path d="M290 728 L290 356 Q290 246 400 246 L490 246 L490 346 L414 346 Q390 346 390 370 L390 728 Z" fill="#1c1c1e" mask="url(#gap)"/>
+    <path d="M734 296 L734 668 Q734 778 624 778 L534 778 L534 678 L610 678 Q634 678 634 654 L634 296 Z" fill="#1c1c1e" mask="url(#gap)"/>
+    <path d="M191 408 H231 A26 26 0 0 1 257 434 V484 H767 V434 A26 26 0 0 1 793 408 H833 A26 26 0 0 1 859 434 V590 A26 26 0 0 1 833 616 H793 A26 26 0 0 1 767 590 V540 H257 V590 A26 26 0 0 1 231 616 H191 A26 26 0 0 1 165 590 V434 A26 26 0 0 1 191 408 Z" fill="#1c1c1e"/>
   </g>
 </svg>

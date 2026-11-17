@@ -1,0 +1,20 @@
+<!-- Draft "b-bold": {"HALF":50,"BH":28,"GAP":92,"OUTER":110,"INNER":24,"ARM":150,"PW":92,"PH":208,"PR":26,"CLEAR":33,"scale":1.1}. Drawn by scripts/app-icon.mjs: edit that, not this. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#151516"/><stop offset="1" stop-color="#050505"/>
+    </linearGradient>
+    <!-- A thin gap in the letters where the bar crosses them. -->
+    <mask id="gap" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <path d="M257 512 H767" stroke="#000" stroke-width="92" stroke-linecap="round"/>
+    </mask>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#tile)"/>
+  <g transform="translate(512 512) scale(1.1) translate(-512 -512)">
+    <path d="M290 728 L290 356 Q290 246 400 246 L490 246 L490 346 L414 346 Q390 346 390 370 L390 728 Z" fill="#ffffff" mask="url(#gap)"/>
+    <path d="M734 296 L734 668 Q734 778 624 778 L534 778 L534 678 L610 678 Q634 678 634 654 L634 296 Z" fill="#ffffff" mask="url(#gap)"/>
+    <path d="M191 408 H231 A26 26 0 0 1 257 434 V484 H767 V434 A26 26 0 0 1 793 408 H833 A26 26 0 0 1 859 434 V590 A26 26 0 0 1 833 616 H793 A26 26 0 0 1 767 590 V540 H257 V590 A26 26 0 0 1 231 616 H191 A26 26 0 0 1 165 590 V434 A26 26 0 0 1 191 408 Z" fill="#ffffff"/>
+  </g>
+</svg>
