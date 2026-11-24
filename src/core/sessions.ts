@@ -43,11 +43,16 @@ export function createFreestyleSession(timing: LogTiming = { live: true }): Sess
   };
 }
 
+function carried(entry: SessionEntry | undefined): Pick<SessionEntry, 'perSide' | 'sides'> {
+  if (!entry) return {};
+  return { ...(entry.perSide ? { perSide: true } : {}), ...(entry.sides ? { sides: true } : {}) };
+}
+
 export function createSessionFromWorkout(workout: Workout, routineId: ID | null, timing: LogTiming = { live: true }, past: Session[] = []): Session {
   // Each exercise starts with Per side as it was the last time this workout was logged (the newest session wins).
   const earlier = past.filter((s) => s.workoutId === workout.id).sort((a, b) => b.startedAt.localeCompare(a.startedAt));
-  const lastPerSide = (exerciseId: ID, occurrence: number) =>
-    earlier.map((s) => s.entries.filter((e) => e.exerciseId === exerciseId)[occurrence]).find(Boolean)?.perSide;
+  const lastEntry = (exerciseId: ID, occurrence: number) =>
+    earlier.map((s) => s.entries.filter((e) => e.exerciseId === exerciseId)[occurrence]).find(Boolean);
   return {
     id: newId(),
     name: workout.name,
@@ -63,7 +68,7 @@ export function createSessionFromWorkout(workout: Workout, routineId: ID | null,
       targetReps: we.targetReps,
       notes: we.notes,
       supersetNext: we.supersetNext,
-      perSide: lastPerSide(we.exerciseId, workout.exercises.slice(0, i).filter((x) => x.exerciseId === we.exerciseId).length),
+      ...carried(lastEntry(we.exerciseId, workout.exercises.slice(0, i).filter((x) => x.exerciseId === we.exerciseId).length)),
     })),
   };
 }

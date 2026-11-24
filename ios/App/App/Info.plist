@@ -48,12 +48,16 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Rerack uses the camera only when you choose Take Photo for your profile picture.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Rerack checks Apple Health for the workouts it saved there, so a workout finished twice isn't saved twice.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Rerack saves your finished workouts to Apple Health as strength training, so they count in Fitness and Health.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Used while developing the app, to load it from your Mac.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Rerack opens your photos only when you choose one for your profile picture.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

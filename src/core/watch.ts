@@ -1,6 +1,6 @@
 import { cancelResume, createSessionFromWorkout, finalizeSession, orderByProgress } from './sessions';
 import { followedRoutine, lastPerformance, nextWorkoutInRoutine } from './stats';
-import type { Exercise, ID, Routine, Session, SetLog, Settings, Timestamp, WeightUnit, Workout } from './types';
+import type { Exercise, ID, Routine, Session, SessionEntry, SetLog, Settings, Timestamp, WeightUnit, Workout } from './types';
 import { DEFAULT_REST_SECONDS, restSecondsFor, weightStepFor } from './types';
 import { barWeight, isBarbellExercise } from './plates';
 
@@ -15,6 +15,7 @@ import { barWeight, isBarbellExercise } from './plates';
 export interface WatchSet {
   reps: number | null;
   weightKg: number | null;
+  right?: { reps: number | null; weightKg: number | null };
 }
 
 export interface WatchExercise {
@@ -36,6 +37,7 @@ export interface WatchSlot {
   notes?: string;
   supersetNext?: boolean;
   perSide?: boolean;
+  sides?: boolean;
   last: WatchSet[];
 }
 
@@ -92,7 +94,13 @@ export type WatchOp = OpBase &
     | { kind: 'presence'; running: boolean }
   );
 
-const toWatchSets = (sets: SetLog[]): WatchSet[] => sets.map((s) => ({ reps: s.reps, weightKg: s.weightKg }));
+type Sided<T> = T & { right?: { reps: number | null; weightKg: number | null } | null; sides?: boolean };
+
+const toWatchSets = (sets: SetLog[]): WatchSet[] =>
+  sets.map((s) => {
+    const right = (s as Sided<SetLog>).right;
+    return right ? { reps: s.reps, weightKg: s.weightKg, right: { reps: right.reps, weightKg: right.weightKg } } : { reps: s.reps, weightKg: s.weightKg };
+  });
 
 export function watchState(input: {
   sessions: Session[];
@@ -143,6 +151,7 @@ export function watchState(input: {
             notes: entry.notes,
             supersetNext: entry.supersetNext,
             perSide: entry.perSide,
+            sides: (entry as Sided<SessionEntry>).sides,
             last: toWatchSets(lastPerformance(entry.exerciseId, sessions, { occurrence })),
           };
         }),
@@ -189,8 +198,10 @@ export function applyWatchOp(session: Session | undefined, op: WatchOp): WatchOp
       if (!session) return null;
       const entry = session.entries.find((e) => e.id === op.entryId);
       if (!entry) return null;
-      const has = entry.sets.some((s) => s.id === op.set.id);
-      const sets = has ? entry.sets.map((s) => (s.id === op.set.id ? op.set : s)) : [...entry.sets, op.set];
+      const existing = entry.sets.find((s) => s.id === op.set.id) as Sided<SetLog> | undefined;
+      const sent = op.set as Sided<SetLog>;
+      const set: SetLog = existing?.right != null && sent.right == null ? ({ ...sent, right: existing.right } as SetLog) : op.set;
+      const sets = existing ? entry.sets.map((s) => (s.id === set.id ? set : s)) : [...entry.sets, set];
       let entries = session.entries.map((e) => (e.id === entry.id ? { ...e, sets } : e));
       // Finished ones first, then ones under way (as SessionPage does when a set is checked off).
       if (op.set.done && !session.finishedAt) entries = orderByProgress(entries, entry.id);

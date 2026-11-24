@@ -8,7 +8,7 @@ import { useEdgeSwipeBack } from '../hooks/useEdgeSwipeBack';
 import { useTabSwipe, type SwipeState } from '../hooks/useTabSwipe';
 import { useExerciseMedia } from '../hooks/useCatalog';
 import { useExercises, useSessions } from '../hooks/useRepo';
-import { exercisePhotos } from '../data/catalog';
+import { thumbnailOf } from '../data/catalog';
 import { isNative } from '../native/platform';
 import { useScheduledNotifications } from '../native/notifications';
 import { useHomeWidget } from '../native/widget';
@@ -78,7 +78,7 @@ export function Layout() {
   const pictureOf = (exerciseId: string) => {
     const exercise = exercises?.find((e) => e.id === exerciseId);
     const media = exercise ? mediaFor(exercise) : {};
-    return media.gif ?? (media.photoId ? exercisePhotos(media.photoId)[0] : undefined);
+    return thumbnailOf(media);
   };
   // The Apple Watch app: what was logged there, and what it shows. While it runs this workout it alerts rest itself.
   const watchRunning = useAppleWatch(sessions, exercises, settings, pictureOf);

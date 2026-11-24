@@ -1,7 +1,7 @@
 import { History } from 'lucide-react';
 import { groupSets, type PastSets } from '../core/stats';
 import type { Exercise, SetLog, WeightUnit } from '../core/types';
-import { formatWeight } from '../core/units';
+import { setGroupText, setWeightText } from '../core/units';
 import { Modal } from './Modal';
 
 /** "Wed, Oct 22, 2026" */
@@ -22,8 +22,12 @@ function SetChips({ sets, unit, bodyweight }: { sets: SetLog[]; unit: WeightUnit
   return (
     <div className="past-sets">
       {groupSets(sets).map((g, i) => {
-        const weight = g.weightKg ? `${bodyweight ? '+' : ''}${formatWeight(g.weightKg, unit)} ${unit}` : bodyweight ? 'BW' : null;
-        return (
+        const weight = setWeightText(g.weightKg, unit, bodyweight);
+        return g.right ? (
+          <span key={i} className="past-chip">
+            {setGroupText(g, unit, bodyweight)}
+          </span>
+        ) : (
           <span key={i} className="past-chip">
             {g.count} × {g.reps}
             {weight && <span className="muted"> · {weight}</span>}

@@ -141,7 +141,10 @@ export function CheckInPage() {
 
       {standalone.length > 0 && (
         <section className="section" style={{ marginTop: 26 }}>
-          <h2 className="section-title">Other workouts</h2>
+          <h2 className="section-title" style={{ marginBottom: 2 }}>Other workouts</h2>
+          <p className="muted small" style={{ margin: '0 0 12px' }}>
+            Workouts that aren't in a routine
+          </p>
           <div className="grid">{standalone.map((w) => workoutCard(w, null))}</div>
         </section>
       )}

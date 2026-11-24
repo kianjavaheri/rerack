@@ -147,6 +147,22 @@
   --ink-1: #f08afd; --ink-2: #dd84ff; --ink-3: #cc82ff; --ink-4: #b688ff; --ink-5: #9d8eff; --ink-6: #8697ff;
 }
 
+/* Black and white, being tried out (Settings → Appearance, `Settings.monoAccent`; overrides purple): every accent role
+   one plain colour, black in light mode and white in dark, with text on its fills in the other. */
+[data-theme='light'][data-mono] {
+  --accent: #111113; --accent-soft: #1111131a; --accent-fill: #111113;
+  --rb-1: #111113; --rb-2: #111113; --rb-3: #111113; --rb-4: #111113; --rb-5: #111113; --rb-6: #111113;
+  --ink-1: #111113; --ink-2: #111113; --ink-3: #111113; --ink-4: #111113; --ink-5: #111113; --ink-6: #111113;
+  --on-rainbow: #fff;
+}
+[data-theme='dark'][data-mono] {
+  --accent: #f4f4f5; --accent-soft: #f4f4f526; --accent-fill: #f4f4f5;
+  --rb-1: #f4f4f5; --rb-2: #f4f4f5; --rb-3: #f4f4f5; --rb-4: #f4f4f5; --rb-5: #f4f4f5; --rb-6: #f4f4f5;
+  --ink-1: #f4f4f5; --ink-2: #f4f4f5; --ink-3: #f4f4f5; --ink-4: #f4f4f5; --ink-5: #f4f4f5; --ink-6: #f4f4f5;
+  --on-rainbow: #111113;
+}
+[data-theme='dark'][data-mono] ::selection { color: #111113; }
+
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; min-height: 100%; }
 /* No double-tap zoom: the app stays at one zoom level. */
@@ -466,6 +482,7 @@ button.chip { cursor: pointer; }
   display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 4px 8px; margin-left: -8px; border-radius: 8px;
   font-size: 13px; font-weight: 500; color: var(--text);
 }
+.link-logo { flex-shrink: 0; }
 .link-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: underline; text-underline-offset: 2px; }
 @media (hover: hover) { .link-chip:hover { background: var(--hover-tint); } }
 .link-add { display: flex; align-items: center; gap: 8px; min-height: 30px; }
@@ -506,10 +523,26 @@ button.chip { cursor: pointer; }
 /* Five choices (the exercise form's Equipment): the full width, shared evenly, so they fit on a phone. */
 .segmented-wrap { display: flex; }
 .segmented-wrap button { flex: 1 1 auto; padding: 6px 0; min-width: 0; font-size: 12.5px; letter-spacing: -0.01em; }
-/* Workouts page: Programs | Exercises, whose list opens right under it (EditWorkoutsPage). */
-.plan-switch { min-width: 0; }
+.plan-switch { display: flex; width: 100%; max-width: 520px; margin-top: 20px; }
+.plan-switch button { flex: 1 1 0; padding: 7px 0; font-size: 13.5px; }
 .plan-panel { margin-top: 14px; animation: rise 0.3s var(--ease); }
-.plan-panel > .search, .plan-panel > .row:first-child { margin-top: 0 !important; }
+.plan-actions { display: flex; gap: 8px; max-width: 520px; margin-bottom: 12px; }
+.plan-actions > .btn { flex: 1 1 0; justify-content: center; min-width: 0; height: 44px; font-size: 14px; border-radius: 14px; }
+.new-routine-blank { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; padding: 14px 16px; }
+.new-routine-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--chip-bg); flex-shrink: 0; }
+.new-workout-name { display: flex; align-items: center; gap: 10px; margin-top: 2px; cursor: text; }
+.new-workout-fit { display: inline-grid; min-width: 0; max-width: calc(100% - 30px); }
+.new-workout-fit > * { grid-area: 1 / 1; min-width: 1ch; }
+.new-workout-mirror { visibility: hidden; white-space: pre; overflow: hidden; width: auto; padding-right: 4px; }
+.new-workout-fit > input { width: 0; min-width: 100%; }
+.new-workout-pencil { color: var(--muted); flex-shrink: 0; }
+.new-workout-title::placeholder { color: var(--text); opacity: 1; }
+.new-workout-title:focus::placeholder { color: var(--faint); }
+.plan-panel > .search, .plan-panel > .row:first-child, .plan-panel > .exercise-tools { margin-top: 0 !important; }
+.exercise-tools { display: flex; flex-direction: column; gap: 10px; max-width: 520px; }
+.exercise-tools > .btn { height: 44px; font-size: 14px; border-radius: 14px; justify-content: center; }
+.exercise-tools .input { height: 44px; border-radius: 14px; }
+.exercise-tools .search svg { top: 14px; }
 
 .switch {
   position: relative; width: 40px; height: 24px; border-radius: 999px; border: 0; cursor: pointer;
@@ -631,6 +664,8 @@ button.thumb-btn { display: inline-flex; padding: 0; border: 0; background: none
 .exercise-thumb.anatomical { background: #fff; object-fit: contain; }
 .exercise-gif { display: grid; place-items: center; border-radius: 16px; background: #fff; }
 .exercise-gif img { width: min(100%, 360px); aspect-ratio: 1; }
+.exercise-photos.illustration { aspect-ratio: 1; width: min(100%, 360px); margin: 0 auto; }
+.exercise-photos.illustration img { object-fit: contain; }
 @media (prefers-reduced-motion: reduce) { .exercise-photos img { transition: none; } }
 /* Below the pictures: what it works and how to do it (ExercisePhotos). */
 .exercise-info { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--card-border); }
@@ -762,19 +797,7 @@ button.stat { cursor: pointer; transition: border-color 0.2s, transform 0.2s var
   padding: 8px 12px; box-shadow: var(--nav-shadow); font-size: 13px;
 }
 
-.analytics-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 24px; align-items: start; }
-.analytics-side { position: sticky; top: calc(var(--nav-h) + 24px); max-height: calc(100vh - var(--nav-h) - 50px); overflow-y: auto; }
-.exercise-list { display: flex; flex-direction: column; gap: 2px; }
-.list-heading { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px 2px; }
-.analytics-side .search + .list-heading { margin-top: 6px; }
-@media (max-width: 980px) {
-  .analytics-layout { grid-template-columns: 1fr; }
-  .analytics-side { position: static; max-height: none; }
-  .exercise-list { flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 6px; scrollbar-width: none; }
-  .exercise-list .list-row { flex: 0 0 auto; width: auto; background: var(--chip-bg); }
-  .exercise-list .list-row.selected { background: var(--text); color: var(--page-base); }
-  .exercise-list .list-row.selected .muted { color: inherit; opacity: 0.7; }
-}
+.analytics-layout { display: flex; flex-direction: column; gap: 18px; max-width: 900px; }
 
 .table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
 .table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; padding: 8px 6px; }
@@ -887,6 +910,30 @@ button.stat { cursor: pointer; transition: border-color 0.2s, transform 0.2s var
   .set-input { padding: 0 18px 0 4px; font-size: 14px; }
   .affix .suffix { right: 6px; font-size: 11px; }
   .check { width: 34px; }
+}
+
+.series-list { display: flex; flex-direction: column; padding: 10px 6px 0 8px; }
+.series-row { display: flex; align-items: center; gap: 4px; }
+.series-toggle {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 7px 6px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--text); font: inherit; font-size: 14px; font-weight: 500; text-align: left; cursor: pointer;
+}
+@media (hover: hover) { .series-toggle:hover { background: var(--hover-tint); } }
+.series-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.series-check {
+  width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; display: grid; place-items: center;
+  background: var(--c); border: 2px solid var(--c); color: #fff;
+}
+.series-row.off .series-check { background: transparent; border-color: var(--faint); }
+.series-row.off .series-name, .series-row.off .tnum { opacity: 0.5; }
+.series-solo {
+  flex-shrink: 0; height: 28px; padding: 0 10px; border-radius: 999px; border: 0; cursor: pointer;
+  background: var(--chip-bg); color: var(--muted); font: inherit; font-size: 12px; font-weight: 600;
+}
+.series-solo.on { background: var(--text); color: var(--page-base); }
+.series-all {
+  align-self: flex-end; margin: 0 4px 2px; padding: 2px 6px; border: 0; background: transparent; cursor: pointer;
+  color: var(--accent); font: inherit; font-size: 13px; font-weight: 600;
 }
 
 /* Chart legend (toggleable) and change indicators */
@@ -1031,9 +1078,8 @@ button.heat-cell { cursor: pointer; }
 .entry-actions > .notes-chip { grid-row: 2; }
 .entry-actions > .entry-menu { grid-column: 2; grid-row: 1; width: 32px; height: 30px; }
 .entry-actions > .prev-btn { grid-column: 2; grid-row: 2; width: 28px; height: 28px; }
-/* Notes on an exercise card: a gray chip with the icon and the word, under its rest and ⋮. */
 .notes-chip {
-  display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; margin-right: 8px; border: 0;
+  display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; border: 0;
   border-radius: 999px; cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 600;
   background: var(--chip-bg); color: var(--text);
 }
@@ -1366,7 +1412,7 @@ a.card:active, button.card:active:not(:disabled) { transform: scale(0.98); }
 .ctx-preview.lifted { transform: scale(1.02); }
 .ctx-preview > * { background: var(--ctx-bg); box-shadow: 0 18px 50px #00000059; pointer-events: none; }
 .ctx-menu {
-  position: fixed; isolation: isolate; width: min(300px, calc(100vw - 24px)); display: flex;
+  position: fixed; isolation: isolate; width: max-content; min-width: min(300px, calc(100vw - 24px)); max-width: calc(100vw - 24px); display: flex;
   border-radius: 26px; box-shadow: 0 18px 50px #00000059; overflow: hidden;
   transform-origin: top left; animation: ctx-in 0.28s cubic-bezier(0.34, 1.4, 0.5, 1);
 }
@@ -1381,6 +1427,7 @@ a.card:active, button.card:active:not(:disabled) { transform: scale(0.98); }
   padding: 17px 6px 14px; border: 0; background: none; cursor: pointer;
   color: var(--text); font: inherit; font-size: 14px; font-weight: 500;
 }
+.ctx-action span { white-space: nowrap; }
 .ctx-action.danger { color: var(--danger); }
 .ctx-action:active { background: var(--hover-tint); }
 @media (hover: hover) { .ctx-action:hover { background: var(--hover-tint); } }
@@ -1522,7 +1569,7 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
   /* One cell no bigger than the screen: else the content (and the sideways-scrolling filters) would stretch it past
      the edges, and the body would never scroll. */
   display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; background: #00000066; animation: fade 0.2s ease;
-  --intro-pad: max(16px, var(--gutter));
+  --intro-pad: max(16px, var(--gutter)); --intro-body-top: 6px;
 }
 .intro-panel {
   width: 100%; height: 100%; min-width: 0; display: flex; flex-direction: column;
@@ -1535,7 +1582,7 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
   display: flex; justify-content: space-between; align-items: center; min-height: 44px;
   padding: calc(8px + env(safe-area-inset-top)) var(--intro-pad) 0;
 }
-.intro-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px var(--intro-pad) 24px; }
+.intro-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--intro-body-top) var(--intro-pad) 24px; }
 .intro-body > * { max-width: 640px; margin-left: auto; margin-right: auto; }
 .intro-foot {
   display: flex; justify-content: space-between; align-items: center; gap: 10px;
@@ -1597,7 +1644,7 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
 /* The exercise grid (components/ExerciseGrid.tsx): tap a tile to pick it; its circle fills. Search and filters stay
    at the top of the scrolling window, so results fill the rest (with the keyboard up, down to it). */
 .ex-grid-head {
-  position: sticky; top: 0; z-index: 2; background: var(--paper);
+  position: sticky; top: calc(-1 * var(--intro-body-top, 0px)); z-index: 2; background: var(--paper);
   margin: 0 calc(-1 * var(--intro-pad, 0px)); padding: 6px var(--intro-pad, 0px) 4px;
 }
 .ex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(102px, 1fr)); gap: 10px; margin-top: 14px; }
@@ -1791,3 +1838,20 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
 @media (max-width: 440px) { .bar-add-text { display: none; } .bar-add { width: 36px; padding: 0; justify-content: center; } }
 .bar-sep { margin: 0 7px; color: var(--muted); opacity: 0.6; font-weight: 400; }
 .bar-time { background: var(--ink-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+.editing-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0 14px; }
+.editing-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.start-btn { background: var(--rainbow); color: var(--on-rainbow); border-color: transparent; font-weight: 700; }
+.start-btn:disabled { opacity: 0.45; }
+
+.side-field { position: relative; display: block; min-width: 0; }
+.side-field::before, .side-field::after { position: absolute; z-index: 1; pointer-events: none; top: 0; bottom: 0; }
+.side-field::before {
+  content: attr(data-side); left: 0; width: 22px; display: grid; place-items: center;
+  font-size: 11px; font-weight: 800; color: var(--muted);
+}
+.side-field::after { content: ''; left: 22px; width: 1px; margin: 9px 0; background: var(--card-border); }
+.set-row.sided .side-field[data-side='R']::before, .set-row.sided .side-field[data-side='R']::after { top: -3px; }
+.side-field > * { width: 100%; }
+.set-row.sided .side-field[data-side='R'] .set-input { margin-top: -3px; }
+.side-gap { display: block; }

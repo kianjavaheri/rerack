@@ -69,6 +69,17 @@ func hint(_ entry: SessionEntry, _ index: Int, previous: [WatchSet]) -> WatchSet
     return WatchSet(reps: filled?.reps ?? before?.reps, weightKg: filled?.weightKg ?? before?.weightKg)
 }
 
+func rightHint(_ entry: SessionEntry, _ index: Int, previous: [WatchSet]) -> Side {
+    func kind(_ s: SetLog) -> Int { s.isWarmup ? 1 : s.isDrop ? 2 : 0 }
+    let set = entry.sets[index]
+    let above = entry.sets[..<index].last { kind($0) == kind(set) }
+    let aboveFilled = above.map { $0.reps != nil || $0.weightKg != nil || $0.right?.reps != nil || $0.right?.weightKg != nil } ?? false
+    let working = set.isWarmup ? -1 : entry.sets[..<index].filter { !$0.isWarmup }.count
+    let from: Side? = aboveFilled ? above?.right : working < 0 ? nil : (working < previous.count ? previous[working] : previous.last)?.right
+    let left = hint(entry, index, previous: previous)
+    return Side(reps: from?.reps ?? set.reps ?? left?.reps, weightKg: from?.weightKg ?? set.weightKg ?? left?.weightKg)
+}
+
 /// Weights in the user's unit, rounded to 0.1 like the app ("135", "61.2").
 func displayWeight(_ kg: Double?, kg isKg: Bool) -> Double? {
     guard let kg else { return nil }

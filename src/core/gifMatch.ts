@@ -2,7 +2,7 @@
 // ahead of time for the library (scripts/match-exercise-gifs.mjs) and in the app for exercises you named yourself.
 
 /** One ExerciseDB exercise: its id, name and equipment (e.g. "leverage machine"). */
-export type GifCandidate = [id: string, name: string, equipments: string[]];
+export type GifCandidate = [id: string, name: string, equipments: string[], ...rest: number[]];
 
 // Spellings that differ between datasets (and how people type them), applied to whole words after lowercasing.
 const WORDS: Record<string, string> = {
@@ -112,3 +112,20 @@ export function bestGifMatch(name: string, equipment: string[], candidates: GifC
   }
   return { match: best && bestScore >= min ? best : undefined, best, score: bestScore };
 }
+
+const GEAR = new Set(['barbell', 'dumbbell', 'cable', 'machine', 'kettlebell', 'band', 'ez', 'rope', 'bar']);
+
+export function bestRepdbMatch(name: string, equipment: string[], candidates: GifCandidate[]) {
+  const ours = [...wordsOf(name)].filter((w) => !GEAR.has(w));
+  let best: GifCandidate | undefined;
+  let bestScore = -Infinity;
+  for (const c of candidates) {
+    const theirs = wordsOf(c[1]);
+    const missing = ours.filter((w) => !theirs.has(w)).length;
+    const s = matchScore(name, equipment, c) - 0.2 * missing;
+    if (s > bestScore) [best, bestScore] = [c, s];
+  }
+  return { match: best && bestScore >= REPDB_MIN ? best : undefined, best, score: bestScore };
+}
+
+export const REPDB_MIN = 0.82;

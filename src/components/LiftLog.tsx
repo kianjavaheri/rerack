@@ -4,7 +4,7 @@ import { exerciseDays } from '../core/activity';
 import { formatDate } from '../core/format';
 import { groupSets, type PastSets } from '../core/stats';
 import type { Exercise, ID, Routine, Session, WeightUnit, Workout } from '../core/types';
-import { formatWeight } from '../core/units';
+import { formatWeight, setWeightText } from '../core/units';
 import { DayCalendar } from './DayCalendar';
 import { LogEntryForm } from './LogEntryForm';
 
@@ -218,8 +218,12 @@ export function LiftLog({ routines, workouts, exercises, sessions, unit, followe
                         <tr key={i}>
                           {i === 0 && name}
                           <td className="num">{g.count}</td>
-                          <td className="num">{g.reps}</td>
-                          <td className="num">{g.weightKg ? `${bodyweight ? '+' : ''}${formatWeight(g.weightKg, unit)} ${unit}` : bodyweight ? 'BW' : '—'}</td>
+                          <td className="num">{g.right ? `${g.reps} / ${g.right.reps}` : g.reps}</td>
+                          <td className="num">
+                            {g.right && (g.right.weightKg ?? g.weightKg) !== g.weightKg
+                              ? `${formatWeight(g.weightKg, unit)} / ${setWeightText(g.right.weightKg, unit, bodyweight) ?? '—'}`
+                              : (setWeightText(g.weightKg, unit, bodyweight) ?? '—')}
+                          </td>
                           {i === 0 && date}
                         </tr>
                       ))

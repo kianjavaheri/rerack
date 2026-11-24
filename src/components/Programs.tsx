@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { WEEKDAYS } from '../core/stats';
 import { PROGRAMS, type Program } from '../data/programs';
@@ -72,12 +72,36 @@ export function ProgramList({ onUse, busy }: { onUse: (program: Program) => void
   );
 }
 
-/** Workouts' "Programs" window. */
-export function ProgramsWindow({ onUse, busy, onClose }: { onUse: (program: Program) => void; busy?: string | null; onClose: () => void }) {
+export function NewRoutineSheet({
+  onBlank,
+  onUse,
+  busy,
+  onClose,
+}: {
+  onBlank: () => void;
+  onUse: (program: Program) => void;
+  busy?: string | null;
+  onClose: () => void;
+}) {
   return (
-    <Modal title="Programs" onClose={onClose} expandable>
+    <Modal title="New routine" onClose={onClose} expandable>
+      <button className="card new-routine-blank" onClick={onBlank}>
+        <span className="new-routine-icon">
+          <Plus size={18} />
+        </span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span className="card-title" style={{ display: 'block' }}>
+            Start from scratch
+          </span>
+          <span className="muted small">Name it, then add your workouts and their days.</span>
+        </span>
+        <ChevronRight size={18} className="muted" />
+      </button>
+      <h3 className="section-title" style={{ margin: '20px 0 4px' }}>
+        Or start from a program
+      </h3>
       <p className="muted small" style={{ margin: '0 0 12px' }}>
-        A routine to start from. It’s added to yours, and you can change anything in it afterwards.
+        Ready-made routines. You can change anything afterwards.
       </p>
       <ProgramList onUse={onUse} busy={busy} />
     </Modal>

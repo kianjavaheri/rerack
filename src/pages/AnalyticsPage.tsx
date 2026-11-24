@@ -1,4 +1,4 @@
-import { ArrowUpRight, Search, TrendingUp } from 'lucide-react';
+import { ArrowUpRight, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { isImportedSession } from '../core/sessions';
 import { ACCENT, RANGES, type RangeKey } from '../components/chartTheme';
@@ -7,7 +7,7 @@ import { WorkoutAnalytics } from '../components/WorkoutAnalytics';
 import { PageSkeleton } from '../components/Skeleton';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { formatDate, formatDateLong, formatNumber, pluralize, relativeDay } from '../core/format';
+import { formatDate, formatDateLong, formatNumber, pluralize } from '../core/format';
 import { exerciseHistory, isCompletedSet, personalRecords, type ExercisePoint, type MetricKey } from '../core/stats';
 import type { Exercise, WeightUnit } from '../core/types';
 import { fromKg } from '../core/units';
@@ -52,7 +52,6 @@ export function AnalyticsPage() {
   const [params, setParams] = useSearchParams();
   // Log was a view of this page before it got its own tab.
   const toLog = params.get('view') === 'log';
-  const [query, setQuery] = useState('');
   // The metric picked for one exercise; another exercise (picked here or opened from a link) starts on its default.
   const [metric, setMetric] = useState<{ exerciseId: string; key: MetricKey } | null>(null);
   const [range, setRange] = useState<RangeKey>('All');
@@ -90,15 +89,11 @@ export function AnalyticsPage() {
 
   // One list of workouts and exercises: a workout charts each of its exercises, an exercise its own numbers. With
   // nothing picked, the most recently done workout (else exercise).
-  const q = query.trim().toLowerCase();
   const pickedExercise = params.get('exercise');
   const selectedWorkoutId = pickedExercise ? null : (params.get('workout') ?? trainedWorkouts[0]?.workout.id ?? null);
   const selectedWorkout = selectedWorkoutId ? workouts.find((w) => w.id === selectedWorkoutId) : undefined;
   const selectedId = selectedWorkoutId ? null : (pickedExercise ?? trained[0]?.exercise.id);
   const selected = exercises.find((e) => e.id === selectedId);
-  // What's selected stays in the list even when the filter doesn't match it (e.g. opened from a link).
-  const visible = trained.filter(({ exercise }) => exercise.id === selectedId || exercise.name.toLowerCase().includes(q));
-  const visibleWorkouts = trainedWorkouts.filter(({ workout }) => workout.id === selectedWorkoutId || workout.name.toLowerCase().includes(q));
 
   return (
     <>
@@ -112,44 +107,34 @@ export function AnalyticsPage() {
         </div>
       ) : (
         <div className="analytics-layout section" style={{ marginTop: 24 }}>
-          <aside className="analytics-side">
-            <div className="search" style={{ marginBottom: 8 }}>
-              <Search size={16} />
-              <input className="input" placeholder="Filter" value={query} onChange={(e) => setQuery(e.target.value)} />
-            </div>
-            {visibleWorkouts.length > 0 && <div className="list-heading">Workouts</div>}
-            <div className="exercise-list">
-              {visibleWorkouts.map(({ workout, last }) => (
-                <button
-                  key={workout.id}
-                  className={`list-row${workout.id === selectedWorkoutId ? ' selected' : ''}`}
-                  onClick={() => setParams({ workout: workout.id }, { replace: true })}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{workout.name}</div>
-                    <div className="muted small">{relativeDay(last)}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            {visible.length > 0 && <div className="list-heading">Exercises</div>}
-            <div className="exercise-list">
-              {visible.map(({ exercise, last }) => (
-                <button
-                  key={exercise.id}
-                  className={`list-row${exercise.id === selectedId ? ' selected' : ''}`}
-                  onClick={() => {
-                    setParams({ exercise: exercise.id }, { replace: true });
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{exercise.name}</div>
-                    <div className="muted small">{relativeDay(last)}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </aside>
+          <label className="log-pick">
+            <span className="muted small">Show</span>
+            <select
+              className="input"
+              value={selectedWorkoutId ? `workout:${selectedWorkoutId}` : `exercise:${selectedId ?? ''}`}
+              onChange={(e) => {
+                const [kind, id] = e.target.value.split(':');
+                setParams({ [kind]: id }, { replace: true });
+              }}
+            >
+              {trainedWorkouts.length > 0 && (
+                <optgroup label="Workouts">
+                  {trainedWorkouts.map(({ workout }) => (
+                    <option key={workout.id} value={`workout:${workout.id}`}>
+                      {workout.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <optgroup label="Exercises">
+                {trained.map(({ exercise }) => (
+                  <option key={exercise.id} value={`exercise:${exercise.id}`}>
+                    {exercise.name}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </label>
 
           <div style={{ minWidth: 0 }}>
             {selectedWorkoutId ? (

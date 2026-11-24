@@ -28,6 +28,7 @@
       document.documentElement.dataset.theme = dark ? 'dark' : 'light';
       // Dark mode's accent, if another is being tried (hooks/settings.tsx).
       try { if (localStorage.getItem('rerack:dark-accent') === 'purple') document.documentElement.dataset.accent = 'purple'; } catch {}
+      try { if (localStorage.getItem('rerack:mono-accent') === '1') document.documentElement.dataset.mono = ''; } catch {}
       // Opened from the home screen: app-style bottom tabs instead of the website's top bar.
       // The iPhone app (Capacitor injects window.Capacitor before this runs) looks the same.
       const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
@@ -74,6 +75,8 @@
       html[data-theme='dark'][data-accent='purple'] .boot-spin::after {
         background: conic-gradient(from 0deg, transparent 0deg, #ea74fc 70deg, #c168ff 170deg, #a870ff 270deg, #6e81ff 340deg, transparent 360deg);
       }
+      html[data-mono] .boot-spin::after { background: conic-gradient(from 0deg, transparent 0deg, #111 340deg, transparent 360deg); }
+      html[data-theme='dark'][data-mono] .boot-spin::after { background: conic-gradient(from 0deg, transparent 0deg, #f5f5f5 340deg, transparent 360deg); }
       @keyframes boot-in { to { opacity: 1; } }
       @keyframes boot-spin { to { transform: rotate(360deg); } }
       @media (prefers-reduced-motion: reduce) { .boot-spin::after { animation-duration: 2.4s; } }

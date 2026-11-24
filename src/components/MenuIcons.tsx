@@ -84,3 +84,30 @@ export function DuplicateFill() {
     </svg>
   );
 }
+
+/** Two solid arrows passing each other, the top one pointing right and the bottom one left. */
+export function ReplaceFill() {
+  return (
+    <svg width={SIZE} height={SIZE} viewBox="0 0 24 24" aria-hidden>
+      <path fill="currentColor" d="M15.2 2.6a1.2 1.2 0 0 1 1.7 0l4.1 4.1a1.2 1.2 0 0 1 0 1.7l-4.1 4.1a1.2 1.2 0 0 1-2-.9V9.2H4.4a1.6 1.6 0 0 1 0-3.2h10.5V3.5c0-.3.1-.6.3-.9Z" />
+      <path fill="currentColor" d="M8.8 11.6a1.2 1.2 0 0 0-1.7 0L3 15.7a1.2 1.2 0 0 0 0 1.7l4.1 4.1a1.2 1.2 0 0 0 2-.9V18h10.5a1.6 1.6 0 0 0 0-3.2H9.1v-2.3c0-.3-.1-.6-.3-.9Z" />
+    </svg>
+  );
+}
+
+/** A solid circle with an arrow cut out of it, pointing up (or down, turned over). */
+function ArrowCircleFill({ down }: { down?: boolean }) {
+  const mask = useMaskId();
+  return (
+    <svg width={SIZE} height={SIZE} viewBox="0 0 24 24" aria-hidden style={down ? { transform: 'rotate(180deg)' } : undefined}>
+      <mask id={mask}>
+        <rect width="24" height="24" fill="#fff" />
+        <path d="M12 17V7.4M7.8 11.4 12 7.2l4.2 4.2" fill="none" stroke="#000" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      </mask>
+      <circle cx="12" cy="12" r="10" fill="currentColor" mask={`url(#${mask})`} />
+    </svg>
+  );
+}
+
+export const MoveUpFill = () => <ArrowCircleFill />;
+export const MoveDownFill = () => <ArrowCircleFill down />;

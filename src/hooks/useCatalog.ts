@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { GifCandidate } from '../core/gifMatch';
 import { isIsolationLift } from '../core/lifts';
 import type { Exercise } from '../core/types';
-import { exerciseMedia, loadCatalog, loadGifIndex, photoIdFor, USE_ANATOMICAL, type CatalogExercise, type ExerciseMedia } from '../data/catalog';
+import { exerciseMedia, loadCatalog, loadGifIndex, loadRepdb, MEDIA, photoIdFor, USE_ANATOMICAL, type CatalogExercise, type ExerciseMedia, type RepdbData } from '../data/catalog';
 
 /** The exercise library, once its chunk has loaded (undefined until then, or while `enabled` is false). */
 export function useCatalog(enabled = true): CatalogExercise[] | undefined {
@@ -33,7 +33,16 @@ export function useExerciseMedia(enabled = true): (exercise: Pick<Exercise, 'nam
       cancelled = true;
     };
   }, [enabled]);
-  return (exercise) => exerciseMedia(exercise, catalog, index);
+  const [repdb, setRepdb] = useState<RepdbData>();
+  useEffect(() => {
+    if (MEDIA !== 'repdb' || !enabled) return;
+    let cancelled = false;
+    void loadRepdb().then((d) => !cancelled && setRepdb(d));
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled]);
+  return (exercise) => exerciseMedia(exercise, catalog, index, repdb);
 }
 
 /** Whether an exercise is an isolation lift (its library entry's label, else guessed from its name), for rest lengths. */

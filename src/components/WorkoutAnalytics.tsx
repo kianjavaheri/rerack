@@ -1,5 +1,5 @@
-import { ArrowDown, ArrowUp, Equal } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowDown, ArrowUp, Check, Equal } from 'lucide-react';
+import { useState, type CSSProperties } from 'react';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatDate, formatDateLong, pluralize } from '../core/format';
 import { compareLastTwoSessions, indexedProgress } from '../core/stats';
@@ -44,7 +44,6 @@ export function WorkoutAnalytics({ workout, exercises, sessions, unit, theme, ra
   const comparison = compareLastTwoSessions(workout.id, ids, sessions, isBodyweight);
   const compared = comparison.rows.filter((r) => r.pct != null);
   const improved = compared.filter((r) => r.pct! > 0.05).length;
-  const dropped = compared.filter((r) => r.pct! < -0.05).length;
   const workoutSessions = sessions.filter((s) => s.workoutId === workout.id && s.finishedAt).length;
 
   const formatValue = (id: ID, v: number | null) => {
@@ -60,23 +59,24 @@ export function WorkoutAnalytics({ workout, exercises, sessions, unit, theme, ra
         <span className="muted">{pluralize(workoutSessions, 'session')}</span>
       </div>
 
-      <div className="grid-sm" style={{ marginTop: 14, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 150px), 1fr))' }}>
+      <div className="grid-sm" style={{ marginTop: 14, gridTemplateColumns: '1fr 1fr' }}>
         <div className="stat">
           <div className="stat-label">Average change</div>
           <div className="stat-value">{avgChange == null ? '—' : signed(avgChange)}</div>
         </div>
         <div className="stat">
-          <div className="stat-label">Up since last session</div>
+          <div className="stat-label">Up last session</div>
           <div className="stat-value">
-            {improved}
-            <span className="stat-unit">of {compared.length}</span>
-          </div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Down since last session</div>
-          <div className="stat-value" style={dropped ? { color: 'var(--danger)' } : undefined}>
-            {dropped}
-            <span className="stat-unit">of {compared.length}</span>
+            {compared.length === 0 ? (
+              '—'
+            ) : (
+              <>
+                {improved}
+                <span className="stat-unit">
+                  of {compared.length} {compared.length === 1 ? 'exercise' : 'exercises'}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -96,28 +96,46 @@ export function WorkoutAnalytics({ workout, exercises, sessions, unit, theme, ra
           </div>
         </div>
 
-        <div className="legend" style={{ padding: '12px 4px 0 14px' }} role="group" aria-label="Exercises (tap to show or hide)">
+        <div className="series-list" role="group" aria-label="Exercises on the chart">
+          {hidden.size > 0 && (
+            <button className="series-all" onClick={() => setHidden(new Set())}>
+              Show all
+            </button>
+          )}
           {charted.map((id) => {
             const off = hidden.has(id);
             const s = series.find((x) => x.exerciseId === id)!;
+            const solo = !off && charted.every((other) => other === id || hidden.has(other));
             return (
-              <button
-                key={id}
-                className={`legend-item${off ? ' off' : ''}`}
-                aria-pressed={!off}
-                onClick={() =>
-                  setHidden((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(id)) next.delete(id);
-                    else next.add(id);
-                    return next;
-                  })
-                }
-              >
-                <span className="legend-swatch" style={{ background: colorOf(id) }} />
-                {name(id)}
-                {s.points.length > 1 && <span className="muted tnum">{signed(s.change)}</span>}
-              </button>
+              <div key={id} className={`series-row${off ? ' off' : ''}`}>
+                <button
+                  className="series-toggle"
+                  role="checkbox"
+                  aria-checked={!off}
+                  onClick={() =>
+                    setHidden((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(id)) next.delete(id);
+                      else next.add(id);
+                      return next;
+                    })
+                  }
+                >
+                  <span className="series-check" style={{ '--c': colorOf(id) } as CSSProperties}>
+                    {!off && <Check size={12} strokeWidth={3.2} />}
+                  </span>
+                  <span className="series-name">{name(id)}</span>
+                  {s.points.length > 1 && <span className="muted tnum small">{signed(s.change)}</span>}
+                </button>
+                <button
+                  className={`series-solo${solo ? ' on' : ''}`}
+                  aria-pressed={solo}
+                  aria-label={solo ? 'Show every exercise again' : `Show only ${name(id)}`}
+                  onClick={() => setHidden(solo ? new Set() : new Set(charted.filter((other) => other !== id)))}
+                >
+                  Only
+                </button>
+              </div>
             );
           })}
         </div>

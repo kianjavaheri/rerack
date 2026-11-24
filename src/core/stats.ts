@@ -42,12 +42,14 @@ export function exerciseHistory(exerciseId: ID, sessions: Session[]): ExercisePo
     let volumeKg = 0;
     let totalReps = 0;
     for (const set of sets) {
-      const w = set.weightKg ?? 0;
-      const r = set.reps ?? 0;
-      topSetKg = Math.max(topSetKg, w);
-      e1rmKg = Math.max(e1rmKg, estimate1RM(w, r));
-      volumeKg += w * r;
-      totalReps += r;
+      for (const side of setSides(set)) {
+        const w = side.weightKg ?? 0;
+        const r = side.reps ?? 0;
+        topSetKg = Math.max(topSetKg, w);
+        e1rmKg = Math.max(e1rmKg, estimate1RM(w, r));
+        volumeKg += w * r;
+        totalReps += r;
+      }
     }
     points.push({ sessionId: s.id, date: s.startedAt, topSetKg, e1rmKg, volumeKg, totalReps, sets: sets.length });
   }
@@ -250,7 +252,7 @@ export function sessionSummary(session: Session) {
     for (const set of e.sets) {
       if (!isCompletedSet(set)) continue;
       sets += 1;
-      volumeKg += (set.weightKg ?? 0) * (set.reps ?? 0);
+      for (const side of setSides(set)) volumeKg += (side.weightKg ?? 0) * (side.reps ?? 0);
     }
   }
   const exercises = session.entries.filter((e) => e.sets.some(isCompletedSet)).length;
@@ -402,13 +404,27 @@ export function exercisesLog(exerciseIds: ID[], sessions: Session[], excludeSess
 }
 
 /** Consecutive sets with the same reps and weight, counted: 8×60, 8×60, 7×60 → [2 × 8 @ 60, 1 × 7 @ 60]. */
-export function groupSets(sets: SetLog[]): { count: number; reps: number; weightKg: number | null }[] {
-  const groups: { count: number; reps: number; weightKg: number | null }[] = [];
+export interface SetGroup {
+  count: number;
+  reps: number;
+  weightKg: number | null;
+  right?: { reps: number; weightKg: number | null };
+}
+
+export function groupSets(sets: SetLog[]): SetGroup[] {
+  const groups: SetGroup[] = [];
   for (const set of sets) {
     const last = groups.at(-1);
     const weightKg = set.weightKg ?? null;
-    if (last && last.reps === set.reps && last.weightKg === weightKg) last.count++;
-    else groups.push({ count: 1, reps: set.reps ?? 0, weightKg });
+    const right = set.right ? { reps: set.right.reps ?? 0, weightKg: set.right.weightKg ?? null } : undefined;
+    const sameRight = (last?.right?.reps ?? null) === (right?.reps ?? null) && (last?.right?.weightKg ?? null) === (right?.weightKg ?? null);
+    if (last && last.reps === set.reps && last.weightKg === weightKg && sameRight) last.count++;
+    else groups.push({ count: 1, reps: set.reps ?? 0, weightKg, ...(right ? { right } : {}) });
   }
   return groups;
+}
+
+export function setSides(set: SetLog): { reps: number | null; weightKg: number | null }[] {
+  if (!set.right) return [set];
+  return [set, { reps: set.right.reps ?? set.reps, weightKg: set.right.weightKg ?? set.weightKg }];
 }

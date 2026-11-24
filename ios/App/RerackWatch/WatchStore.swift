@@ -29,6 +29,8 @@ final class WatchStore: NSObject, ObservableObject {
 
     /// Picked by hand (from the list, or ‹ ›): stays put until it's checked off; otherwise the current set follows along.
     private var focusPinned = false
+    private var pinnedAt = Date.distantPast
+    @Published private(set) var pickedAt = Date.distantPast
     private var src: String
     private var seq: Int
     private var startingWorkout = false
@@ -100,12 +102,13 @@ final class WatchStore: NSObject, ObservableObject {
 
     /// Checks a set off with these values (or updates a set already checked). Rest starts unless it's a warm-up or the
     /// exercise's last set, or the exercise is linked to the next one (rest after the superset's last).
-    func check(_ ref: SetRef, reps: Int, weightKg: Double?) {
+    func check(_ ref: SetRef, reps: Int, weightKg: Double?, right: Side? = nil) {
         guard let session, let (entry, index) = lookup(ref), reps > 0 else { return }
         var set = entry.sets[index]
         let wasDone = set.done
         set.reps = reps
         set.weightKg = weightKg
+        if entry.sides == true, let right { set.right = right }
         set.done = true
         if !wasDone { set.doneAt = isoNow() }
         var op = WatchOp(kind: "set", sessionId: session.id)
@@ -127,7 +130,7 @@ final class WatchStore: NSObject, ObservableObject {
         var op = WatchOp(kind: "set", sessionId: session.id)
         op.entryId = entry.id
         op.set = set
-        focusPinned = true
+        pin()
         push(op)
         WKInterfaceDevice.current().play(.directionDown)
         // Checked by accident: the rest it started goes too.
@@ -162,8 +165,35 @@ final class WatchStore: NSObject, ObservableObject {
 
     func pick(_ ref: SetRef) {
         focus = ref
-        focusPinned = true
+        pin()
+        pickedAt = Date()
         page = 0
+    }
+
+    private func pin() {
+        focusPinned = true
+        pinnedAt = Date()
+    }
+
+    func restOver(at end: Date) {
+        guard focusPinned, pinnedAt <= end, let session else { return }
+        focusPinned = false
+        let next = currentSet(session)
+        if focus != next { focus = next }
+    }
+
+    func update(_ ref: SetRef, reps: Int?, weightKg: Double?, right: Side? = nil) {
+        guard let session, let (entry, index) = lookup(ref) else { return }
+        var set = entry.sets[index]
+        let newRight = entry.sides == true ? (right ?? set.right) : set.right
+        guard !set.done, set.reps != reps || set.weightKg != weightKg || set.right != newRight else { return }
+        set.reps = reps
+        set.weightKg = weightKg
+        set.right = newRight
+        var op = WatchOp(kind: "set", sessionId: session.id)
+        op.entryId = entry.id
+        op.set = set
+        push(op)
     }
 
     /// The set before or after the one on screen, through every exercise in order.
@@ -174,7 +204,7 @@ final class WatchStore: NSObject, ObservableObject {
         let next = i + by
         if all.indices.contains(next) {
             self.focus = all[next]
-            focusPinned = true
+            pin()
         }
     }
 
@@ -218,9 +248,11 @@ final class WatchStore: NSObject, ObservableObject {
 
     func stopRest() {
         guard let session else { return }
+        let wasResting = session.restEnd.map { $0 > Date() } ?? false
         var op = WatchOp(kind: "rest", sessionId: session.id)
         op.restEndsAt = nil
         push(op)
+        if wasResting { restOver(at: Date()) }
     }
 
     // MARK: Starting and finishing
@@ -231,7 +263,7 @@ final class WatchStore: NSObject, ObservableObject {
         var last: [String: [WatchSet]] = [:]
         let entries = workout.slots.map { slot -> SessionEntry in
             let entry = SessionEntry(
-                id: newId(), exerciseId: slot.exerciseId, perSide: slot.perSide,
+                id: newId(), exerciseId: slot.exerciseId, perSide: slot.perSide, sides: slot.sides,
                 sets: (0..<max(1, slot.targetSets)).map { _ in SetLog() },
                 targetSets: slot.targetSets, targetReps: slot.targetReps, notes: slot.notes, supersetNext: slot.supersetNext
             )

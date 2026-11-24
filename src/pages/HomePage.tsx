@@ -178,7 +178,7 @@ export function HomePage() {
               {!nextWorkout && routines.length > 1 && !followed && (
                 <p className="muted small">
                   You have more than one routine. Pick the one you're following in{' '}
-                  <Link to={PLAN_PATH} style={{ textDecoration: 'underline' }}>
+                  <Link to={`${PLAN_PATH}?view=routines`} style={{ textDecoration: 'underline' }}>
                     Workouts
                   </Link>{' '}
                   to plan your week here.
@@ -187,7 +187,7 @@ export function HomePage() {
               {!nextWorkout && (routines.length <= 1 || followed) && (
                 <p className="muted small">
                   Nothing planned. Pick days for your workouts in{' '}
-                  <Link to={PLAN_PATH} style={{ textDecoration: 'underline' }}>
+                  <Link to={`${PLAN_PATH}?view=routines`} style={{ textDecoration: 'underline' }}>
                     Workouts
                   </Link>{' '}
                   to see them here.

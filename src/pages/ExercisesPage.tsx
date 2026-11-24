@@ -1,4 +1,4 @@
-import { ArrowLeft, ChartLine, Merge, Pencil, Plus, Search } from 'lucide-react';
+import { ArrowLeft, Merge, Plus, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExerciseForm, MUSCLE_GROUPS } from '../components/ExerciseForm';
@@ -81,14 +81,14 @@ export function ExerciseLibrary() {
 
   return (
     <>
-      <div className="row" style={{ gap: 8, marginTop: 18 }}>
-        <div className="search" style={{ maxWidth: 360, flex: 1 }}>
-          <Search size={16} />
-          <input className="input" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
-        </div>
-        <button className="btn btn-sm" onClick={startNew} style={{ flexShrink: 0 }}>
+      <div className="exercise-tools" style={{ marginTop: 18 }}>
+        <button className="btn" onClick={startNew}>
           <Plus size={15} /> New exercise
         </button>
+        <div className="search">
+          <Search size={16} />
+          <input className="input" placeholder="Search exercises" value={query} onChange={(e) => setQuery(e.target.value)} />
+        </div>
       </div>
 
       {duplicates.length > 0 && (
@@ -125,27 +125,15 @@ export function ExerciseLibrary() {
           <h2 className="section-title">{group}</h2>
           <div className="grid-sm">
             {list.map((e) => (
-              <div key={e.id} className="card" style={{ padding: '12px 14px' }}>
-                <div className="spread" style={{ flexWrap: 'nowrap' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{e.name}</div>
-                    <div className="muted small">{e.kind === 'bodyweight' ? 'Bodyweight' : 'Weighted'}</div>
-                    {hasLibraryMatch.has(e.id) && (
-                      <button className="badge" style={{ border: 0, cursor: 'pointer', marginTop: 6 }} onClick={() => setEditing({ exercise: e, isNew: false })}>
-                        Library match
-                      </button>
-                    )}
-                  </div>
-                  <div className="row" style={{ gap: 0, marginRight: -6 }}>
-                    <Link to={`/analytics?exercise=${e.id}`} className="icon-btn" aria-label={`Analytics for ${e.name}`}>
-                      <ChartLine size={15} />
-                    </Link>
-                    <button className="icon-btn" onClick={() => setEditing({ exercise: e, isNew: false })} aria-label={`Edit ${e.name}`}>
-                      <Pencil size={15} />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <button key={e.id} className="card" style={{ padding: '12px 14px' }} onClick={() => setEditing({ exercise: e, isNew: false })}>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{e.name}</div>
+                <div className="muted small">{e.kind === 'bodyweight' ? 'Bodyweight' : 'Weighted'}</div>
+                {hasLibraryMatch.has(e.id) && (
+                  <span className="badge" style={{ display: 'inline-block', marginTop: 6 }}>
+                    Library match
+                  </span>
+                )}
+              </button>
             ))}
           </div>
         </section>

@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { Pencil, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -14,19 +14,23 @@ export function WorkoutFields({
   placeholder,
   picked,
   onToggle,
+  nameField = true,
 }: {
   name: string;
   onName: (name: string) => void;
   placeholder: string;
   picked: GridItem[];
   onToggle: (item: GridItem) => void;
+  nameField?: boolean;
 }) {
   return (
     <>
-      <label style={{ display: 'block' }}>
-        <span className="label">Workout name</span>
-        <input className="input" placeholder={placeholder} value={name} onChange={(e) => onName(e.target.value)} />
-      </label>
+      {nameField && (
+        <label style={{ display: 'block' }}>
+          <span className="label">Workout name</span>
+          <input className="input" placeholder={placeholder} value={name} onChange={(e) => onName(e.target.value)} />
+        </label>
+      )}
       {picked.length > 0 && (
         <div className="intro-picked">
           {picked.map((p, i) => (
@@ -36,7 +40,7 @@ export function WorkoutFields({
           ))}
         </div>
       )}
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: nameField || picked.length ? 16 : 0 }}>
         <ExerciseGrid picked={picked} onToggle={onToggle} />
       </div>
     </>
@@ -48,7 +52,7 @@ export const togglePicked = (list: GridItem[], item: GridItem) =>
   list.some((p) => p.key === item.key) ? list.filter((p) => p.key !== item.key) : [...list, item];
 
 /**
- * Making a new workout: a window of its own (the intro's) to name it and tap its exercises in a grid, then on to the
+ * Making a new workout: a window of its own (the intro's), its title the name field, to name it and tap its exercises in a grid, then on to the
  * workout editor for sets and reps. Opened from Workouts' "New workout" and a routine's (then it joins that routine).
  */
 export function NewWorkoutWindow({ routine, from, onClose }: { routine?: { id: ID; name: string }; from?: string; onClose: () => void }) {
@@ -87,9 +91,25 @@ export function NewWorkoutWindow({ routine, from, onClose }: { routine?: { id: I
         </div>
         <div className="intro-body">
           {routine && <div className="intro-kicker">{routine.name}</div>}
-          <h1 className="title">New workout</h1>
-          <p className="intro-lead">Name it, then tap the exercises it has. You can change sets and reps next.</p>
-          <WorkoutFields name={name} onName={setName} placeholder="New workout" picked={picked} onToggle={(item) => setPicked((l) => togglePicked(l, item))} />
+          <label className="new-workout-name">
+            <span className="new-workout-fit">
+              <span className="title-input new-workout-mirror" aria-hidden>
+                {name || 'New workout'}
+              </span>
+              <input
+                className="title-input new-workout-title"
+                placeholder="New workout"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                enterKeyHint="done"
+                aria-label="Workout name"
+              />
+            </span>
+            <Pencil size={20} className="new-workout-pencil" />
+          </label>
+          <p className="intro-lead">Tap the exercises it has. You can change sets and reps next.</p>
+          <WorkoutFields nameField={false} name={name} onName={setName} placeholder="New workout" picked={picked} onToggle={(item) => setPicked((l) => togglePicked(l, item))} />
         </div>
         <div className="intro-foot">
           <span className="muted small">{picked.length === 1 ? '1 exercise' : `${picked.length} exercises`}</span>

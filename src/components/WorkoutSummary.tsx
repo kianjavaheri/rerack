@@ -2,7 +2,7 @@ import { ArrowDown, ArrowUp, Maximize2, Minus } from 'lucide-react';
 import { formatDuration, formatNumber, relativeDay } from '../core/format';
 import type { WorkoutSummary as Summary } from '../core/summary';
 import type { Exercise, WeightUnit } from '../core/types';
-import { formatWeight, fromKg } from '../core/units';
+import { fromKg, setGroupText } from '../core/units';
 
 /** "+3", "−1,200", "same" against last time; null when there's nothing to compare. */
 function delta(now: number, then: number | null | undefined, format: (n: number) => string) {
@@ -74,7 +74,7 @@ export function WorkoutSummary({
               <div key={`${x.exerciseId}-${i}`} className="summary-exercise">
                 <span className="summary-name">{exercise?.name ?? 'Exercise'}</span>
                 <span className="summary-sets tnum">
-                  {x.groups.map((g) => `${g.count} × ${g.reps}${g.weightKg ? ` · ${bodyweight ? '+' : ''}${formatWeight(g.weightKg, unit)} ${unit}` : bodyweight ? ' · BW' : ''}`).join(', ')}
+                  {x.groups.map((g) => setGroupText(g, unit, bodyweight)).join('; ')}
                 </span>
                 <span className={`summary-trend ${x.trend}`} title={{ up: 'Better than last time', down: 'Less than last time', same: 'Same as last time', new: 'First time in this workout' }[x.trend]}>
                   {x.trend === 'up' ? <ArrowUp size={14} /> : x.trend === 'down' ? <ArrowDown size={14} /> : x.trend === 'same' ? <Minus size={14} /> : 'New'}

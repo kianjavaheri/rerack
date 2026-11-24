@@ -1,4 +1,5 @@
 import { ArrowLeft, Download, LogOut, Upload } from 'lucide-react';
+import { MEDIA } from '../data/catalog';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
@@ -288,6 +289,20 @@ export function SettingsPage() {
               onClick={() => update({ darkAccent: settings.darkAccent === 'purple' ? null : 'purple' })}
             />
           </div>
+          <div className="spread" style={{ flexWrap: 'nowrap', marginTop: 14 }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>Black and white</div>
+              <div className="muted small">Black in light mode and white in dark, instead of the colours.</div>
+            </div>
+            <button
+              type="button"
+              className={`switch${settings.monoAccent ? ' on' : ''}`}
+              role="switch"
+              aria-checked={!!settings.monoAccent}
+              aria-label="Black and white"
+              onClick={() => update({ monoAccent: !settings.monoAccent })}
+            />
+          </div>
         </div>
 
         <div className="card">
@@ -346,6 +361,7 @@ export function SettingsPage() {
         </div>
 
         <PrivacyCard />
+        {MEDIA === 'repdb' && <CreditsCard />}
         {signedIn && <AccountCard />}
       </div>
     </>
@@ -412,6 +428,21 @@ function PrivacyCard() {
         </div>
         <a className="btn btn-ghost btn-sm" href={policy} target="_blank" rel="noopener">
           Privacy policy
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/** Credits for what the app shows from others: RepDB's free tier requires this one, visible to users. */
+function CreditsCard() {
+  return (
+    <div className="card">
+      <div style={{ fontWeight: 600, fontSize: 15 }}>About</div>
+      <div className="muted small" style={{ marginTop: 2 }}>
+        Exercise pictures and instructions: Exercise data by{' '}
+        <a href="https://repdb.co" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
+          RepDB (repdb.co)
         </a>
       </div>
     </div>

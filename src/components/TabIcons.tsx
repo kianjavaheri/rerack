@@ -18,16 +18,14 @@ function Icon({ size = 24, className, children }: Props & { children: ReactNode 
   );
 }
 
-/** The house, solid, with its door cut out. */
 export function HouseFill({ size, className }: Props) {
-  const mask = useMaskId();
   return (
     <Icon size={size} className={className}>
-      <mask id={mask}>
-        <rect width="24" height="24" fill="#fff" />
-        <rect x="9.4" y="13.2" width="5.2" height="10" rx="1.2" fill="#000" />
-      </mask>
-      <path className="fill" mask={`url(#${mask})`} d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <path
+        className="fill"
+        fillRule="evenodd"
+        d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 20.2V13a1.5 1.5 0 0 1 1.5-1.5h3a1.5 1.5 0 0 1 1.5 1.5v7.2z"
+      />
     </Icon>
   );
 }

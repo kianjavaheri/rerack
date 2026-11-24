@@ -1,14 +1,15 @@
 import { Check, ClipboardPaste, Pencil, Plus } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useFeedback } from '../components/Feedback';
 import { NewWorkoutWindow } from '../components/NewWorkout';
-import { ProgramList } from '../components/Programs';
+import { NewRoutineSheet, ProgramList } from '../components/Programs';
 import { ExerciseLibrary } from './ExercisesPage';
 import { PageSkeleton } from '../components/Skeleton';
 import { RoutineActions, WorkoutActions, type Held } from '../components/WorkoutActions';
 import { everyLabel, pluralize } from '../core/format';
 import { newId, now } from '../core/ids';
+import { PLAN_PATH } from '../config';
 import { uniqueName } from '../core/plan';
 import { followedRoutine, routinesContaining, WEEKDAYS } from '../core/stats';
 import type { Routine, Workout } from '../core/types';
@@ -18,8 +19,38 @@ import { useSettings } from '../hooks/settings';
 import { useLongPress } from '../hooks/useLongPress';
 import { useExercises, useRoutines, useWorkouts } from '../hooks/useRepo';
 
-/** Workouts: routines (and which one you follow), workout templates, exercises and import. */
+export type PlanView = 'routines' | 'workouts' | 'exercises';
+const VIEWS: { key: PlanView; label: string }[] = [
+  { key: 'routines', label: 'Routines' },
+  { key: 'workouts', label: 'Workouts' },
+  { key: 'exercises', label: 'Exercises' },
+];
+const VIEW_KEY = 'rerack:plan-view';
+const isView = (v: string | null): v is PlanView => VIEWS.some((x) => x.key === v);
+function storedView(): PlanView {
+  try {
+    const v = localStorage.getItem(VIEW_KEY);
+    return isView(v) ? v : 'routines';
+  } catch {
+    return 'routines';
+  }
+}
+
 export function WorkoutPlan() {
+  const location = useLocation();
+  const [view, setViewState] = useState<PlanView>(storedView);
+  const setView = (v: PlanView) => {
+    setViewState(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+    }
+  };
+  const asked = location.pathname === PLAN_PATH ? new URLSearchParams(location.search).get('view') : null;
+  useEffect(() => {
+    if (isView(asked)) setView(asked);
+  }, [asked]);
+  const [choosing, setChoosing] = useState(false);
   const navigate = useNavigate();
   const workouts = useWorkouts();
   const routines = useRoutines();
@@ -36,8 +67,6 @@ export function WorkoutPlan() {
   const hold = useLongPress(setHeld);
   const holdRoutine = useLongPress(setHeldRoutine);
   const { notify } = useFeedback();
-  /** Which list the Programs | Exercises switch shows under it (none until one is tapped), and the program being added. */
-  const [panel, setPanel] = useState<'programs' | 'exercises' | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
 
   // A program becomes a routine of yours, and the one you follow (that's why you'd pick one).
@@ -48,7 +77,7 @@ export function WorkoutPlan() {
       const before = settings.activeRoutineId;
       const added = await addProgram(program);
       updateSettings({ activeRoutineId: added.routineId });
-      setPanel(null);
+      setChoosing(false);
       notify(`Added ${program.name}`, {
         undo: async () => {
           await removeProgram(added);
@@ -61,6 +90,7 @@ export function WorkoutPlan() {
   };
 
   const createRoutine = async () => {
+    setChoosing(false);
     const ts = now();
     const r: Routine = { id: newId(), name: uniqueName('New routine', routines ?? []), workoutIds: [], createdAt: ts, updatedAt: ts };
     await repo.saveRoutine(r);
@@ -78,136 +108,127 @@ export function WorkoutPlan() {
 
   return (
     <>
-      {/* Programs | Exercises shows that list right here (tap the chosen one again to put it away); Import on the right. */}
-      <div className="spread" style={{ gap: 8, marginTop: 20, flexWrap: 'nowrap' }}>
-        <div className="segmented plan-switch" role="tablist" aria-label="Programs and exercises">
-          {(['programs', 'exercises'] as const).map((p) => (
-            <button key={p} role="tab" aria-selected={panel === p} className={panel === p ? 'on' : ''} onClick={() => setPanel(panel === p ? null : p)}>
-              {p === 'programs' ? 'Programs' : 'Exercises'}
-            </button>
-          ))}
-        </div>
-        <Link to="/edit/import" className="btn btn-sm" style={{ flexShrink: 0 }}>
-          <ClipboardPaste size={15} /> Import from text
-        </Link>
+      <div className="segmented plan-switch" role="tablist" aria-label="Routines, workouts and exercises">
+        {VIEWS.map((v) => (
+          <button key={v.key} role="tab" aria-selected={view === v.key} className={view === v.key ? 'on' : ''} onClick={() => setView(v.key)}>
+            {v.label}
+          </button>
+        ))}
       </div>
-      {panel === 'programs' && (
-        <div className="plan-panel">
-          <ProgramList onUse={startProgram} busy={adding} />
+
+      {view === 'routines' && (
+        <div className="plan-panel" key="routines">
+          <div className="plan-actions">
+            <button className="btn btn-sm" onClick={() => setChoosing(true)}>
+              <Plus size={15} /> New routine
+            </button>
+          </div>
+          {routines.length === 0 && (
+            <div className="empty">No routines yet. A routine is the workouts you rotate through and the days you do them. Make your own, or start from a program below.</div>
+          )}
+          <div className="grid">
+            {routines.map((r) => (
+              <div key={r.id} className="routine-wrap">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className={`card holdable routine-card${canPick && followed?.id === r.id ? ' followed' : ''}`}
+                  onClick={() => canPick && updateSettings({ activeRoutineId: r.id })}
+                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && canPick && updateSettings({ activeRoutineId: r.id })}
+                  aria-pressed={canPick ? followed?.id === r.id : undefined}
+                  {...holdRoutine(r)}
+                >
+                  <div className="card-title" style={{ paddingRight: canPick ? 72 : 36 }}>
+                    {r.name}
+                  </div>
+                  {r.rotateEvery && r.workoutIds.length > 0 && <div className="muted small" style={{ marginTop: 2 }}>In rotation · {everyLabel(r.rotateEvery).toLowerCase()}</div>}
+                  <div className="stack" style={{ gap: 4, marginTop: 10 }}>
+                    {r.workoutIds.length === 0 && <span className="muted small">No workouts yet</span>}
+                    {r.workoutIds.map((id) => (
+                      <span key={id} className="small">
+                        {workoutName.get(id) ?? 'Unknown'}
+                        <span className="muted">{daysLabel(r, id)}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <Link to={`/edit/routines/${r.id}`} className={`icon-btn routine-edit${canPick ? '' : ' alone'}`} aria-label={`Edit ${r.name}`} title="Edit">
+                  <Pencil size={15} />
+                </Link>
+                {canPick && (
+                  <button
+                    className={`routine-pick${followed?.id === r.id ? ' on' : ''}`}
+                    onClick={() => updateSettings({ activeRoutineId: followed?.id === r.id ? null : r.id })}
+                    aria-pressed={followed?.id === r.id}
+                    aria-label={followed?.id === r.id ? `Following ${r.name}` : `Follow ${r.name}`}
+                    title={followed?.id === r.id ? 'Following' : 'Follow this routine'}
+                  >
+                    <Check size={14} strokeWidth={3} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <section className="section" style={{ marginTop: 28 }}>
+            <h2 className="section-title" style={{ marginBottom: 4 }}>
+              Programs
+            </h2>
+            <p className="muted small" style={{ margin: '0 0 12px' }}>
+              Ready-made routines. Use one, then change anything.
+            </p>
+            <ProgramList onUse={startProgram} busy={adding} />
+          </section>
         </div>
       )}
-      {panel === 'exercises' && (
-        <div className="plan-panel">
+
+      {view === 'workouts' && (
+        <div className="plan-panel" key="workouts">
+          <div className="plan-actions">
+            <Link to="/edit/import" className="btn btn-sm">
+              <ClipboardPaste size={15} /> Import from text
+            </Link>
+            <button className="btn btn-sm" onClick={() => setCreating(true)}>
+              <Plus size={15} /> New workout
+            </button>
+          </div>
+          {workouts.length === 0 && <div className="empty">No workouts yet. Make one, or import ones you've written down.</div>}
+          <div className="grid">
+            {workouts.map((w) => {
+              const inRoutines = routinesContaining(w.id, routines);
+              return (
+                <Link key={w.id} to={`/edit/workouts/${w.id}`} className="card holdable" {...hold(w)}>
+                  <div className="card-title">{w.name}</div>
+                  <div className="card-body clamp-4 small">
+                    {w.exercises.length === 0 ? 'No exercises yet' : w.exercises.map((we) => exerciseName.get(we.exerciseId)).join(' · ')}
+                  </div>
+                  <div className="row-wrap" style={{ marginTop: 10 }}>
+                    <span className="muted small">{pluralize(w.exercises.length, 'exercise')}</span>
+                    {inRoutines.map((r) => (
+                      <span key={r.id} className="badge">
+                        {r.name}
+                      </span>
+                    ))}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {view === 'exercises' && (
+        <div className="plan-panel" key="exercises">
           <ExerciseLibrary />
         </div>
       )}
 
-      <section className="section" style={{ marginTop: 24 }}>
-        <div className="spread" style={{ marginBottom: 12 }}>
-          <h2 className="section-title" style={{ margin: 0 }}>
-            Routines
-          </h2>
-          <button className="btn btn-sm" onClick={createRoutine}>
-            <Plus size={15} /> New routine
-          </button>
-        </div>
-        {routines?.length === 0 && (
-          <div className="empty">
-            No routines yet. A routine groups workouts you rotate through.{' '}
-            <button className="link-btn" onClick={() => { setPanel('programs'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
-              Start from a program
-            </button>
-          </div>
-        )}
-        {(routines.length > 0 || workouts.length > 0) && (
-          <p className="muted small" style={{ margin: '-4px 0 12px' }}>
-            {canPick && "Tap the routine you're following; Home plans your week from it. The pencil edits a routine. "}
-            Press and hold a routine or workout to duplicate, rename or delete it.
-          </p>
-        )}
-        <div className="grid">
-          {routines?.map((r) => (
-            <div key={r.id} className="routine-wrap">
-              {/* Tapping a routine follows it (with only one, it's followed anyway); the pencil opens the editor. */}
-              <div
-                role="button"
-                tabIndex={0}
-                className={`card holdable routine-card${canPick && followed?.id === r.id ? ' followed' : ''}`}
-                onClick={() => canPick && updateSettings({ activeRoutineId: r.id })}
-                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && canPick && updateSettings({ activeRoutineId: r.id })}
-                aria-pressed={canPick ? followed?.id === r.id : undefined}
-                {...holdRoutine(r)}
-              >
-                <div className="card-title" style={{ paddingRight: canPick ? 72 : 36 }}>
-                  {r.name}
-                </div>
-                {r.rotateEvery && r.workoutIds.length > 0 && <div className="muted small" style={{ marginTop: 2 }}>In rotation · {everyLabel(r.rotateEvery).toLowerCase()}</div>}
-                <div className="stack" style={{ gap: 4, marginTop: 10 }}>
-                  {r.workoutIds.length === 0 && <span className="muted small">No workouts yet</span>}
-                  {r.workoutIds.map((id) => (
-                    <span key={id} className="small">
-                      {workoutName.get(id) ?? 'Unknown'}
-                      <span className="muted">{daysLabel(r, id)}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <Link to={`/edit/routines/${r.id}`} className={`icon-btn routine-edit${canPick ? '' : ' alone'}`} aria-label={`Edit ${r.name}`} title="Edit">
-                <Pencil size={15} />
-              </Link>
-              {canPick && (
-                <button
-                  className={`routine-pick${followed?.id === r.id ? ' on' : ''}`}
-                  onClick={() => updateSettings({ activeRoutineId: followed?.id === r.id ? null : r.id })}
-                  aria-pressed={followed?.id === r.id}
-                  aria-label={followed?.id === r.id ? `Following ${r.name}` : `Follow ${r.name}`}
-                  title={followed?.id === r.id ? 'Following' : 'Follow this routine'}
-                >
-                  <Check size={14} strokeWidth={3} />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="spread" style={{ marginBottom: 12 }}>
-          <h2 className="section-title" style={{ margin: 0 }}>
-            Workouts
-          </h2>
-          <button className="btn btn-sm" onClick={() => setCreating(true)}>
-            <Plus size={15} /> New workout
-          </button>
-        </div>
-        {workouts?.length === 0 && <div className="empty">No workouts yet.</div>}
-        <div className="grid">
-          {workouts?.map((w) => {
-            const inRoutines = routinesContaining(w.id, routines ?? []);
-            return (
-              <Link key={w.id} to={`/edit/workouts/${w.id}`} className="card holdable" {...hold(w)}>
-                <div className="card-title">{w.name}</div>
-                <div className="card-body clamp-4 small">
-                  {w.exercises.length === 0 ? 'No exercises yet' : w.exercises.map((we) => exerciseName.get(we.exerciseId)).join(' · ')}
-                </div>
-                <div className="row-wrap" style={{ marginTop: 10 }}>
-                  <span className="muted small">{pluralize(w.exercises.length, 'exercise')}</span>
-                  {inRoutines.map((r) => (
-                    <span key={r.id} className="badge">
-                      {r.name}
-                    </span>
-                  ))}
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
       {heldRoutine && (
         <RoutineActions held={heldRoutine} routines={routines} workouts={workouts} exercises={exercises ?? []} onClose={() => setHeldRoutine(null)} />
       )}
       {held && <WorkoutActions held={held} workouts={workouts} routines={routines} exercises={exercises ?? []} onClose={() => setHeld(null)} />}
       {creating && <NewWorkoutWindow onClose={() => setCreating(false)} />}
+      {choosing && <NewRoutineSheet onBlank={() => void createRoutine()} onUse={startProgram} busy={adding} onClose={() => setChoosing(false)} />}
     </>
   );
 }

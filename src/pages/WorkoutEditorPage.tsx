@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowUp, Check, Copy, Pencil, Play, Plus, Share, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Check, Copy, PencilLine, Play, Plus, Share, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ExerciseForm } from '../components/ExerciseForm';
@@ -7,6 +7,8 @@ import { ExercisePicker } from '../components/ExercisePicker';
 import { NotFound } from '../components/NotFound';
 import { NotesButton, WorkoutNotepad } from '../components/Notes';
 import { SupersetButton, SupersetPill, usePills } from '../components/SupersetLink';
+import { ContextMenu, type ContextAction } from '../components/ContextMenu';
+import { EditFill, MoveDownFill, MoveUpFill, ReplaceFill, TrashFill } from '../components/MenuIcons';
 import { Stepper } from '../components/Stepper';
 import { PageSkeleton } from '../components/Skeleton';
 import { DEFAULT_REPS, DEFAULT_SETS, PLAN_PATH } from '../config';
@@ -46,8 +48,7 @@ export function WorkoutEditorPage() {
   const [photosOf, setPhotosOf] = useState<Exercise | null>(null);
   const mediaFor = useExerciseMedia();
   const [notesOpen, setNotesOpen] = useState(false);
-  // Superset pills show under every exercise here at first (so the feature is easy to find); the link button hides one.
-  const pills = usePills(true);
+  const pills = usePills(false);
   /** The exercise whose Superset pill was tapped: search for one to superset with it. */
   const [supersetFor, setSupersetFor] = useState<string | null>(null);
   /** Slides exercises to their new places when they go into or out of a superset. */
@@ -86,7 +87,9 @@ export function WorkoutEditorPage() {
       flip();
       update((w) => ({ ...w, exercises: moveIntoSuperset(w.exercises, from, host) }));
     },
+    (index, anchor) => setHeldSlot({ index, anchor }),
   );
+  const [heldSlot, setHeldSlot] = useState<{ index: number; anchor: HTMLElement } | null>(null);
 
   const isNew = params.get('new') === '1';
   useEffect(() => {
@@ -205,10 +208,9 @@ export function WorkoutEditorPage() {
   const slotCard = (we: Workout['exercises'][number], i: number) => {
     const ex = exerciseById.get(we.exerciseId);
     return (
-      // Held anywhere (not in a field), the card lifts to be dragged.
+      // Held anywhere (not in a field), the card lifts: dragged, it moves; let go, its menu opens.
       <div className="card holdable" style={{ padding: '12px 14px' }} {...reorder.handle(i)}>
         <div className="spread" style={{ flexWrap: 'nowrap' }}>
-          {/* A long name wraps onto more lines; the buttons stay on the right. */}
           <div className="row" style={{ minWidth: 0, flex: 1, gap: 8, flexWrap: 'nowrap' }}>
             <span className="set-num" style={{ flexShrink: 0 }}>{i + 1}</span>
             {ex && hasMedia(mediaFor(ex)) && (
@@ -217,36 +219,6 @@ export function WorkoutEditorPage() {
               </button>
             )}
             <span style={{ fontWeight: 600, fontSize: 15, minWidth: 0, overflowWrap: 'anywhere' }}>{ex?.name ?? 'Unknown'}</span>
-            {ex && (
-              <button className="icon-btn" style={{ width: 26, height: 26, flexShrink: 0 }} onClick={() => setRenaming(ex)} aria-label={`Rename ${ex.name}`} title="Rename">
-                <Pencil size={13} />
-              </button>
-            )}
-          </div>
-          <div className="row" style={{ gap: 0, flexShrink: 0, flexWrap: 'nowrap' }}>
-            <button
-              className="icon-btn"
-              disabled={i === 0}
-              onClick={() => update((w) => ({ ...w, exercises: moveUnlinked(w.exercises, i, i - 1) }))}
-              aria-label="Move up"
-            >
-              <ArrowUp size={16} />
-            </button>
-            <button
-              className="icon-btn"
-              disabled={i === workout.exercises.length - 1}
-              onClick={() => update((w) => ({ ...w, exercises: moveUnlinked(w.exercises, i, i + 1) }))}
-              aria-label="Move down"
-            >
-              <ArrowDown size={16} />
-            </button>
-            <button
-              className="icon-btn"
-              onClick={() => update((w) => ({ ...w, exercises: removeUnlinked(w.exercises, i) }))}
-              aria-label="Remove exercise"
-            >
-              <X size={16} />
-            </button>
           </div>
         </div>
         <div className="row" style={{ marginTop: 10, gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -264,9 +236,6 @@ export function WorkoutEditorPage() {
           </label>
         </div>
         <div className="row" style={{ justifyContent: 'flex-end', gap: 2, marginTop: 6, marginRight: -6, marginBottom: -4 }}>
-          <button className="icon-btn" onClick={() => setReplacing(we.id)} aria-label={`Replace ${ex?.name ?? 'exercise'}`} title="Replace">
-            <ArrowLeftRight size={16} />
-          </button>
           {supersetButton(we, i)}
         </div>
       </div>
@@ -292,6 +261,14 @@ export function WorkoutEditorPage() {
         <NotesButton label="Workout notes" hasNotes={!!workout.notes?.trim()} open={notesOpen} onClick={() => setNotesOpen(!notesOpen)} />
         <button className="btn btn-primary btn-sm" onClick={done}>
           <Check size={15} /> Done
+        </button>
+      </div>
+      <div className="editing-bar">
+        <span className="editing-tag">
+          <PencilLine size={14} /> Editing the plan
+        </span>
+        <button className="btn btn-sm start-btn" onClick={start} disabled={workout.exercises.length === 0}>
+          <Play size={14} fill="currentColor" /> Start workout
         </button>
       </div>
       {nameClash && (
@@ -353,9 +330,6 @@ export function WorkoutEditorPage() {
           <button className="btn btn-ghost btn-sm" onClick={duplicate}>
             <Copy size={14} /> {fromRoutine && sharedElsewhere.length > 0 ? `Separate copy for ${fromRoutine.name}` : 'Duplicate'}
           </button>
-          <button className="btn btn-ghost btn-sm" onClick={start} disabled={workout.exercises.length === 0}>
-            <Play size={14} /> Start now
-          </button>
         </div>
       </div>
 
@@ -413,6 +387,22 @@ export function WorkoutEditorPage() {
             }}
           />
         );
+      })()}
+      {heldSlot && workout.exercises[heldSlot.index] && (() => {
+        const i = heldSlot.index;
+        const slot = workout.exercises[i];
+        const ex = exerciseById.get(slot.exerciseId);
+        const close = () => setHeldSlot(null);
+        const actions: ContextAction[] = [
+          { label: 'Replace', icon: <ReplaceFill />, onSelect: () => (close(), setReplacing(slot.id)) },
+          ...(ex ? [{ label: 'Edit', icon: <EditFill />, onSelect: () => (close(), setRenaming(ex)) }] : []),
+          ...(i > 0 ? [{ label: 'Move up', icon: <MoveUpFill />, onSelect: () => (close(), update((w) => ({ ...w, exercises: moveUnlinked(w.exercises, i, i - 1) }))) }] : []),
+          ...(i < workout.exercises.length - 1
+            ? [{ label: 'Move down', icon: <MoveDownFill />, onSelect: () => (close(), update((w) => ({ ...w, exercises: moveUnlinked(w.exercises, i, i + 1) }))) }]
+            : []),
+          { label: 'Remove', icon: <TrashFill />, danger: true, onSelect: () => (close(), update((w) => ({ ...w, exercises: removeUnlinked(w.exercises, i) }))) },
+        ];
+        return <ContextMenu anchor={heldSlot.anchor} actions={actions} onClose={close} />;
       })()}
       {renaming && <ExerciseForm exercise={renaming} onClose={() => setRenaming(null)} />}
       {photosOf && <ExercisePhotos name={photosOf.name} media={mediaFor(photosOf)} onClose={() => setPhotosOf(null)} />}

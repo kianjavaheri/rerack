@@ -1,5 +1,5 @@
 import { newId, now } from '../core/ids';
-import { bestGifMatch, equipmentFor, type GifCandidate } from '../core/gifMatch';
+import { bestGifMatch, bestRepdbMatch, equipmentFor, type GifCandidate } from '../core/gifMatch';
 import { findSimilar } from '../core/similarity';
 import type { Exercise, ExerciseKind } from '../core/types';
 import { repo } from '.';
@@ -59,12 +59,35 @@ export function loadExerciseInfo(catalogId: string): Promise<ExerciseInfo | null
 }
 
 /**
- * BETA ONLY: shows ExerciseDB's anatomical GIFs (a 3D figure, working muscles in red) instead of the photos, for
- * exercises matched to theirs by name (exerciseMedia; the library's ahead of time by scripts/match-exercise-gifs.mjs). Their free V1 GIFs
- * have no licence for apps ("All rights reserved"; ask support@ascendapi.com), so set this to false, or license
- * them, before distributing. Unmatched exercises keep their photos either way.
+ * Which pictures exercises get, one style only (an exercise with none gets the dumbbell):
+ * - 'repdb': RepDB's free flat illustrations (start and peak of the movement, or one picture for a hold), matched to
+ *   the library ahead of time by scripts/match-exercise-repdb.mjs and to names you typed here. Free Tier License v1.0:
+ *   commercial use in apps with the "Exercise data by RepDB (repdb.co)" credit in Settings → About.
+ * - 'anatomical': ExerciseDB's anatomical GIFs (a 3D figure, working muscles in red). Their free V1 GIFs have no
+ *   licence for apps ("All rights reserved"), so kept for testing only.
+ * - 'photos': free-exercise-db's photos (Unlicense, but they look like Bodybuilding.com's; check before relying on it).
  */
-export const USE_ANATOMICAL = true;
+export type MediaSource = 'repdb' | 'anatomical' | 'photos';
+export const MEDIA = 'repdb' as MediaSource;
+export const USE_ANATOMICAL = MEDIA === 'anatomical';
+
+const REPDB = 'https://cdn.jsdelivr.net/gh/RepDB/exercise-dataset@f12da458a90f353a86c953f204304d5a8bd98275/images/flat';
+export interface RepdbData {
+  map: Record<string, string>;
+  items: GifCandidate[];
+}
+let repdbData: Promise<RepdbData> | null = null;
+export function loadRepdb(): Promise<RepdbData> {
+  repdbData ??= import('./repdb.json').then((m) => m.default as unknown as RepdbData);
+  return repdbData;
+}
+let repdbInfo: Promise<Record<string, { p: string[]; s: string[]; steps: string[] }>> | null = null;
+const ucfirst = (w: string) => w.charAt(0).toUpperCase() + w.slice(1);
+export async function loadRepdbInfo(id: string): Promise<ExerciseInfo | null> {
+  repdbInfo ??= import('./repdbInfo.json').then((m) => m.default);
+  const d = (await repdbInfo)[id];
+  return d ? { instructions: d.steps, primaryMuscles: d.p.map(ucfirst), secondaryMuscles: d.s.map(ucfirst) } : null;
+}
 
 const GIFS = 'https://static.exercisedb.dev/media';
 
@@ -96,10 +119,11 @@ export function loadGifIndex(): Promise<GifCandidate[]> {
 
 const matchedByName = new Map<string, string | undefined>();
 
-/** What to show for an exercise: its anatomical GIF while that's on (if one matches), else its library photos. */
 export interface ExerciseMedia {
   gif?: string;
   photoId?: string;
+  frames?: string[];
+  repdbId?: string;
   /** The library entry whose instructions to show (`loadExerciseInfo`), whichever picture is shown. */
   infoId?: string;
 }
@@ -112,8 +136,10 @@ export function exerciseMedia(
   exercise: Pick<Exercise, 'name' | 'catalogId' | 'kind' | 'equipment'>,
   catalog: CatalogExercise[] | undefined,
   index: GifCandidate[] | undefined,
+  repdb?: RepdbData,
 ): ExerciseMedia {
   const photoId = photoIdFor(exercise, catalog);
+  if (MEDIA === 'repdb') return repdb ? repdbMedia(exercise, photoId, repdb) : {};
   if (!USE_ANATOMICAL) return { photoId, infoId: photoId };
   // While the GIFs are on, one style only: no photos (unmatched exercises get the dumbbell).
   let gifId = photoId ? (exerciseGifs as Record<string, string>)[photoId] : undefined;
@@ -126,6 +152,28 @@ export function exerciseMedia(
     gifId = matchedByName.get(key);
   }
   return gifId ? { gif: `${GIFS}/${gifId}.gif`, infoId: photoId } : {};
+}
+
+const repdbByName = new Map<string, GifCandidate | undefined>();
+
+function repdbMedia(exercise: Pick<Exercise, 'name' | 'catalogId' | 'kind' | 'equipment'>, photoId: string | undefined, repdb: RepdbData): ExerciseMedia {
+  let item = photoId && repdb.map[photoId] ? repdb.items.find((i) => i[0] === repdb.map[photoId]) : undefined;
+  if (!item && !exercise.catalogId) {
+    const key = `${exercise.name.trim().toLowerCase()}|${exercise.equipment ?? ''}|${exercise.kind}`;
+    if (!repdbByName.has(key)) {
+      const equipment = equipmentFor(exercise.name, exercise.equipment, exercise.kind === 'bodyweight');
+      repdbByName.set(key, bestRepdbMatch(exercise.name, equipment, repdb.items).match);
+    }
+    item = repdbByName.get(key);
+  }
+  if (!item) return {};
+  const id = item[0];
+  const frames = item[3] ? [`${REPDB}/${id}-main.webp`] : [`${REPDB}/${id}-start.webp`, `${REPDB}/${id}-peak.webp`];
+  return { frames, repdbId: id };
+}
+
+export function thumbnailOf(media: ExerciseMedia): string | undefined {
+  return media.frames?.[0] ?? media.gif ?? (media.photoId ? exercisePhotos(media.photoId)[0] : undefined);
 }
 
 /** Common lifts, offered in the exercise search before anything is typed (a new account has no exercises yet). */

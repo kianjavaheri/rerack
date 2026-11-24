@@ -19,11 +19,19 @@ export function normalizeLink(input: string): string | null {
 }
 
 /** Short label for a stored link: the site, plus the path when it's short enough to help. */
+export function isYouTube(href: string): boolean {
+  try {
+    return /(^|\.)youtube\.com$|^youtu\.be$/.test(new URL(href).hostname.replace(/^www\./, ''));
+  } catch {
+    return false;
+  }
+}
+
 export function linkLabel(href: string): string {
   try {
     const url = new URL(href);
     const host = url.hostname.replace(/^www\./, '');
-    if (/(^|\.)youtube\.com$|^youtu\.be$/.test(host)) return 'YouTube video';
+    if (isYouTube(href)) return 'YouTube Video';
     const path = url.pathname.replace(/\/$/, '');
     return path && path.length <= 24 ? `${host}${path}` : host;
   } catch {

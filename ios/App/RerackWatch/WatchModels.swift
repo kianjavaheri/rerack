@@ -16,6 +16,7 @@ struct SetLog: Codable, Identifiable, Equatable {
     var warmup: Bool?
     var drop: Bool?
     var doneAt: String?
+    var right: Side?
 
     init(id: String = newId(), reps: Int? = nil, weightKg: Double? = nil, done: Bool = false) {
         self.id = id
@@ -24,7 +25,7 @@ struct SetLog: Codable, Identifiable, Equatable {
         self.done = done
     }
 
-    enum CodingKeys: String, CodingKey { case id, reps, weightKg, done, warmup, drop, doneAt }
+    enum CodingKeys: String, CodingKey { case id, reps, weightKg, done, warmup, drop, doneAt, right }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -35,6 +36,7 @@ struct SetLog: Codable, Identifiable, Equatable {
         warmup = try c.decodeIfPresent(Bool.self, forKey: .warmup)
         drop = try c.decodeIfPresent(Bool.self, forKey: .drop)
         doneAt = try c.decodeIfPresent(String.self, forKey: .doneAt)
+        right = try? c.decodeIfPresent(Side.self, forKey: .right)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -47,6 +49,7 @@ struct SetLog: Codable, Identifiable, Equatable {
         try c.encodeIfPresent(warmup, forKey: .warmup)
         try c.encodeIfPresent(drop, forKey: .drop)
         try c.encodeIfPresent(doneAt, forKey: .doneAt)
+        try c.encodeIfPresent(right, forKey: .right)
     }
 
     var isWarmup: Bool { warmup == true }
@@ -59,16 +62,18 @@ struct SessionEntry: Codable, Identifiable, Equatable {
     var id: String
     var exerciseId: String
     var perSide: Bool?
+    var sides: Bool?
     var sets: [SetLog]
     var targetSets: Int?
     var targetReps: String?
     var notes: String?
     var supersetNext: Bool?
 
-    init(id: String, exerciseId: String, perSide: Bool?, sets: [SetLog], targetSets: Int?, targetReps: String?, notes: String?, supersetNext: Bool?) {
+    init(id: String, exerciseId: String, perSide: Bool?, sides: Bool? = nil, sets: [SetLog], targetSets: Int?, targetReps: String?, notes: String?, supersetNext: Bool?) {
         self.id = id
         self.exerciseId = exerciseId
         self.perSide = perSide
+        self.sides = sides
         self.sets = sets
         self.targetSets = targetSets
         self.targetReps = targetReps
@@ -76,13 +81,14 @@ struct SessionEntry: Codable, Identifiable, Equatable {
         self.supersetNext = supersetNext
     }
 
-    enum CodingKeys: String, CodingKey { case id, exerciseId, perSide, sets, targetSets, targetReps, notes, supersetNext }
+    enum CodingKeys: String, CodingKey { case id, exerciseId, perSide, sides, sets, targetSets, targetReps, notes, supersetNext }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)
         exerciseId = try c.decode(String.self, forKey: .exerciseId)
         perSide = try c.decodeIfPresent(Bool.self, forKey: .perSide)
+        sides = try c.decodeIfPresent(Bool.self, forKey: .sides)
         sets = try c.decodeIfPresent([SetLog].self, forKey: .sets) ?? []
         targetSets = decodeInt(c, .targetSets)
         targetReps = try? c.decodeIfPresent(String.self, forKey: .targetReps)
@@ -144,7 +150,7 @@ struct Session: Codable, Identifiable, Equatable {
     var restEnd: Date? { restEndsAt.flatMap(parseDate) }
 }
 
-struct WatchSet: Codable, Equatable {
+struct Side: Codable, Equatable {
     var reps: Int?
     var weightKg: Double?
 
@@ -159,6 +165,40 @@ struct WatchSet: Codable, Equatable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         reps = decodeInt(c, .reps)
         weightKg = try c.decodeIfPresent(Double.self, forKey: .weightKg)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(reps, forKey: .reps)
+        try c.encode(weightKg, forKey: .weightKg)
+    }
+}
+
+struct WatchSet: Codable, Equatable {
+    var reps: Int?
+    var weightKg: Double?
+    var right: Side?
+
+    enum CodingKeys: String, CodingKey { case reps, weightKg, right }
+
+    init(reps: Int?, weightKg: Double?, right: Side? = nil) {
+        self.reps = reps
+        self.weightKg = weightKg
+        self.right = right
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        reps = decodeInt(c, .reps)
+        weightKg = try c.decodeIfPresent(Double.self, forKey: .weightKg)
+        right = try? c.decodeIfPresent(Side.self, forKey: .right)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(reps, forKey: .reps)
+        try c.encode(weightKg, forKey: .weightKg)
+        try c.encodeIfPresent(right, forKey: .right)
     }
 }
 
@@ -178,6 +218,7 @@ struct WatchSlot: Codable, Equatable {
     var notes: String?
     var supersetNext: Bool?
     var perSide: Bool?
+    var sides: Bool?
     var last: [WatchSet]
 }
 

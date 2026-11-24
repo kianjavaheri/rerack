@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { now } from '../core/ids';
 import { EQUIPMENT, equipmentOf } from '../core/lifts';
 import { findEquivalent, findSimilar } from '../core/similarity';
@@ -10,9 +12,9 @@ import { useIsIsolation } from '../hooks/useCatalog';
 import { useExercises } from '../hooks/useRepo';
 import { ExercisePicker } from './ExercisePicker';
 import { useFeedback } from './Feedback';
-import { Modal } from './Modal';
 import { LinksEditor } from './Notes';
 import { SimilarExercises, type SimilarOption } from './SimilarExercises';
+import { lockScroll } from '../utils/scrollLock';
 
 export const MUSCLE_GROUPS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Cardio', 'Other'];
 
@@ -113,7 +115,25 @@ export function ExerciseForm({
   }
 
   return (
-    <Modal title={isNew ? 'New exercise' : 'Edit exercise'} onClose={onClose}>
+    <ExerciseWindow title={isNew ? 'New exercise' : 'Edit exercise'} onClose={onClose} footer={
+      <>
+        {!isNew ? (
+          <div className="row" style={{ gap: 6 }}>
+            <button className="btn btn-danger btn-sm" onClick={archive}>
+              Remove
+            </button>
+            <button className="btn btn-sm" onClick={() => setMergingInto(true)} title="Combine it with another exercise, keeping both histories">
+              Merge into…
+            </button>
+          </div>
+        ) : (
+          <span />
+        )}
+        <button className="btn btn-primary" onClick={() => save()} disabled={!draft.name.trim()}>
+          Save
+        </button>
+      </>
+    }>
       <div className="stack">
         {libraryMatches.length > 0 && (
           <div className="well">
@@ -138,7 +158,7 @@ export function ExerciseForm({
         <label>
           <span className="label">Name</span>
           <input
-            autoFocus
+            autoFocus={isNew}
             className="input"
             value={draft.name}
             onChange={(e) => {
@@ -223,24 +243,42 @@ export function ExerciseForm({
             <LinksEditor links={draft.links ?? []} onChange={(links) => setDraft({ ...draft, links })} />
           </div>
         </div>
-        <div className="spread" style={{ marginTop: 6 }}>
-          {!isNew ? (
-            <div className="row" style={{ gap: 6 }}>
-              <button className="btn btn-danger btn-sm" onClick={archive}>
-                Remove
-              </button>
-              <button className="btn btn-sm" onClick={() => setMergingInto(true)} title="Combine it with another exercise, keeping both histories">
-                Merge into…
-              </button>
-            </div>
-          ) : (
-            <span />
-          )}
-          <button className="btn btn-primary" onClick={() => save()} disabled={!draft.name.trim()}>
-            Save
+      </div>
+    </ExerciseWindow>
+  );
+}
+
+/** A page of its own over the app (the New workout window's), with Save and the rest in a bar along the bottom. */
+function ExerciseWindow({ title, onClose, footer, children }: { title: string; onClose: () => void; footer: ReactNode; children: ReactNode }) {
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+  useEffect(() => {
+    const unlock = lockScroll();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCloseRef.current();
+    document.addEventListener('keydown', onKey);
+    return () => {
+      unlock();
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+  return createPortal(
+    <div className="intro" role="dialog" aria-modal="true" aria-label={title} data-no-swipe>
+      <div className="intro-panel">
+        <div className="intro-top">
+          <span />
+          <button className="icon-btn" onClick={onClose} aria-label="Close">
+            <X size={20} />
           </button>
         </div>
+        <div className="intro-body">
+          <h1 className="title" style={{ marginBottom: 18 }}>{title}</h1>
+          {children}
+        </div>
+        <div className="intro-foot">{footer}</div>
       </div>
-    </Modal>
+    </div>,
+    document.body,
   );
 }

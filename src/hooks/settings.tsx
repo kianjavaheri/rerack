@@ -40,13 +40,23 @@ function storedAccent(): Settings['darkAccent'] {
   }
 }
 
+/** The black/white accent, kept on this device too so the first frame uses it (index.html sets data-mono). */
+const MONO_KEY = 'rerack:mono-accent';
+function storedMono(): boolean {
+  try {
+    return localStorage.getItem(MONO_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 function systemTheme(): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const loaded = useRepoQuery((r) => r.getSettings());
-  const settings = loaded ?? { ...DEFAULT_SETTINGS, theme: storedTheme(), darkAccent: storedAccent() };
+  const settings = loaded ?? { ...DEFAULT_SETTINGS, theme: storedTheme(), darkAccent: storedAccent(), monoAccent: storedMono() };
   const [system, setSystem] = useState(systemTheme);
 
   useEffect(() => {
@@ -80,6 +90,19 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       // Private mode etc.: the first frame is warm until settings load.
     }
   }, [accent, !!loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const mono = !!settings.monoAccent;
+  useEffect(() => {
+    if (mono) document.documentElement.dataset.mono = '';
+    else delete document.documentElement.dataset.mono;
+    if (!loaded) return;
+    try {
+      if (mono) localStorage.setItem(MONO_KEY, '1');
+      else localStorage.removeItem(MONO_KEY);
+    } catch {
+      // Private mode etc.: the first frame has the colours until settings load.
+    }
+  }, [mono, !!loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;

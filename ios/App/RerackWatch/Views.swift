@@ -99,7 +99,7 @@ struct NowView: View {
             if let end = store.restEnd, end > Date(), over != restKey, peeking != restKey {
                 RestView(end: end, length: store.session?.restLength ?? store.barRest) { peeking = restKey }
             } else if let ref = store.focus, let (entry, index) = store.lookup(ref) {
-                SetView(entry: entry, index: index, ref: ref).id("\(ref.entryId)|\(ref.setId)|\(entry.perSide == true)")
+                SetView(entry: entry, index: index, ref: ref).id("\(ref.entryId)|\(ref.setId)|\(entry.perSide == true)|\(entry.sides == true)")
             } else {
                 AllDoneView()
             }
@@ -110,14 +110,17 @@ struct NowView: View {
             if wait > 0 {
                 try? await Task.sleep(for: .seconds(wait))
                 guard !Task.isCancelled else { return }
+                store.restOver(at: end)
                 // Without a workout session there's no "Rest over" notification to tap the wrist: do it here if the
                 // app is still running (wrist down it's inactive, not background, so don't require active).
                 if !store.restAlertScheduled && WKApplication.shared().applicationState != .background {
                     WKInterfaceDevice.current().play(.notification)
                 }
             }
+            if wait <= 0 { store.restOver(at: end) }
             over = restKey
         }
+        .onChange(of: store.pickedAt) { _, _ in peeking = store.session?.restEndsAt }
     }
 }
 
@@ -172,21 +175,27 @@ struct SetView: View {
     let index: Int
     let ref: SetRef
 
-    private enum Field { case weight, reps }
+    private enum Field: Hashable { case weight(Int), reps(Int) }
+    private struct Pad {
+        var weight: Double = 0
+        var reps: Double = 0
+        /// The Crown's raw values: turned into whole steps, since watchOS doesn't snap them.
+        var weightCrown: Double = 0
+        var repsCrown: Double = 0
+        var baseWeight: Double = 0
+        var baseReps: Double = 0
+        var startShown: Double = 0
+        var startKg: Double?
+        var edited = false
+    }
     @FocusState private var field: Field?
-    @State private var weight: Double = 0
-    @State private var reps: Double = 0
-    /// The Crown's raw values: turned into whole steps (`weightTurned`, `repsTurned`), since watchOS doesn't snap them.
-    @State private var weightCrown: Double = 0
-    @State private var repsCrown: Double = 0
-    /// What the Crown counts from: the weight and reps when the set was opened (or last saved).
-    @State private var base: (weight: Double, reps: Double) = (0, 0)
+    @State private var pads = [Pad(), Pad()]
+    @State private var side = 0
     @State private var saveTask: Task<Void, Never>?
-    /// What the weight started as, in kg: kept when the shown number isn't changed, so lb ↔ kg rounding never drifts.
-    @State private var startWeight: (shown: Double, kg: Double?) = (0, nil)
     @State private var loaded = false
 
     private var set: SetLog { entry.sets[index] }
+    private var sided: Bool { entry.sides == true }
     private var info: WatchExercise? { store.exercise(entry.exerciseId) }
     private var bodyweight: Bool { info?.bodyweight ?? false }
     private var isKg: Bool { store.isKg }
@@ -196,7 +205,7 @@ struct SetView: View {
     @AppStorage("platesShown") private var platesShown = true
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: sided ? 4 : 6) {
             VStack(spacing: 1) {
                 Text(store.exerciseName(entry.exerciseId))
                     .font(.system(.headline, design: .rounded))
@@ -213,24 +222,34 @@ struct SetView: View {
                 .minimumScaleFactor(0.8)
             }
 
-            HStack(spacing: 6) {
-                valueBox(title: weightTitle, value: weightText, field: .weight)
-                    .digitalCrownRotation($weightCrown, from: -(base.weight + step), through: 1500, by: step, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
-                valueBox(title: "reps", value: Text(String(Int(reps))), field: .reps)
-                    .digitalCrownRotation($repsCrown, from: -base.reps - 1, through: 200, by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
+            if sided {
+                VStack(spacing: 2) {
+                    HStack(spacing: 10) {
+                        sideTab("Left", 0)
+                        sideTab("Right", 1)
+                    }
+                    TabView(selection: $side) {
+                        numbers(0).tag(0)
+                        numbers(1).tag(1)
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    .frame(height: 56)
+                }
+            } else {
+                numbers(0)
             }
-            .onChange(of: weightCrown) { _, crown in weight = weightTurned(crown) ; changed() }
-            .onChange(of: repsCrown) { _, crown in reps = max(0, base.reps + (crown).rounded()); changed() }
 
             HStack(spacing: 8) {
                 RoundButton(systemImage: "chevron.left", label: "Previous set", enabled: store.canStep(-1)) { store.step(-1) }
                 // Gray until checked, then the sweep; tapping a checked set unchecks it (an accidental tap undone).
                 Button {
                     saveTask?.cancel()
+                    pads[0].edited = false
+                    pads[1].edited = false
                     if set.done {
                         store.uncheck(ref)
                     } else {
-                        store.check(ref, reps: Int(reps), weightKg: weightKg)
+                        store.check(ref, reps: Int(pads[0].reps), weightKg: weightKg(0), right: rightSide)
                     }
                 } label: {
                     Image(systemName: "checkmark")
@@ -243,9 +262,9 @@ struct SetView: View {
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                .opacity(!set.done && reps < 1 ? 0.4 : 1)
-                .disabled(!set.done && reps < 1)
-                .accessibilityLabel(set.done ? "Uncheck set" : "Check off set")
+                .opacity(!set.done && !checkable ? 0.4 : 1)
+                .disabled(!set.done && !checkable)
+                .accessibilityLabel(set.done ? "Uncheck set" : sided ? "Check off both sides" : "Check off set")
                 RoundButton(systemImage: "chevron.right", label: "Next set", enabled: store.canStep(1)) { store.step(1) }
             }
         }
@@ -253,14 +272,44 @@ struct SetView: View {
         .onAppear(perform: load)
         // Changed elsewhere (typed on the phone, or the set above changed its placeholder): show the new numbers.
         .onChange(of: sourceKey) { _, _ in reload() }
+        .onChange(of: side) { _, now in field = bodyweight ? .reps(now) : .weight(now) }
         .onDisappear(perform: saveNow)
     }
 
-    /// The weight `crown` steps away from where it started: the first step goes to the next whole step (117 → 120 or
-    /// 115 with 5 lb), then a step at a time, never below 0.
-    private func weightTurned(_ crown: Double) -> Double {
+    private func sideTab(_ title: String, _ i: Int) -> some View {
+        Text(title)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(side == i ? Theme.accent : .secondary)
+            .onTapGesture { withAnimation { side = i } }
+            .accessibilityAddTraits(side == i ? [.isSelected, .isButton] : .isButton)
+    }
+
+    private func numbers(_ i: Int) -> some View {
+        HStack(spacing: 6) {
+            valueBox(title: weightTitle(i), value: weightText(i), field: .weight(i))
+                .digitalCrownRotation($pads[i].weightCrown, from: -(pads[i].baseWeight + step), through: 1500, by: step, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
+            valueBox(title: "reps", value: Text(String(Int(pads[i].reps))), field: .reps(i))
+                .digitalCrownRotation($pads[i].repsCrown, from: -pads[i].baseReps - 1, through: 200, by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
+        }
+        .onChange(of: pads[i].weightCrown) { _, crown in
+            let next = weightTurned(crown, from: pads[i].baseWeight)
+            if next != pads[i].weight { pads[i].weight = next; changed(i) }
+        }
+        .onChange(of: pads[i].repsCrown) { _, crown in
+            let next = max(0, pads[i].baseReps + crown.rounded())
+            if next != pads[i].reps { pads[i].reps = next; changed(i) }
+        }
+    }
+
+    private var checkable: Bool { pads[0].reps >= 1 && (!sided || pads[1].reps >= 1) }
+
+    private var rightSide: Side? {
+        guard sided else { return nil }
+        return Side(reps: pads[1].reps >= 1 ? Int(pads[1].reps) : nil, weightKg: weightKg(1))
+    }
+
+    private func weightTurned(_ crown: Double, from start: Double) -> Double {
         let n = Int((crown / step).rounded())
-        let start = base.weight
         let tiny = 1e-6
         var value: Double
         if n == 0 {
@@ -275,9 +324,8 @@ struct SetView: View {
         return max(0, (value * 100).rounded() / 100)
     }
 
-    /// A checked set's numbers changed: saved once the Crown rests (it stays checked).
-    private func changed() {
-        guard set.done else { return }
+    private func changed(_ i: Int) {
+        pads[i].edited = true
         saveTask?.cancel()
         saveTask = Task { @MainActor in
             try? await Task.sleep(for: .seconds(1))
@@ -289,8 +337,20 @@ struct SetView: View {
     private func saveNow() {
         saveTask?.cancel()
         saveTask = nil
-        guard set.done, reps >= 1, Int(reps) != set.reps || weightKg != set.weightKg else { return }
-        store.check(ref, reps: Int(reps), weightKg: weightKg)
+        let left = pads[0].edited, right = pads[1].edited
+        guard left || right else { return }
+        pads[0].edited = false
+        pads[1].edited = false
+        if set.done {
+            guard checkable else { return }
+            let reps = Int(pads[0].reps), kg = weightKg(0)
+            guard reps != set.reps || kg != set.weightKg || (sided && rightSide != set.right) else { return }
+            store.check(ref, reps: reps, weightKg: kg, right: rightSide)
+        } else {
+            let reps = left ? (pads[0].reps >= 1 ? Int(pads[0].reps) : nil) : set.reps
+            let kg = left ? weightKg(0) : set.weightKg
+            store.update(ref, reps: reps, weightKg: kg, right: sided && right ? rightSide : set.right)
+        }
     }
 
     /// "Set 1 of 2 · 6-12 · Last 8 × 115 lb" (Last left out once it's done; a done set is unchecked by swiping its row
@@ -306,7 +366,7 @@ struct SetView: View {
         let focused = self.field == field
         return VStack(spacing: 0) {
             value
-                .font(.system(size: 30, weight: .semibold, design: .rounded))
+                .font(.system(size: sided ? 27 : 30, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
@@ -314,7 +374,7 @@ struct SetView: View {
         }
         // Kept off the rounded corners, which clipped "per side · 155 lb".
         .padding(.horizontal, 6)
-        .frame(maxWidth: .infinity, minHeight: 58)
+        .frame(maxWidth: .infinity, minHeight: sided ? 52 : 58)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(focused ? 0.16 : 0.08)))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(focused ? Theme.accent : .clear, lineWidth: 2))
         .focusable(true)
@@ -322,32 +382,35 @@ struct SetView: View {
         .onTapGesture { self.field = field }
     }
 
-    /// Last time's same set, for reference ("Last 8 × 135 lb").
     private var lastText: String? {
         let previous = store.last(for: entry.id)
         let position = entry.sets[..<index].filter { !$0.isWarmup }.count
         guard !set.isWarmup, let last = position < previous.count ? previous[position] : previous.last else { return nil }
+        if sided && side == 1 {
+            guard let right = last.right else { return nil }
+            return "Last " + formatSet(reps: right.reps, weightKg: right.weightKg, isKg: isKg, bodyweight: bodyweight)
+        }
         return "Last " + formatSet(reps: last.reps, weightKg: last.weightKg, isKg: isKg, bodyweight: bodyweight)
     }
 
-    private var weightTitle: String {
+    private func weightTitle(_ i: Int) -> String {
         let unit = isKg ? "kg" : "lb"
         if bodyweight { return "+" + unit }
         guard let bar else { return unit }
         // One side shown big, the bar's total small: "135 lb total" (watch users know Per side).
-        return "\(formatNumber(weight * 2 + bar)) \(unit) total"
+        return "\(formatNumber(pads[i].weight * 2 + bar)) \(unit) total"
     }
 
-    /// Per side above the heaviest plate, as plates when that's on ("45+25" for 70 lb); else the number.
     /// Per side above the heaviest plate, as plates when that's on: the same plate counted ("45" with a small "×4"),
     /// then the rest ("+10"): 425 lb → 45×4+10. Up to three kinds of plate; more can't be read, so the number.
-    private var weightText: Text {
+    private func weightText(_ i: Int) -> Text {
+        let weight = pads[i].weight
         if bar != nil, platesShown, weight > (isKg ? 25 : 45), let parts = plateParts(weight, isKg: isKg) {
             let groups = plateGroups(parts)
             if groups.count <= 3 {
                 var text = Text("")
-                for (i, group) in groups.enumerated() {
-                    text = text + Text((i > 0 ? "+" : "") + formatNumber(group.plate))
+                for (n, group) in groups.enumerated() {
+                    text = text + Text((n > 0 ? "+" : "") + formatNumber(group.plate))
                     if group.count > 1 {
                         text = text + Text("×\(group.count)").font(.system(size: 17, weight: .semibold, design: .rounded)).foregroundColor(.secondary)
                     }
@@ -358,8 +421,9 @@ struct SetView: View {
         return Text(formatNumber(weight))
     }
 
-    private var weightKg: Double? {
-        if weight == startWeight.shown { return startWeight.kg }
+    private func weightKg(_ i: Int) -> Double? {
+        let weight = pads[i].weight
+        if weight == pads[i].startShown { return pads[i].startKg }
         if bodyweight && weight == 0 { return nil }
         let total = bar.map { weight * 2 + $0 } ?? weight
         return isKg ? total : total * kgPerLb
@@ -369,29 +433,40 @@ struct SetView: View {
         guard !loaded else { return }
         loaded = true
         reload()
-        field = bodyweight ? .reps : .weight
+        field = bodyweight ? .reps(side) : .weight(side)
     }
 
-    /// What the numbers start from: the set's own values, else its placeholder, and the bar (per side).
+    private var sources: [(kg: Double?, reps: Int?)] {
+        let previous = store.last(for: entry.id)
+        let suggested = hint(entry, index, previous: previous)
+        var list: [(kg: Double?, reps: Int?)] = [(set.weightKg ?? suggested?.weightKg, set.reps ?? suggested?.reps)]
+        if sided {
+            let r = rightHint(entry, index, previous: previous)
+            list.append((set.right?.weightKg ?? r.weightKg, set.right?.reps ?? r.reps))
+        }
+        return list
+    }
+
     private var sourceKey: String {
-        let suggested = hint(entry, index, previous: store.last(for: entry.id))
-        let kg = set.weightKg ?? suggested?.weightKg
-        let reps = set.reps ?? suggested?.reps
-        return "\(kg.map { String($0) } ?? "-")|\(reps.map { String($0) } ?? "-")|\(bar.map { String($0) } ?? "-")"
+        let sides = sources.map { "\($0.kg.map { String($0) } ?? "-")|\($0.reps.map { String($0) } ?? "-")" }
+        return sides.joined(separator: "/") + "|\(bar.map { String($0) } ?? "-")"
     }
 
     private func reload() {
         saveTask?.cancel()
         saveTask = nil
-        let suggested = hint(entry, index, previous: store.last(for: entry.id))
-        let kg = set.weightKg ?? suggested?.weightKg
-        weight = displayWeight(kg, kg: isKg) ?? 0
-        if let bar, kg != nil { weight = max(0, ((weight - bar) / 2 * 100).rounded() / 100) }
-        startWeight = (weight, kg)
-        reps = Double(set.reps ?? suggested?.reps ?? firstTarget ?? 0)
-        base = (weight, reps)
-        weightCrown = 0
-        repsCrown = 0
+        for (i, source) in sources.enumerated() {
+            var pad = Pad()
+            var weight = displayWeight(source.kg, kg: isKg) ?? 0
+            if let bar, source.kg != nil { weight = max(0, ((weight - bar) / 2 * 100).rounded() / 100) }
+            pad.weight = weight
+            pad.startShown = weight
+            pad.startKg = source.kg
+            pad.reps = Double(source.reps ?? firstTarget ?? 0)
+            pad.baseWeight = weight
+            pad.baseReps = pad.reps
+            pads[i] = pad
+        }
     }
 
     /// The low end of the target ("8" of "8-12") when there's nothing else to go on.
@@ -491,8 +566,15 @@ struct SetsView: View {
                         HStack {
                             Text(short(entry, set)).font(.caption.weight(.semibold)).frame(width: 22)
                             let shown = set.reps != nil || set.weightKg != nil ? WatchSet(reps: set.reps, weightKg: set.weightKg) : hint(entry, index, previous: previous)
-                            Text(formatSet(reps: shown?.reps, weightKg: shown?.weightKg, isKg: store.isKg, bodyweight: bodyweight))
-                                .foregroundStyle(set.done ? .primary : .secondary)
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(formatSet(reps: shown?.reps, weightKg: shown?.weightKg, isKg: store.isKg, bodyweight: bodyweight))
+                                if entry.sides == true {
+                                    let right = set.right ?? rightHint(entry, index, previous: previous)
+                                    Text("R " + formatSet(reps: right.reps, weightKg: right.weightKg, isKg: store.isKg, bodyweight: bodyweight))
+                                        .font(.caption2)
+                                }
+                            }
+                            .foregroundStyle(set.done ? .primary : .secondary)
                             Spacer(minLength: 2)
                             if set.done { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
                         }

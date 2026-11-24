@@ -204,11 +204,19 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
 - **Notes are sticky**: `Exercise.notes`/`links` and `Workout.notes` show every time it's logged (session note pads,
   Exercises form, workout editor). Links are http(s) only via `normalizeLink`. `WorkoutExercise.notes` is the
   separate per-slot note (e.g. "(slow)" from imports) shown under the exercise name. A note pad with text has a
-  **Clear** under it (`NoteText` in `components/Notes.tsx`), with an Undo banner.
+  **Clear** under it (`NoteText` in `components/Notes.tsx`), with an Undo banner; its room is kept (hidden) when
+  empty, so an empty pad is the same size as a filled one, with a short placeholder ("Cues, seat height, anything to
+  remember"). Opening a pad always focuses it (caret at the end) with the keyboard up: `NotesButton` calls
+  `primeKeyboard` (`utils/keyboard.ts`) in the tap, which focuses an invisible field at the button, since iOS only
+  opens the keyboard for a focus made during the tap and the pad mounts a moment later; its `autoFocus` takes over.
+  YouTube links read "YouTube Video" with YouTube's logo (`isYouTube` in `core/links.ts`).
 - Progress metric for one number per session (`progressValue`): estimated 1RM (Epley) for weighted exercises, total
   reps for bodyweight. Analytics is one page (Records was dropped; Log is its own tab, and the old
   `?view=log` redirects there). It lists logged workouts and exercises together (one filter; `?workout=` or `?exercise=`, else the latest workout). A workout plots each exercise as % change from its first session so
-  different loads share one axis (no dual axes).
+  different loads share one axis (no dual axes). Under the chart each exercise is a row with a check box in its line's
+  colour (tap to hide or show it) and an **Only** button that shows it by itself (tapped again, all come back); "Show
+  all" appears once any is hidden. Above it, two tiles: Average change and "Up last session" ("3 of 5 exercises"; the
+  Down tile was dropped, the table shows those). The list of workouts and exercises has no filter field.
 - **Exercise library**: `src/data/exerciseCatalog.json` is generated from free-exercise-db (Unlicense; stretching
   excluded) and lazy-loaded by `data/catalog.ts`. Picking a library entry copies it into the user's list with
   `catalogId`. `linkToCatalog` converts/merges a personal exercise into its library version, keeping its id (so history
@@ -228,7 +236,18 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   `ExerciseMedia.infoId` carries the library id even while the GIF is shown). Which entry's photos: `photoIdFor` (the exercise's `catalogId`,
   else the starter exercise's entry from `STARTER_CATALOG_IDS` in `data/seed.ts`, else a library exercise of the same
   name), display only. Starters are created linked now; older ones weren't.
-  **Beta only:** `USE_ANATOMICAL` (`data/catalog.ts`) shows ExerciseDB's free V1 anatomical GIFs (3D figure, working
+  **Which pictures**: `MEDIA` in `data/catalog.ts` (`'repdb' | 'anatomical' | 'photos'`), one style at a time, an
+  exercise without one getting the dumbbell; `thumbnailOf(media)` is the one picture for thumbnails, the lock screen
+  and the watch. **Now `'repdb'`**: RepDB's free flat illustrations (github.com/RepDB/exercise-dataset, 708 exercises,
+  512 px WebP: `-start`/`-peak`, or one `-main` for holds), from jsDelivr pinned to a commit (`REPDB`), alternating in
+  `ExercisePhotos` with RepDB's own steps and muscles (`loadRepdbInfo`, lazy `src/data/repdbInfo.json`). Matched ahead
+  of time by `node scripts/match-exercise-repdb.mjs <RepDB exercises.json>` (overrides for the common lifts; 197 of
+  753, the rest of the library is obscure) → `src/data/repdb.json` (lazy, ~60 KB: the map plus every RepDB exercise
+  for names you typed), with `bestRepdbMatch` in `core/gifMatch.ts` (stricter: each of our words theirs lacks,
+  equipment aside, costs 0.2; at least 0.82). Its Free Tier License needs the visible credit "Exercise data by RepDB
+  (repdb.co)": Settings' About card (`CreditsCard`, shown while MEDIA is 'repdb') and under the pictures; no
+  republishing the dataset, no AI training on it. Animations are their paid tier.
+  **Kept, not shown:** `'anatomical'` (`USE_ANATOMICAL = MEDIA === 'anatomical'`) shows ExerciseDB's free V1 anatomical GIFs (3D figure, working
   muscles red, 180×180 on white, from static.exercisedb.dev) instead, through `exerciseMedia` (components use
   `useExerciseMedia`). Matching by name is `core/gifMatch.ts` (word coverage, variant words like incline/jump/lying
   penalised, equipment from the field or the name, "flat"/"bench" ignored, Hammer Strength = machine, rear delt fly =
@@ -274,8 +293,10 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   while a touch moves, not only where it starts.
 - **Hold and drag to reorder** (`hooks/useDragReorder.ts`): workouts in the routine editor and exercises in the
   workout editor (held anywhere on the card but a field; `.holdable` cards keep their inputs selectable), and
-  exercises in a session (anywhere on the card). Held on a button, link or field it doesn't start (`startPress`). The workout editor's exercise cards also have **Replace** (⇄ beside
-  the superset link: the exercise search, keeps sets/reps/notes, Undo). After 350 ms still the item lifts with a haptic, the page stops
+  exercises in a session (anywhere on the card). Held on a button, link or field it doesn't start (`startPress`). In the workout editor, letting go of a
+  lifted card without moving it (or right-clicking it) opens the press-and-hold menu (`ContextMenu`, via the hook's
+  `onHold`) with what the card's own buttons used to be: **Replace** (the exercise search, keeps sets/reps/notes,
+  Undo), Edit (the exercise form), Move up, Move down, Remove; only the superset link stays on the card. After 350 ms still the item lifts with a haptic, the page stops
   scrolling by touch (touchmove `preventDefault`) and scrolls itself near the screen edges, the others slide aside, and
   letting go calls the same move as the arrow buttons (`move` / `moveUnlinked`). Moving first is a scroll. Slides
   and the drop use an even 280 ms ease-in-out (the app's front-loaded `--ease` at 0.2 s looked like popping), and
@@ -316,9 +337,16 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   iPhone app (`html.native`) has no blur, so its strip only backs the status bar and content starts just below.
   Bottom `.sticky-bar`s sit above the tabs. To test in a browser, add the `standalone` class to `<html>`.
 - "Workouts" → `/workouts` (`PLAN_PATH`) → `pages/WorkoutsPage.tsx` is the plan only: routines, workouts
-  (`WorkoutPlan` in `EditWorkoutsPage.tsx`). Its top row is a **Programs | Exercises** switch (`.plan-switch`) whose
-  list opens right under it (`ProgramList`, or `ExerciseLibrary` from `ExercisesPage.tsx`; nothing chosen at first,
-  tapping the chosen one puts it away) and **Import from text** on the right (it was "Import from notes"). `/edit` redirects there; editors keep
+  (`WorkoutPlan` in `EditWorkoutsPage.tsx`). Its top is a full-width **Routines | Workouts | Exercises** switch
+  (`.plan-switch`, max 520px), each its own list under it (`.plan-panel`; its buttons fill a row above it,
+  `.plan-actions`, sharing it evenly, also max 520px),
+  remembered per device (localStorage `rerack:plan-view`, default Routines) so an editor's Save lands back on the same
+  one; `?view=` picks one (Home's "pick a routine" links use `?view=routines`). **Routines**: New routine, your
+  routines, then **Programs** (`ProgramList`) under them. New routine opens `NewRoutineSheet` (`components/Programs.tsx`):
+  "Start from scratch" (an empty routine, on to its editor) or the same programs. **Workouts**: **Import from text**
+  beside New workout (the New workout window also has a "Written down already? Import from text" link). **Exercises**:
+  `ExerciseLibrary` from `ExercisesPage.tsx`. (It was a Programs | Exercises switch with Import on the right, and
+  before that "Import from notes".) `/edit` redirects there; editors keep
   `/edit/workouts/:id`, `/edit/routines/:id`, `/edit/exercises`, `/edit/import` and return to it.
 - What you've logged lives on Home: **Recent workouts** (the last 4, `RecentWorkouts` in `WorkoutLogPage.tsx`) under
   Activity, with "See all" → `/history` (`HistoryPage`: every session by month, a sub-page with Back and edge swipe).
@@ -342,6 +370,16 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   reads time so far first, to the second and in `--ink-grad` (`Elapsed`: "8m 32s", `.bar-time`), then a small gray
   `|` (`.bar-sep`) and "0/6 exercises"; under 440px + Exercise is just + so that fits, and the left side truncates rather than running under
   the buttons.
+- **Editing vs logging**: the workout editor has a bar under its title, "Editing the plan" (pencil) and a rainbow
+  **Start workout** that starts it (`useStartSession`) and opens it on the middle tab, so a tapped workout card never
+  reads as a workout under way.
+- **Left and right separately** (an exercise's ⋮ → "Left and right separately"; `SessionEntry.sides`, carried to the
+  next session of that workout like Per side): each set gets an R row under its own (L), stored as `SetLog.right`
+  (`{ reps, weightKg }`, the set's own numbers being the left). The R placeholders come from the same set as the
+  left's (the set above once it has anything, else last time's), else the left side; checking a set off fills both.
+  Stats count both sides (`setSides` in `core/stats.ts`: volume and reps add, e1RM and top set take the better);
+  `groupSets` keeps sides apart, and `setGroupText` writes "2 × L 8 · R 7 · 25 lb" (Last, the summary), the Log
+  "8 / 7". Turning it off drops the right sides.
 - Editor pages accept `?from=<path>` so Save returns to where the user came from (e.g. back to a routine); validate it
   with `safeReturnPath` (rejects `//host`). Session pages go back with `navigate(-1)` when `canGoBack()`.
 - **No `confirm()`/`alert()`**: `components/Feedback.tsx` (`useFeedback`) gives in-app `confirm({…})` dialogs and
@@ -353,7 +391,7 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   date fields: just Date and Time, no Today/Yesterday shortcuts, a new log starting at now) and no "tap the check" hint; the Live / Done badge sits right after the name (`.session-name` grows
   with the text). An exercise card (`EntryCard`): on the left its picture, then the name with small gray text under it ("Last 3d ago",
   `shortAgo`, or "First time"; once finished "✓ 5:12 PM · Last …"), and on the right a two-column grid
-  (`.entry-actions`): its rest chip over a **Notes** chip (icon and the word, `NotesButton withText`), both as wide as
+  (`.entry-actions`): its rest chip over a **Notes** chip (icon and the word, `NotesButton`; every notes button is this chip now, the workout's own in the editor and session title rows too, with our own page-with-a-plus icon, `NoteIcon` in `components/Notes.tsx`), both as wide as
   the wider so they line up, and a vertical ⋮ over **Last** (a white circle, lucide `History`; opens the history). The grid's Set and Done headers are centred over their
   columns (`text-indent` makes up for letter-spacing's trailing gap). The ⋮ opens `components/ActionSheet.tsx` (a sheet with one grouped list, hairlines between rows: Replace
   exercise, Add to superset (the same search as its Superset pill), Progress, Remove exercise in red). The set
@@ -399,8 +437,8 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
   drawn as a group with a rainbow bar; rest starts only after the group's last exercise. Moving/removing unlinks rather than
   silently re-forming a group. Same UI in the workout editor and while logging (`components/SupersetLink.tsx`): a link
   button at each exercise's bottom right and a dashed **Superset pill** under an exercise (or a group's last one). The
-  editor shows every pill at first so the feature is discoverable; while logging they're hidden until the button is
-  tapped (`usePills`). The button takes a linked exercise out (`leaveSuperset`: ends unlink in place, a middle one moves
+  pills are hidden until the button is tapped (`usePills`), in the workout editor too (it used to show them all at
+  first). The button takes a linked exercise out (`leaveSuperset`: ends unlink in place, a middle one moves
   below; toast "Superset removed" + Undo via `restoreLinks`), else shows/hides its pill. Tapping a pill opens the
   exercise search with the workout's own exercises first, tagged "In this workout" (`supersetWith`: moves that slot in,
   or adds a new one — only to that session, never the saved workout). Holding an exercise and dropping it on a pill
@@ -445,7 +483,9 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
 - **Keyboard on iPhone**: iOS shrinks only the visual viewport, so fixed sheets stayed behind the keyboard.
   `utils/keyboard.ts` (`trackKeyboard`, run in `main.tsx`) publishes `--vv-top`/`--vv-height` (dialog overlays are
   sized to them, so a sheet sits on the keyboard), sets `html.keyboard-open`, and scrolls a covered focused field
-  into view.
+  into view: once, 160 ms after the viewport stops changing, just far enough to clear the keyboard (a smooth scroll
+  started on every viewport event while the keyboard slid up kept restarting, and a pad opened near the bottom
+  crawled down in fits).
 - **Share links**: `/share#2.<…>` (`core/share.ts`) carries a workout or routine (exercises by name/catalogId,
   targets, notes, supersets, routine days) but no history, in a compact form (arrays, short keys, defaults and a
   library exercise's group/equipment left out) deflated with `fflate`'s synchronous `deflateSync` (building it must not
@@ -493,7 +533,8 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
   Hevy's account header (88px photo, tap to change, with a camera badge; the name over label-over-number stats: only
   Workouts for now, finished sessions with sets and not Log-only records; Followers / Following are planned), and
   `ProfileFields` edits name, height and body weight in a card right under it. Name and photo
-  (`Settings.profile`; photo is a 256 px JPEG data URL from `utils/image.ts` `squarePhoto`, so it syncs with settings)
+  (`Settings.profile`; photo is a 256 px JPEG data URL from `utils/image.ts` `squarePhoto`, so it syncs with settings;
+  Take Photo needs `NSCameraUsageDescription` in Info.plist, and the app crashed without it)
   override the sign-in's everywhere through `hooks/useAccount.ts` (`useAccountUser` for avatars and menus,
   `useFirstName` for greetings); height (ft/in with lb, cm with kg; both take one decimal, so 5 ft 10.5 in); body weight log `Settings.bodyWeights` (one per
   day, `core/body.ts`) with a chart and 30-day change. The Body weight heading (with a chevron) folds away the chart
@@ -504,8 +545,8 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
   `addProgram` builds a share payload and goes through `addShared` (reuses your exercises by library id or name),
   returns what it made; `removeProgram` is its Undo. `components/Programs.tsx` `ProgramList` (cards that open to
   show workouts and exercises, "Use this program"; the body is always rendered, `inert` while closed, and opens by
-  animating a grid row from `0fr` to `1fr`, the one way to animate to its natural height, then scrolls into view) is in the intro's routine step and the Workouts page's Programs side
-  (also opened from the empty routines box; `ProgramsWindow` is unused now); using one follows it.
+  animating a grid row from `0fr` to `1fr`, the one way to animate to its natural height, then scrolls into view) is in the intro's routine step, under the routines on Workouts' Routines tab and in
+  New routine's sheet (`NewRoutineSheet`); using one follows it.
 - **First-run intro** (`components/Intro.tsx`, mounted in Layout as `IntroGate`): its own window (full screen on a
   phone, a panel on wide screens; `.intro`, z 90, under dialogs). Explains routine → workout → exercise (a diagram
   with one colour per level, `--lvl-*`), then step 1 names the routine (presets Push / Pull / Legs, Upper / Lower,
@@ -575,7 +616,8 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
   an even hairline rim; dark a nearly black tint (`#141416b8`) with a lighter gray pill on the current tab, light a
   see-through cool gray (`#d4d6dc99`) with a darker pill. The current tab's icon is **filled** and the others are
   outlines, like YouTube's (`components/TabIcons.tsx`: filled drawings of lucide's House, Dumbbell, ChartLine,
-  NotebookText, in the accent's `#lt-ink`). Each tab draws both and CSS shows one by `.tab.active`, because a swipe
+  NotebookText, in the accent's `#lt-ink`; the house's door is an even-odd hole stopping above its bottom edge like
+  the outline's, since a mask cut it through the bottom and left faint lines). Each tab draws both and CSS shows one by `.tab.active`, because a swipe
   marks the tab by its class without a re-render (`markTab`).
 - **Liquid glass** (iOS 26 look) on the bottom bars, rest bar, sheets and the hold menu: `--glass-filter`
   (strong saturated blur), a light `--glass-tint` (`--sheet-tint` for sheets and menus, which hold more text), a
@@ -603,6 +645,11 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
   `Palette.of(dark:purple:)`), and so does the Apple Watch app (`WatchState.accent` → `Theme` in
   `RerackWatchApp.swift`); the Live Activity's watch layout (Smart Stack) too (`ContentState.purple`, from `useNativeRestTimer`); the
   lock screen, Dynamic Island and landing page stay warm.
+  **Black and white** (also being tried out; Settings → Appearance switch under Purple, `Settings.monoAccent`, both
+  themes, overrides purple): `[data-theme='light'][data-mono]` / `[data-theme='dark'][data-mono]` in `index.css` set
+  every accent role to one colour (black in light, white in dark; `--on-rainbow` the opposite). `html[data-mono]`
+  is mirrored to localStorage `rerack:mono-accent` for the first frame and the loader ring. Web only: the widget,
+  watch and lock screen don't follow it.
   The loading ring in `index.html` follows the same split. The logo itself keeps the full rainbow. `--accent` is one solid colour from it (blue in light, pink in dark) for what can't
   take a gradient (focus ring, checkboxes, selection, dashed outlines). Heatmap squares show their part of one
   rainbow across the grid (`--gx/--gy/--gw/--gh`). `--danger` is rose/red. Easing tokens: `--ease`,
@@ -758,10 +805,14 @@ workout), log each set (weight and reps prefilled from the set's placeholders, t
 `weightStepFor`, sent as `WatchState.weightStep`); watchOS doesn't snap the Crown's value, so `SetView` counts whole
 steps from where the set opened, the first one to the next multiple: 117 → 120), check it off (the ✓ is gray until
 checked, then the sweep; tapping it on a checked set unchecks it and stops the rest it started; a checked set's
-changed numbers save a second after the Crown rests; the numbers shown follow the set's values or placeholder
+changed numbers save a second after the Crown rests, and so do an unchecked set's (`WatchStore.update`, a `set` op
+with `done` false: the phone shows them as the set's values and the placeholders below; only numbers turned by hand,
+never a placeholder left alone); the numbers shown follow the set's values or placeholder
 when they change elsewhere, e.g. typed on the phone, `SetView.sourceKey`), Per side for barbell lifts (`WatchExercise.bar`; toggled in
 an exercise's set list, a `perSide` op; the weight box then shows and turns one side, "135 lb total" small under it, and above the
-heaviest plate, unless "Show as plates" is off (watch-only `@AppStorage`), as its plates, the same plate counted with a small "×n" (`plateGroups`): 70 → "45+25", 115 → "45×2+25", 425 → "45×4+10"; more than three kinds of plate show the number), ‹ › between sets or pick any from the exercises page (and add a set), rest with ±15 s
+heaviest plate, unless "Show as plates" is off (watch-only `@AppStorage`), as its plates, the same plate counted with a small "×n" (`plateGroups`): 70 → "45+25", 115 → "45×2+25", 425 → "45×4+10"; more than three kinds of plate show the number), ‹ › between sets or pick any from the exercises page (and add a set; a pick during a rest shows at once, and when a
+rest ends or is stopped, a set chosen before that is dropped for `currentSet`, the one after the set just checked:
+`WatchStore.restOver`, `pinnedAt`), rest with ±15 s
 and stop, finish or cancel. Three vertical pages: the set (or the rest while it runs; "Next: …" under the countdown
 peeks at the set), the exercises, the workout (time, heart rate, Start rest, Finish, Cancel workout).
 - **Watch-first, queued** (chosen so it works with the phone locked in a pocket, the app killed, or no phone nearby):
@@ -785,6 +836,14 @@ peeks at the set), the exercises, the workout (time, heart rate, Start rest, Fin
   straight from the repo. The context carries `applied` (the last op applied), and the watch drops its pending ops up
   to it; an ack never sends the old state (that would undo them on the watch until the next). So the cloud and the
   phone's screens catch up when the phone app next runs (opening it does it).
+- **Left/right split** (`SetLog.right`, `SessionEntry.sides`): the set screen has a Left and a Right page (a
+  sideways page `TabView` in `SetView`, its "Left" / "Right" names over it, tappable; each side its own weight, reps
+  and Crown, Per side on both) and one ✓ for the pair, which sends one `set` op carrying `right` (Swift `Side`). The
+  Right page starts from the set's `right`, else `rightHint` in `Logic.swift` (SessionPage's: the set above's right
+  once anything's in it, else last time's right, else the left side's). `WatchSet.right` carries last time's right
+  sides in the state. Unchecked edits send only the side turned. `applyWatchOp`'s `set` stores the `right` sent and
+  keeps the stored one when the op has none; `WatchSlot.sides` carries it to a workout started on the watch; the
+  exercise's set list shows the right side under each set. One rest per set, as before.
 - **Timers on the watch are `TimelineView`s** ticking each second with the text formatted by hand: a timer `Text`
   (`timerInterval:` / `style: .timer`) shows "1:--" when the watch dims (wrist turned), and the workout session lets
   a timeline keep 1 Hz then. The Smart Stack's Live Activity (`WatchActivityView`) can't do that: dimmed

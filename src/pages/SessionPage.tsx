@@ -1,7 +1,7 @@
-import { ArrowLeft, ArrowLeftRight, ArrowUp, ChartLine, Check, Disc3, MoreVertical, Play, Plus, Target, Trash2, X } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, ArrowUp, ChartLine, Check, Columns2, Disc3, MoreVertical, Play, Plus, Target, Trash2, X } from 'lucide-react';
 import { ActionSheet, type SheetAction } from '../components/ActionSheet';
 import { TargetSheet } from '../components/TargetSheet';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CancelWorkoutButton } from '../components/CancelWorkoutButton';
 import { DateTimeFields } from '../components/DateTimeFields';
@@ -23,7 +23,7 @@ import { hasNotesOrLinks } from '../core/links';
 import { canResume, emptySet, entryFinishedAt, finalizeSession, isEntryDone, isImportedSession, newEntry, orderByProgress, resumeSession, sessionDurationMinutes } from '../core/sessions';
 import { exerciseLog, isCompletedSet, lastPerformance, lastPerformanceWithDate, sessionSummary, type PastPerformance } from '../core/stats';
 import { groupBounds, leaveSuperset, moveIntoSuperset, moveUnlinked, placeAfter, removeUnlinked, restoreLinks, restsAfter, supersetGroups, supersetWith } from '../core/supersets';
-import { DEFAULT_REST_SECONDS, restSecondsFor, type Exercise, type Session, type SessionEntry, type SetLog, type WeightUnit } from '../core/types';
+import { DEFAULT_REST_SECONDS, restSecondsFor, type Exercise, type Session, type SessionEntry, type SetLog, type SideLog, type WeightUnit } from '../core/types';
 import { barWeight, isBarbellExercise, platesLabel } from '../core/plates';
 import { suggestedWeightKg } from '../core/progression';
 import { formatWeight, toKg } from '../core/units';
@@ -588,6 +588,12 @@ function EntryCard({ handle, entry, exercise, last, unit, onChange, onRemove, on
 
   const setSet = (setId: string, patch: Partial<SetLog>) =>
     onChange((e) => ({ ...e, sets: e.sets.map((s) => (s.id === setId ? { ...s, ...patch } : s)) }));
+  const sides = !!entry.sides;
+  const setRight = (setId: string, patch: Partial<SideLog>) =>
+    onChange((e) => ({
+      ...e,
+      sets: e.sets.map((s) => (s.id === setId ? { ...s, right: { reps: null, weightKg: null, ...s.right, ...patch } } : s)),
+    }));
 
   const kindOf = (set: SetLog): SetKind => (set.warmup ? 'warmup' : set.drop ? 'drop' : 'working');
   // Which of last time's sets each row lines up with (warm-ups don't count; drop sets do, since they're logged too).
@@ -617,13 +623,27 @@ function EntryCard({ handle, entry, exercise, last, unit, onChange, onRemove, on
     };
   };
 
+  const rightHint = (i: number): SideLog => {
+    const set = entry.sets[i];
+    const above = entry.sets.slice(0, i).findLast((s) => kindOf(s) === kindOf(set));
+    const aboveFilled = above && (above.reps != null || above.weightKg != null || above.right?.reps != null || above.right?.weightKg != null);
+    const from = aboveFilled ? above.right : working[i] < 0 ? undefined : (previous[working[i]] ?? previous.at(-1))?.right;
+    const left = hint(i);
+    return {
+      reps: from?.reps ?? set.reps ?? left?.reps ?? null,
+      weightKg: from?.weightKg ?? set.weightKg ?? left?.weightKg ?? null,
+    };
+  };
+
   const toggleDone = (set: SetLog, i: number) => {
     if (set.done) return setSet(set.id, { done: false, doneAt: undefined });
     const h = hint(i);
     const reps = set.reps ?? h?.reps ?? null;
     const weightKg = set.weightKg ?? h?.weightKg ?? null;
     if (!reps) return; // nothing to complete yet
-    setSet(set.id, { done: true, reps, weightKg, doneAt: new Date().toISOString() });
+    const r = sides ? rightHint(i) : null;
+    const right = r ? { right: { reps: set.right?.reps ?? r.reps ?? reps, weightKg: set.right?.weightKg ?? r.weightKg ?? weightKg } } : {};
+    setSet(set.id, { done: true, reps, weightKg, ...right, doneAt: new Date().toISOString() });
     onSetDone(entry.sets.every((s) => s.id === set.id || s.done), !!set.warmup);
   };
   const finishedAt = entryFinishedAt(entry);
@@ -645,6 +665,16 @@ function EntryCard({ handle, entry, exercise, last, unit, onChange, onRemove, on
   const menuActions: SheetAction[] = [
     { label: 'Replace exercise', icon: <ArrowLeftRight size={20} />, onSelect: onSwap },
     { label: 'Add to superset', icon: <Plus size={20} />, onSelect: onAddSuperset },
+    {
+      label: sides ? 'Log both sides together' : 'Left and right separately',
+      icon: <Columns2 size={20} />,
+      onSelect: () =>
+        onChange((e) =>
+          e.sides
+            ? { ...e, sides: undefined, sets: e.sets.map(({ right: _right, ...s }) => s) }
+            : { ...e, sides: true },
+        ),
+    },
     { label: 'Progress', icon: <ChartLine size={20} />, onSelect: () => navigate(`/analytics?exercise=${entry.exerciseId}`) },
     { label: 'Remove exercise', icon: <X size={20} />, danger: true, onSelect: onRemove },
   ];
@@ -694,7 +724,6 @@ function EntryCard({ handle, entry, exercise, last, unit, onChange, onRemove, on
           {exercise && (
             <>
               <NotesButton
-                withText
                 label={`Notes and links for ${exercise.name}`}
                 hasNotes={hasNotesOrLinks(exercise)}
                 open={notesOpen}
@@ -742,8 +771,17 @@ function EntryCard({ handle, entry, exercise, last, unit, onChange, onRemove, on
         {entry.sets.map((set, i) => {
           const h = hint(i);
           const shownWeight = set.weightKg ?? h?.weightKg ?? null;
+          const rh = sides ? rightHint(i) : null;
+          const side = (which: 'L' | 'R', field: ReactNode) =>
+            sides ? (
+              <span className="side-field" data-side={which}>
+                {field}
+              </span>
+            ) : (
+              field
+            );
           return (
-            <div key={set.id} className={`set-row${set.done ? ' done' : ''}`} style={{ display: 'contents' }}>
+            <div key={set.id} className={`set-row${set.done ? ' done' : ''}${sides ? ' sided' : ''}`} style={{ display: 'contents' }}>
               <SetMenu
                 label={label(i)}
                 kind={kindOf(set)}
@@ -753,27 +791,33 @@ function EntryCard({ handle, entry, exercise, last, unit, onChange, onRemove, on
                 onKind={(kind) => setSet(set.id, { warmup: kind === 'warmup' || undefined, drop: kind === 'drop' || undefined })}
                 onDelete={() => onChange((e) => ({ ...e, sets: e.sets.filter((s) => s.id !== set.id) }))}
               />
-              <NumericInput
-                className="set-input"
-                ariaLabel={`Set ${label(i)} reps`}
-                value={set.reps}
-                placeholder={h?.reps != null ? String(h.reps) : entry.targetReps?.split(/\D/)[0] || '0'}
-                format={(v) => (v == null ? '' : String(v))}
-                parse={(t) => (t ? parseInt(t, 10) : null)}
-                onChange={(reps) => setSet(set.id, { reps, done: reps ? set.done : false })}
-              />
-              <WeightInput
-                className="set-input"
-                ariaLabel={`Set ${label(i)} weight`}
-                value={set.weightKg}
-                hintKg={h?.weightKg}
-                emptyPlaceholder={bodyweight ? 'BW' : '0'}
-                unit={unit}
-                perSide={perSide}
-                bar={bar}
-                asPlates={asPlates}
-                onChange={(weightKg) => setSet(set.id, { weightKg })}
-              />
+              {side(
+                'L',
+                <NumericInput
+                  className="set-input"
+                  ariaLabel={`Set ${label(i)}${sides ? ' left' : ''} reps`}
+                  value={set.reps}
+                  placeholder={h?.reps != null ? String(h.reps) : entry.targetReps?.split(/\D/)[0] || '0'}
+                  format={(v) => (v == null ? '' : String(v))}
+                  parse={(t) => (t ? parseInt(t, 10) : null)}
+                  onChange={(reps) => setSet(set.id, { reps, done: reps ? set.done : false })}
+                />,
+              )}
+              {side(
+                'L',
+                <WeightInput
+                  className="set-input"
+                  ariaLabel={`Set ${label(i)}${sides ? ' left' : ''} weight`}
+                  value={set.weightKg}
+                  hintKg={h?.weightKg}
+                  emptyPlaceholder={bodyweight ? 'BW' : '0'}
+                  unit={unit}
+                  perSide={perSide}
+                  bar={bar}
+                  asPlates={asPlates}
+                  onChange={(weightKg) => setSet(set.id, { weightKg })}
+                />,
+              )}
               <button
                 className={`check${set.done ? ' on' : ''}`}
                 onClick={() => toggleDone(set, i)}
@@ -782,6 +826,39 @@ function EntryCard({ handle, entry, exercise, last, unit, onChange, onRemove, on
               >
                 <Check size={17} />
               </button>
+              {rh && (
+                <>
+                  <span className="side-gap" aria-hidden />
+                  {side(
+                    'R',
+                    <NumericInput
+                      className="set-input"
+                      ariaLabel={`Set ${label(i)} right reps`}
+                      value={set.right?.reps ?? null}
+                      placeholder={rh.reps != null ? String(rh.reps) : entry.targetReps?.split(/\D/)[0] || '0'}
+                      format={(v) => (v == null ? '' : String(v))}
+                      parse={(t) => (t ? parseInt(t, 10) : null)}
+                      onChange={(reps) => setRight(set.id, { reps })}
+                    />,
+                  )}
+                  {side(
+                    'R',
+                    <WeightInput
+                      className="set-input"
+                      ariaLabel={`Set ${label(i)} right weight`}
+                      value={set.right?.weightKg ?? null}
+                      hintKg={rh.weightKg}
+                      emptyPlaceholder={bodyweight ? 'BW' : '0'}
+                      unit={unit}
+                      perSide={perSide}
+                      bar={bar}
+                      asPlates={asPlates}
+                      onChange={(weightKg) => setRight(set.id, { weightKg })}
+                    />,
+                  )}
+                  <span className="side-gap" aria-hidden />
+                </>
+              )}
             </div>
           );
         })}

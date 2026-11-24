@@ -103,6 +103,12 @@ export interface SetLog {
   drop?: boolean;
   /** When it was checked off (cleared when unchecked): which exercise you're on, and when an exercise was finished. */
   doneAt?: Timestamp;
+  right?: SideLog | null;
+}
+
+export interface SideLog {
+  reps: number | null;
+  weightKg: number | null;
 }
 
 export interface SessionEntry {
@@ -110,6 +116,7 @@ export interface SessionEntry {
   exerciseId: ID;
   /** Barbell lifts: weight is typed per side of the bar in this workout (`formatPerSide`); the total is what's stored. */
   perSide?: boolean;
+  sides?: boolean;
   sets: SetLog[];
   /** Carried over from the template, if any, for display while logging. */
   targetSets?: number;
@@ -183,6 +190,11 @@ export interface Settings {
    * one. Missing = warm. Light mode is unaffected. Set in Settings → Appearance.
    */
   darkAccent?: 'purple' | null;
+  /**
+   * Being tried out: one plain accent instead of the colours, black in light mode and white in dark (overrides
+   * `darkAccent`). Set in Settings → Appearance.
+   */
+  monoAccent?: boolean;
   /** The routine being followed: drives "Up next", planned days and check-in badges. See `followedRoutine`. */
   activeRoutineId?: ID | null;
   /** Rest length in seconds, started by checking off a set; 0 = only when started by hand (then 2:00). Missing: `DEFAULT_REST_SECONDS`. */

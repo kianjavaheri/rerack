@@ -39,14 +39,24 @@ interface Drag {
  * With `onDropOn`, elements marked `data-superset-drop={index}` are drop targets: held over one, it gets the
  * `drop-over` class and the list stops rearranging (so the target holds still); letting go there calls
  * `onDropOn(from, index)` instead of moving.
+ *
+ * With `onHold`, letting go of a lifted item without moving it calls `onHold(index, element)` (for a menu, like iOS:
+ * hold and release for actions, hold and drag to move).
  */
-export function useDragReorder(count: number, onMove: (from: number, to: number) => void, onDropOn?: (from: number, host: number) => void) {
+export function useDragReorder(
+  count: number,
+  onMove: (from: number, to: number) => void,
+  onDropOn?: (from: number, host: number) => void,
+  onHold?: (index: number, el: HTMLElement) => void,
+) {
   const items = useRef<(HTMLElement | null)[]>([]);
   const onMoveRef = useRef(onMove);
   const onDropOnRef = useRef(onDropOn);
+  const onHoldRef = useRef(onHold);
   useLayoutEffect(() => {
     onMoveRef.current = onMove;
     onDropOnRef.current = onDropOn;
+    onHoldRef.current = onHold;
   });
   const drag = useRef<Drag | null>(null);
   /** Ends whatever press is in progress (removes its listeners, timers and styles). */
@@ -72,6 +82,7 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
     prepareHaptic();
 
     let frame = 0;
+    let movedSinceLift = false;
     let lastY = start.y;
     let lastX = start.x;
     const els = () => items.current.slice(0, count);
@@ -170,6 +181,7 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
         if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) > SLOP_PX) finish(false); // a scroll
         return;
       }
+      if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) > SLOP_PX) movedSinceLift = true;
       place();
     };
     // While lifted, touch moves drag the item instead of scrolling the page.
@@ -227,6 +239,7 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
       const to = commit && dropOn == null ? d.to : d.from;
       if (dropOn != null) onDropOnRef.current?.(d.from, dropOn);
       else if (to !== d.from) onMoveRef.current(d.from, to);
+      const held = commit && dropOn == null && to === d.from && !movedSinceLift;
       // Once the list has re-rendered in its new order (before the next paint), glide the item from where it was let
       // go into its slot.
       requestAnimationFrame(() => {
@@ -246,6 +259,7 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
         setTimeout(() => {
           el.style.transition = '';
         }, DROP_MS);
+        if (held) onHoldRef.current?.(d.from, el);
       });
       setTimeout(() => {
         justDragged.current = false;
@@ -272,9 +286,11 @@ export function useDragReorder(count: number, onMove: (from: number, to: number)
       e.preventDefault();
       e.stopPropagation();
     },
-    // A field inside keeps its own menu (paste and so on).
+    // A field inside keeps its own menu (paste and so on); elsewhere a right-click opens the hold menu.
     onContextMenu: (e: MouseEvent) => {
-      if (!(e.target as Element).closest('input, textarea')) e.preventDefault();
+      if ((e.target as Element).closest('input, textarea')) return;
+      e.preventDefault();
+      onHoldRef.current?.(i, e.currentTarget as HTMLElement);
     },
   });
 
