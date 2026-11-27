@@ -42,7 +42,7 @@ export interface SwipeState {
 /** Elements a sideways drag belongs to: form fields, charts (scrubbing), dialogs, and anything that scrolls sideways. */
 function ownsHorizontalDrag(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return true;
-  if (target.closest('input, textarea, select, .recharts-wrapper, .overlay, .ctx-overlay, [data-no-swipe]')) return true;
+  if (target.closest('input, textarea, select, .recharts-wrapper, .overlay, [data-no-swipe]')) return true;
   for (let el: Element | null = target; el && el !== document.body; el = el.parentElement) {
     const { overflowX } = getComputedStyle(el);
     if ((overflowX === 'auto' || overflowX === 'scroll') && el.scrollWidth > el.clientWidth) return true;
@@ -256,7 +256,7 @@ export function useTabSwipe() {
       if (!start || !page) return;
       // A press-and-hold menu opened during this touch: the finger moving on isn't a swipe (it began on the card, so
       // the check on where a touch starts doesn't catch it).
-      if (!dragging && document.querySelector('.ctx-overlay')) {
+      if (!dragging && document.querySelector('.overlay')) {
         start = null;
         return;
       }

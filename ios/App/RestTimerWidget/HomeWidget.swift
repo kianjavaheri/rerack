@@ -128,7 +128,7 @@ struct HomeWidgetView: View {
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
-        let palette = Palette.of(dark: colorScheme == .dark, purple: entry.data?.accent == "purple")
+        let palette = Palette.of(dark: colorScheme == .dark, colors: entry.data?.colors)
         let state = HomeState(data: entry.data, now: entry.date)
         Group {
             if family == .systemMedium {

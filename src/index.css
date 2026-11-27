@@ -44,7 +44,7 @@
      Floating pieces (tab bar, bottom bars, rest bar) use --glass-tint; sheets and menus, holding more text, --sheet-tint. */
   --glass-filter: blur(28px) saturate(2.1) brightness(1.06);
   --glass-tint: #ffffff4d;
-  --sheet-tint: #f7f8fab8;
+  --sheet-tint: #f7f8fad9;
   /* The bottom tab bar's own glass, after YouTube's: in light a see-through cool gray (white read as a solid bar),
      lightly blurred so what's behind still shows, set off by a darker hairline and a soft shadow; the current tab a
      darker pill. Dark mode is the mirror image (below). */
@@ -118,7 +118,7 @@
   --nav-shadow: 0 6px 28px #00000080, 0 1px 3px #00000066;
   --glass-filter: blur(28px) saturate(1.9) brightness(1.12);
   --glass-tint: #28292d73;
-  --sheet-tint: #202124b8;
+  --sheet-tint: #202124d9;
   --tabbar-glass: #141416b8;
   --tabbar-filter: blur(20px) saturate(1.8);
   --tabbar-edge: inset 0 0 0 0.5px #ffffff24, 0 0 0 0.5px #000000b3;
@@ -136,32 +136,37 @@
   color-scheme: dark;
 }
 
-/* Dark mode's purple accent, being tried out (Settings → Appearance, `Settings.darkAccent`): pink through violet to
-   blue, after a swatch the user picked. Same roles as the warm one above: --rb-* fills (dark text on top), --ink-*
-   text and icons, a little lighter so it reads on the dark background. */
-[data-theme='dark'][data-accent='purple'] {
-  --accent: #b06cff;
-  --accent-soft: #b06cff26;
-  --accent-fill: #b06cff;
-  --rb-1: #ea74fc; --rb-2: #d66cff; --rb-3: #c168ff; --rb-4: #a870ff; --rb-5: #8c78ff; --rb-6: #6e81ff;
-  --ink-1: #f08afd; --ink-2: #dd84ff; --ink-3: #cc82ff; --ink-4: #b688ff; --ink-5: #9d8eff; --ink-6: #8697ff;
-}
+/* Other accents (Settings → Appearance: the premade ones and a custom colour) aren't here: hooks/settings.tsx sets the
+   same variables on <html> from core/accents.ts, and index.html does it before the first frame. */
 
-/* Black and white, being tried out (Settings → Appearance, `Settings.monoAccent`; overrides purple): every accent role
-   one plain colour, black in light mode and white in dark, with text on its fills in the other. */
-[data-theme='light'][data-mono] {
-  --accent: #111113; --accent-soft: #1111131a; --accent-fill: #111113;
-  --rb-1: #111113; --rb-2: #111113; --rb-3: #111113; --rb-4: #111113; --rb-5: #111113; --rb-6: #111113;
-  --ink-1: #111113; --ink-2: #111113; --ink-3: #111113; --ink-4: #111113; --ink-5: #111113; --ink-6: #111113;
-  --on-rainbow: #fff;
+/* Bamboo: a light theme on a warm off-white page, a little yellow, like dried bamboo. Only the page and its surfaces
+   change; the accent is whichever is chosen. */
+[data-theme='light'][data-paper='bamboo'] {
+  --page-base: #f3eedf;
+  --paper: #f3eedf;
+  --paper-border: #3a2f100f;
+  --card-grad: linear-gradient(145deg, #fdfaf1 0%, #f5efdf 100%);
+  --card-border: #3a2f101f;
+  --card-shadow: 0 1px 6px #3a2f1012;
+  --well-bg: #e9e2cf;
+  --text: #1d180e;
+  --muted: #6b6352;
+  --faint: #3a2f104d;
+  --hover-tint: #3a2f100d;
+  --nav-hover: #3a2f1008;
+  --chip-bg: #3a2f1014;
+  --chip-bg-hover: #3a2f1024;
+  --nav-glass: #e4dcc6b3;
+  --sheet-tint: #faf6ebd9;
+  --glass-tint: #fffaec4d;
+  --tabbar-glass: #ddd5bfa6;
+  --tabbar-pill: #3a2f101a;
+  --tabbar-pill-checkin: #3a2f1038;
+  --chart-grid: #3a2f101a;
+  --surface-ring: #f8f4e8;
+  --orb-bg: #fffcf4;
+  --orb-border: #3a2f100f;
 }
-[data-theme='dark'][data-mono] {
-  --accent: #f4f4f5; --accent-soft: #f4f4f526; --accent-fill: #f4f4f5;
-  --rb-1: #f4f4f5; --rb-2: #f4f4f5; --rb-3: #f4f4f5; --rb-4: #f4f4f5; --rb-5: #f4f4f5; --rb-6: #f4f4f5;
-  --ink-1: #f4f4f5; --ink-2: #f4f4f5; --ink-3: #f4f4f5; --ink-4: #f4f4f5; --ink-5: #f4f4f5; --ink-6: #f4f4f5;
-  --on-rainbow: #111113;
-}
-[data-theme='dark'][data-mono] ::selection { color: #111113; }
 
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; min-height: 100%; }
@@ -177,7 +182,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 a { color: inherit; text-decoration: none; }
 h1, h2, h3, h4 { margin: 0; letter-spacing: -0.02em; }
 p { margin: 0; }
-::selection { background: var(--accent); color: #fff; }
+::selection { background: var(--accent); color: var(--on-accent, #fff); }
 
 /* ---------- Rainbow (the accent) ----------
    Warm in dark mode, its opposite colours (cool) in light (the tokens above). Fills are a mesh: soft patches of colour over a base sweep, so the colours bleed into each other with no visible
@@ -605,8 +610,11 @@ button.chip { cursor: pointer; }
      from seeing the page (an element that filters its backdrop is the backdrop of everything inside it). */
   background: #00000052;
   display: grid; place-items: center; padding: 20px;
-  animation: fade 0.2s ease;
+  /* Only its colour fades in, never its opacity: inside a parent that's fading, WebKit draws the sheet's glass
+     without its blur (see-through) until it gets round to redrawing it, which could take seconds. */
+  animation: overlay-in 0.2s ease;
 }
+@keyframes overlay-in { from { background-color: transparent; } }
 .modal {
   position: relative; isolation: isolate;
   width: min(500px, 100%); max-height: min(80vh, 700px);
@@ -727,21 +735,18 @@ button.thumb-btn { display: inline-flex; padding: 0; border: 0; background: none
   width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
   font-size: 12px; font-weight: 600; background: var(--chip-bg);
 }
-/* In a set row the number is a button that opens the set's menu (components/SetMenu.tsx). */
-.set-menu-wrap { position: relative; display: grid; place-items: center start; }
-button.set-num {
-  width: 28px; height: 40px; border-radius: 10px; border: 0; padding: 0; cursor: pointer; color: var(--text);
-  font-family: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-  line-height: 1;
-}
-.set-num-chevron { opacity: 0.55; margin-bottom: -3px; }
-button.set-num.open { background: var(--chip-bg-hover); }
+/* A set row: its number, then reps, weight, the check and its ⋮ menu (components/SetMenu.tsx). */
+.set-grid .set-num { justify-self: center; }
+.set-more { width: 24px; height: 36px; justify-self: center; color: var(--muted); }
+.set-more.open { color: var(--text); background: var(--hover-tint); }
+@media (hover: none) { .set-more:hover:not(.open) { background: transparent; } }
 .set-num.warmup { background: var(--warning-soft); color: var(--warning); }
 .set-num.drop { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
 /* Barbell lifts: the bar this exercise uses (components/SetMenu.tsx). */
-.set-menu-bar { display: flex; align-items: center; gap: 5px; padding: 4px 10px 8px; }
+.set-sheet-plates { margin-bottom: 14px; padding: 6px 8px; border-radius: 16px; background: var(--chip-bg); }
+.set-sheet-plates .menu-note { font-size: 15px; }
+.set-menu-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 10px 8px; }
 .set-menu-bar .chip { min-width: 0; height: 28px; padding: 0 9px; font-size: 13px; justify-content: center; }
-.set-menu { left: 0; right: auto; top: calc(100% + 6px); min-width: 220px; }
 .menu-note { display: flex; align-items: center; gap: 10px; padding: 9px 10px; font-size: 13px; color: var(--muted); }
 .menu-note strong { color: var(--text); font-weight: 600; }
 .menu-item.danger { color: var(--danger); }
@@ -904,9 +909,9 @@ button.stat { cursor: pointer; transition: border-color 0.2s, transform 0.2s var
 }
 
 /* Set grid: set, reps, weight, done (what was done last time is in the placeholders, and in "Previous"). */
-.set-grid { grid-template-columns: 30px minmax(0, 1fr) minmax(0, 1fr) 40px; }
+.set-grid { grid-template-columns: 30px minmax(0, 0.8fr) minmax(0, 1fr) 36px 18px; }
 @media (max-width: 480px) {
-  .set-grid { grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr) 38px; gap: 6px 6px; }
+  .set-grid { grid-template-columns: 26px minmax(0, 0.8fr) minmax(0, 1fr) 34px 18px; gap: 6px 6px; }
   .set-input { padding: 0 18px 0 4px; font-size: 14px; }
   .affix .suffix { right: 6px; font-size: 11px; }
   .check { width: 34px; }
@@ -1101,6 +1106,8 @@ button.heat-cell { cursor: pointer; }
 .head-btn.on { background: var(--rainbow); color: var(--on-rainbow); }
 .head-btn:active { transform: scale(0.94); }
 /* A sheet of actions (components/ActionSheet.tsx): one grouped list, hairlines between rows, Remove in red. */
+/* An action sheet often opens under a finger still held from a press-and-hold: nothing in it may start a selection. */
+.modal:has(.sheet-actions) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .sheet-actions { display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: var(--chip-bg); }
 .sheet-action {
   display: flex; align-items: center; gap: 16px; width: 100%; min-height: 56px; padding: 0 18px; border: 0;
@@ -1391,48 +1398,6 @@ a.card:active, button.card:active:not(:disabled) { transform: scale(0.98); }
 /* An item picked up to reorder (hooks/useDragReorder.ts): lifted above the rest, following the finger. */
 .drag-lifted { position: relative; z-index: 20; box-shadow: 0 12px 32px #00000038, 0 2px 8px #0000001f; will-change: transform; }
 
-/* ---------- Context menu (press and hold a card; components/ContextMenu.tsx) ---------- */
-:root { --ctx-bg: #fbfbfcf2; }
-[data-theme='dark'] { --ctx-bg: #232427f2; }
-.ctx-overlay {
-  position: fixed; inset: 0; z-index: 110;
-  animation: fade 0.2s ease; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
-}
-/* The dim and blur on a layer of their own, not the overlay, so the menu's glass inside still sees the page. */
-.ctx-overlay::before {
-  content: ''; position: absolute; inset: 0;
-  background: #00000040; -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
-}
-.ctx-safe {
-  position: fixed; pointer-events: none; visibility: hidden;
-  top: calc(env(safe-area-inset-top) + 12px); bottom: calc(env(safe-area-inset-bottom) + 12px);
-  left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right));
-}
-.ctx-preview { position: fixed; transition: top 0.3s var(--ease), transform 0.3s var(--ease); }
-.ctx-preview.lifted { transform: scale(1.02); }
-.ctx-preview > * { background: var(--ctx-bg); box-shadow: 0 18px 50px #00000059; pointer-events: none; }
-.ctx-menu {
-  position: fixed; isolation: isolate; width: max-content; min-width: min(300px, calc(100vw - 24px)); max-width: calc(100vw - 24px); display: flex;
-  border-radius: 26px; box-shadow: 0 18px 50px #00000059; overflow: hidden;
-  transform-origin: top left; animation: ctx-in 0.28s cubic-bezier(0.34, 1.4, 0.5, 1);
-}
-.ctx-menu.above { transform-origin: bottom left; }
-.ctx-menu::before {
-  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
-  background: var(--glass-sheen), var(--sheet-tint); box-shadow: var(--glass-edge);
-  -webkit-backdrop-filter: var(--glass-filter); backdrop-filter: var(--glass-filter);
-}
-.ctx-action {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px;
-  padding: 17px 6px 14px; border: 0; background: none; cursor: pointer;
-  color: var(--text); font: inherit; font-size: 14px; font-weight: 500;
-}
-.ctx-action span { white-space: nowrap; }
-.ctx-action.danger { color: var(--danger); }
-.ctx-action:active { background: var(--hover-tint); }
-@media (hover: hover) { .ctx-action:hover { background: var(--hover-tint); } }
-@keyframes ctx-in { from { opacity: 0; transform: scale(0.85); } }
-@media (prefers-reduced-motion: reduce) { .ctx-menu, .ctx-preview { animation: none; transition: none; } }
 .icon-btn:active:not(:disabled) { transform: scale(0.86); }
 button.chip:active, .segmented button:active, .week-day:not(:disabled):active { transform: scale(0.94); }
 .list-row:active, .link-chip:active { transform: scale(0.98); }
@@ -1779,6 +1744,8 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
 .program-workout ul { list-style: none; margin: 0; padding: 0; }
 .program-workout li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: 14px; border-top: 1px solid var(--card-border); }
 .intro-subhead { font-size: 16px; font-weight: 600; margin: 26px 0 4px; }
+.intro-divider { border: 0; border-top: 1px solid var(--card-border); margin: 24px 0 20px; }
+.intro-choice-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--chip-bg); color: var(--text); flex-shrink: 0; }
 
 /* Settings' profile fields (components/Profile.tsx). */
 /* Settings' header, like an app's profile page (components/Profile.tsx): the photo, then the name over a row of
@@ -1855,3 +1822,41 @@ button.chip:active, .segmented button:active, .week-day:not(:disabled):active { 
 .side-field > * { width: 100%; }
 .set-row.sided .side-field[data-side='R'] .set-input { margin-top: -3px; }
 .side-gap { display: block; }
+
+/* ---------- Appearance: theme and accent pickers (components/Appearance.tsx; Settings and the intro) ---------- */
+.theme-picker { width: 100%; }
+.theme-picker > button { flex: 1; }
+.accent-swatches { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 6px; }
+.accent-swatch {
+  display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 0; border: 0; background: none;
+  color: var(--text); font: inherit; font-size: 12px; cursor: pointer; min-width: 0;
+}
+.accent-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.accent-swatch.on .accent-name { color: var(--text); font-weight: 600; }
+.accent-dot {
+  width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  box-shadow: inset 0 0 0 1px #0000001a; transition: transform 0.15s var(--ease);
+}
+.accent-swatch:active .accent-dot { transform: scale(0.92); }
+.accent-swatch.on .accent-dot { outline: 2px solid var(--text); outline-offset: 3px; }
+.accent-dot-wheel { background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+.accent-dot-inner { width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid #fff; box-shadow: 0 1px 3px #0005; }
+.color-wheel { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: 20px; }
+.color-disc {
+  position: relative; width: min(240px, 70vw); aspect-ratio: 1; border-radius: 50%; touch-action: none; cursor: crosshair;
+  background: radial-gradient(circle closest-side, #fff, #fff0), conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  box-shadow: 0 0 0 1px #0000001a;
+}
+.color-disc-dim { position: absolute; inset: 0; border-radius: 50%; background: #000; pointer-events: none; }
+.color-thumb {
+  position: absolute; width: 28px; height: 28px; border-radius: 50%; border: 3px solid #fff;
+  box-shadow: 0 1px 5px #0007; transform: translate(-50%, -50%); pointer-events: none;
+}
+.color-controls { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 360px; }
+.color-preview { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; box-shadow: inset 0 0 0 1px #0000001f; }
+.color-brightness { flex: 1; min-width: 0; -webkit-appearance: none; appearance: none; height: 12px; border-radius: 999px; margin: 0; }
+.color-brightness::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 1px 5px #0007;
+}
+.color-brightness::-moz-range-thumb { width: 26px; height: 26px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 1px 5px #0007; }
+.color-hex { width: 66px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }

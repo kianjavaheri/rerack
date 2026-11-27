@@ -1,5 +1,7 @@
 import { Minus, Pause, Play, Plus, Square, Timer } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { isNative } from '../native/platform';
+import { playSound } from '../utils/sounds';
 
 /** How long "Rest over" stays up before the bar goes away by itself. */
 const DONE_SHOWN_MS = 15_000;
@@ -96,6 +98,13 @@ export function RestTimer({ endsAt, pausedLeft, startLabel, onStart, onStop, onA
   const paused = pausedLeft != null;
   const left = paused ? pausedLeft : endsAt ? Math.ceil((Date.parse(endsAt) - Date.now()) / 1000) : 0;
   const state = paused ? 'paused' : left <= 0 ? 'over' : 'running';
+
+  // Running out while on screen: a chime on the web (the iPhone app's "Rest over" notification already plays one).
+  const wasRunning = useRef(false);
+  useEffect(() => {
+    if (state === 'over' && wasRunning.current && !isNative) playSound('rest', `rest:${endsAt}`);
+    wasRunning.current = state === 'running';
+  }, [state, endsAt]);
 
   return (
     <div ref={barRef} className={`rest-timer ${state}${stuck ? ' stuck' : ''}`} role="timer" aria-live={state === 'over' ? 'assertive' : 'off'}>

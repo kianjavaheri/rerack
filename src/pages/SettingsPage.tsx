@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { SignInButtons } from '../auth/SignInButtons';
+import { AccentPicker, ThemePicker } from '../components/Appearance';
 import { useFeedback } from '../components/Feedback';
 import { NotificationChoice } from '../components/NotificationChoice';
 import { ProfileFields, ProfileHeader } from '../components/Profile';
@@ -14,7 +15,7 @@ import { isImportedSession } from '../core/sessions';
 import { sessionSummary } from '../core/stats';
 import { anyNotificationOn } from '../core/notifications';
 import { pluralize } from '../core/format';
-import { DEFAULT_REST_SECONDS, DEFAULT_WEIGHT_STEP, defaultRestSeconds, weightStepFor, type NotificationSettings, type ThemePreference, type WeightUnit } from '../core/types';
+import { DEFAULT_REST_SECONDS, DEFAULT_WEIGHT_STEP, defaultRestSeconds, weightStepFor, type NotificationSettings, type WeightUnit } from '../core/types';
 import { repo } from '../data';
 import { useSettings } from '../hooks/settings';
 import { useSessions } from '../hooks/useRepo';
@@ -74,7 +75,7 @@ function AppleHealthCard() {
 export function SettingsPage() {
   const navigate = useNavigate();
   const { settings, update } = useSettings();
-  const { confirm } = useFeedback();
+  const { confirm, notify } = useFeedback();
   const auth = useAuth();
   const signedIn = auth.status === 'signed-in';
   // Workouts you've logged (not notes imported into the Log), for the header's count.
@@ -262,47 +263,35 @@ export function SettingsPage() {
         {healthSupported && <AppleHealthCard />}
 
         <div className="card">
-          <div className="spread">
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 15 }}>Appearance</div>
-              <div className="muted small">System follows your device setting.</div>
-            </div>
-            <div className="segmented">
-              {(['system', 'light', 'dark'] as ThemePreference[]).map((t) => (
-                <button key={t} className={settings.theme === t ? 'on' : ''} onClick={() => update({ theme: t })}>
-                  {t[0].toUpperCase() + t.slice(1)}
-                </button>
-              ))}
-            </div>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>Appearance</div>
+          <div className="muted small">System follows your device's light or dark setting. Bamboo is a warm off-white.</div>
+          <div style={{ marginTop: 12 }}>
+            <ThemePicker />
           </div>
-          <div className="spread" style={{ flexWrap: 'nowrap', marginTop: 14 }}>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 15 }}>Purple in dark mode</div>
-              <div className="muted small">Pink to violet to blue instead of the warm orange and red. Light mode stays blue.</div>
-            </div>
-            <button
-              type="button"
-              className={`switch${settings.darkAccent === 'purple' ? ' on' : ''}`}
-              role="switch"
-              aria-checked={settings.darkAccent === 'purple'}
-              aria-label="Purple in dark mode"
-              onClick={() => update({ darkAccent: settings.darkAccent === 'purple' ? null : 'purple' })}
-            />
+          <div style={{ fontWeight: 600, fontSize: 15, marginTop: 20 }}>Accent colour</div>
+          <div className="muted small" style={{ marginBottom: 14 }}>
+            Also on the lock screen, the widget and your Apple Watch.
           </div>
-          <div className="spread" style={{ flexWrap: 'nowrap', marginTop: 14 }}>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 15 }}>Black and white</div>
-              <div className="muted small">Black in light mode and white in dark, instead of the colours.</div>
+          <AccentPicker />
+          {isNative && (
+            <div className="spread" style={{ flexWrap: 'nowrap', marginTop: 20 }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>Match the app icon</div>
+                <div className="muted small">
+                  The home-screen icon takes your accent and theme. It changes once you leave Settings, and iPhone lets
+                  you know each time.
+                </div>
+              </div>
+              <button
+                type="button"
+                className={`switch${settings.appIconMatches ? ' on' : ''}`}
+                role="switch"
+                aria-checked={!!settings.appIconMatches}
+                aria-label="Match the app icon"
+                onClick={() => update({ appIconMatches: !settings.appIconMatches })}
+              />
             </div>
-            <button
-              type="button"
-              className={`switch${settings.monoAccent ? ' on' : ''}`}
-              role="switch"
-              aria-checked={!!settings.monoAccent}
-              aria-label="Black and white"
-              onClick={() => update({ monoAccent: !settings.monoAccent })}
-            />
-          </div>
+          )}
         </div>
 
         <div className="card">
@@ -311,7 +300,11 @@ export function SettingsPage() {
               <div style={{ fontWeight: 600, fontSize: 15 }}>Intro</div>
               <div className="muted small">How routines, workouts and exercises fit together, and a quick way to set up a routine.</div>
             </div>
-            <button className="btn btn-sm" onClick={() => update({ introDone: false })}>
+            <button className="btn btn-sm" onClick={() => {
+                if (sessions?.some((s) => !s.finishedAt)) notify('Finish or cancel your workout first to see the intro');
+                else update({ introDone: false });
+              }}
+            >
               Show again
             </button>
           </div>

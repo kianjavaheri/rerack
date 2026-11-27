@@ -138,6 +138,9 @@ final class WatchBridge: NSObject, WCSessionDelegate {
     /// the lock screen follows the watch from here: the watch alerts rest itself, so the phone's alert is cancelled.
     private func updateLockScreen(_ op: Header) {
         let center = UNUserNotificationCenter.current()
+        // "Still working out?" (id 2) was timed from the last change the phone saw: the watch is logging now, or has
+        // finished, so it would come hours late or about a workout that's over. Opening the app schedules it again.
+        center.removePendingNotificationRequests(withIdentifiers: ["2"])
         switch op.kind {
         case "finish", "cancel":
             center.removePendingNotificationRequests(withIdentifiers: ["1"])

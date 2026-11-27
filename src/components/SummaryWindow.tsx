@@ -7,6 +7,7 @@ import type { ID } from '../core/types';
 import { useSettings } from '../hooks/settings';
 import { useExercises, useSessions } from '../hooks/useRepo';
 import { haptic } from '../utils/haptics';
+import { playSound } from '../utils/sounds';
 import { WorkoutSummary } from './WorkoutSummary';
 import { lockScroll } from '../utils/scrollLock';
 
@@ -59,13 +60,14 @@ function SummaryPage({ sessionId, celebrate }: { sessionId: ID; celebrate: boole
   // A firm tap as the check lands, then two lighter ones with the rings.
   useEffect(() => {
     if (!celebrate) return;
+    playSound('workout', `workout:${sessionId}`);
     const taps = [
       setTimeout(() => haptic(undefined, 'heavy'), 120),
       setTimeout(() => haptic(undefined, 'medium'), 300),
       setTimeout(() => haptic(undefined, 'light'), 460),
     ];
     return () => taps.forEach(clearTimeout);
-  }, [celebrate]);
+  }, [celebrate, sessionId]);
 
   if (sessions && !session) return null;
   const exerciseById = new Map(exercises?.map((e) => [e.id, e]));

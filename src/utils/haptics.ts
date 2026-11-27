@@ -30,3 +30,8 @@ export function hapticAlert() {
 export function prepareHaptic() {
   if (isNative) void AppHaptics.prepare({ style: 'medium' }).catch(report);
 }
+
+/** One firm tap when something is deleted or removed (a set, an exercise, a workout…). */
+export function hapticDelete() {
+  haptic(undefined, 'heavy');
+}

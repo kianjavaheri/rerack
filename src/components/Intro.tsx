@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, ChevronRight, NotebookPen, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronRight, NotebookPen, Plus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { APP_NAME, HOME_PATH } from '../config';
@@ -6,6 +6,7 @@ import { newId, now } from '../core/ids';
 import { uniqueName } from '../core/plan';
 import { followedRoutine } from '../core/stats';
 import { anyNotificationOn } from '../core/notifications';
+import { AccentPicker, ThemePicker } from './Appearance';
 import type { ID, NotificationSettings, Routine } from '../core/types';
 import { askNotificationPermission } from '../native/notifications';
 import { isNative } from '../native/platform';
@@ -54,7 +55,7 @@ const PRESETS = [
   { name: 'Full Body', workouts: ['Full Body A', 'Full Body B'] },
 ];
 
-type Step = 'welcome' | 'routine' | 'workout' | 'more' | 'notify' | 'done';
+type Step = 'welcome' | 'routine' | 'name' | 'workout' | 'more' | 'notify' | 'look' | 'done';
 
 /**
  * The first-run window: what a routine, a workout and an exercise are (a routine holds workouts, a workout holds
@@ -165,8 +166,8 @@ function Intro() {
     <div className="intro" role="dialog" aria-modal="true" aria-label={`Welcome to ${APP_NAME}`} data-no-swipe>
       <div className="intro-panel">
         <div className="intro-top">
-          {step === 'routine' || (step === 'workout' && saved.length === 0) ? (
-            <button className="back-link" style={{ margin: 0 }} onClick={() => setStep(step === 'routine' ? 'welcome' : 'routine')}>
+          {step === 'routine' || step === 'name' || (step === 'workout' && saved.length === 0) ? (
+            <button className="back-link" style={{ margin: 0 }} onClick={() => setStep(step === 'routine' ? 'welcome' : step === 'name' ? 'routine' : 'name')}>
               <ArrowLeft size={15} /> Back
             </button>
           ) : (
@@ -211,7 +212,45 @@ function Intro() {
             <>
               <div className="intro-kicker">Step 1 of 2</div>
               <h1 className="title">Your routine</h1>
-              <p className="intro-lead">Pick a common plan or name your own. You’ll add its workouts next.</p>
+              <p className="intro-lead">Make your own, bring in one you’ve written down, or start from a program.</p>
+              <button className="card intro-import" style={{ marginTop: 18 }} onClick={() => setStep('name')}>
+                <span className="intro-choice-icon">
+                  <Plus size={18} />
+                </span>
+                <span style={{ flex: 1 }}>
+                  <span className="card-title" style={{ display: 'block' }}>
+                    Create new routine
+                  </span>
+                  <span className="muted small">Name it, then pick its workouts’ exercises.</span>
+                </span>
+                <ChevronRight size={18} className="muted" />
+              </button>
+              <button className="card intro-import" style={{ marginTop: 10 }} onClick={importFromNotes}>
+                <span className="intro-choice-icon">
+                  <NotebookPen size={17} />
+                </span>
+                <span style={{ flex: 1 }}>
+                  <span className="card-title" style={{ display: 'block' }}>
+                    Import from text
+                  </span>
+                  <span className="muted small">Paste a plan you’ve written down and it becomes workouts.</span>
+                </span>
+                <ChevronRight size={18} className="muted" />
+              </button>
+              <hr className="intro-divider" />
+              <h2 className="intro-subhead" style={{ marginTop: 0 }}>Start from a program</h2>
+              <p className="muted small" style={{ margin: '0 0 10px' }}>
+                Workouts with exercises, sets and reps already in. You can change anything later.
+              </p>
+              <ProgramList onUse={(p) => void startProgram(p)} busy={addingProgram} />
+            </>
+          )}
+
+          {step === 'name' && (
+            <>
+              <div className="intro-kicker">Step 1 of 2</div>
+              <h1 className="title">Name your routine</h1>
+              <p className="intro-lead">Pick a common one or type your own. You’ll add its workouts next.</p>
               <div className="intro-presets">
                 {PRESETS.map((p) => (
                   <button key={p.name} className={`card intro-preset${routineName === p.name ? ' rb-outline' : ''}`} onClick={() => choosePreset(p)}>
@@ -221,7 +260,7 @@ function Intro() {
                 ))}
               </div>
               <label style={{ display: 'block', marginTop: 18 }}>
-                <span className="label">Or name it yourself</span>
+                <span className="label">Your own name</span>
                 <input
                   className="input"
                   placeholder="My routine"
@@ -233,21 +272,6 @@ function Intro() {
                   onKeyDown={(e) => e.key === 'Enter' && routineName.trim() && startWorkout()}
                 />
               </label>
-              <button className="card intro-import" onClick={importFromNotes}>
-                <NotebookPen size={20} />
-                <span style={{ flex: 1 }}>
-                  <span className="card-title" style={{ display: 'block' }}>
-                    Import from text
-                  </span>
-                  <span className="muted small">Paste a plan you’ve written down and it becomes workouts.</span>
-                </span>
-                <ChevronRight size={18} className="muted" />
-              </button>
-              <h2 className="intro-subhead">Or start from a program</h2>
-              <p className="muted small" style={{ margin: '0 0 10px' }}>
-                Workouts with exercises, sets and reps already in. You can change anything later.
-              </p>
-              <ProgramList onUse={(p) => void startProgram(p)} busy={addingProgram} />
             </>
           )}
 
@@ -298,6 +322,18 @@ function Intro() {
             </>
           )}
 
+          {step === 'look' && (
+            <>
+              <h1 className="title">Make it yours</h1>
+              <p className="intro-lead">Pick a theme and an accent colour. You can change them any time in Settings.</p>
+              <div className="card" style={{ marginTop: 16 }}>
+                <ThemePicker />
+                <div style={{ height: 20 }} />
+                <AccentPicker />
+              </div>
+            </>
+          )}
+
           {step === 'done' && (
             <>
               <h1 className="title">You’re set</h1>
@@ -322,6 +358,14 @@ function Intro() {
             </>
           )}
           {step === 'routine' && (
+            <>
+              <span />
+              <button className="btn btn-ghost" onClick={close}>
+                Skip for now
+              </button>
+            </>
+          )}
+          {step === 'name' && (
             <>
               <span />
               <button className="btn btn-primary" onClick={startWorkout} disabled={!routineName.trim()}>
@@ -349,7 +393,7 @@ function Intro() {
           )}
           {step === 'notify' && (
             <>
-              <button className="btn btn-ghost" onClick={() => setStep('done')}>
+              <button className="btn btn-ghost" onClick={() => setStep('look')}>
                 Later
               </button>
               <button
@@ -357,9 +401,17 @@ function Intro() {
                 onClick={() => {
                   update({ notifications: notify });
                   if (anyNotificationOn(notify)) void askNotificationPermission();
-                  setStep('done');
+                  setStep('look');
                 }}
               >
+                Continue <ArrowRight size={15} />
+              </button>
+            </>
+          )}
+          {step === 'look' && (
+            <>
+              <span />
+              <button className="btn btn-primary" onClick={() => setStep('done')}>
                 Continue <ArrowRight size={15} />
               </button>
             </>

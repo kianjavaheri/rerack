@@ -14,7 +14,7 @@ import { ExerciseNotepad, NotesButton, WorkoutNotepad } from '../components/Note
 import { NumericInput } from '../components/NumericInput';
 import { ExercisePrevious, PreviousButton } from '../components/PreviousLog';
 import { formatRest, RestTimer, restShown } from '../components/RestTimer';
-import { SetMenu, type SetKind } from '../components/SetMenu';
+import { SetMenu, SetNumber, type SetKind } from '../components/SetMenu';
 import { SupersetButton, SupersetPill, usePills } from '../components/SupersetLink';
 import { PageSkeleton } from '../components/Skeleton';
 import { formatDate } from '../core/format';
@@ -34,6 +34,8 @@ import { useDragReorder } from '../hooks/useDragReorder';
 import { useSlotFlip } from '../hooks/useSlotFlip';
 import { ExercisePhotos, ExerciseThumb, hasMedia } from '../components/ExercisePhoto';
 import { DoneBurst } from '../components/DoneBurst';
+import { haptic, hapticDelete } from '../utils/haptics';
+import { playSound } from '../utils/sounds';
 import { openWorkoutSummary } from '../components/SummaryWindow';
 import { WorkoutSummary } from '../components/WorkoutSummary';
 import { workoutSummary } from '../core/summary';
@@ -213,6 +215,7 @@ export function SessionPage() {
   // Deletes at once and offers Undo instead of asking first.
   const deleteFinished = async () => {
     const deleted = session;
+    hapticDelete();
     await repo.deleteSession(deleted.id);
     removeFromAppleHealth(deleted.id);
     navigate('/history', { replace: true });
@@ -388,6 +391,7 @@ export function SessionPage() {
                   unit={settings.unit}
                   onChange={(fn) => updateEntry(entry.id, fn)}
                   onRemove={() => {
+                    hapticDelete();
                     // The order and links as they were, so Undo puts it back in its place and in its superset.
                     const before = session.entries.map((e) => ({ id: e.id, supersetNext: e.supersetNext }));
                     update((s) => ({ ...s, entries: removeUnlinked(s.entries, s.entries.findIndex((e) => e.id === entry.id)) }));
@@ -412,6 +416,7 @@ export function SessionPage() {
                     // No rest after a warm-up, or after an exercise's last set (on to the next one) unless Settings asks.
                     if (!warmup && (!finished || settings.restAfterLastSet) && restsAfter(session.entries, i)) startRest(entry.exerciseId);
                     if (!inProgress) return;
+                    playSound(finished ? 'exercise' : 'set');
                     if (finished) setBursts((n) => n + 1);
                     // Up past the exercises less far along than it, to the next open spot (orderByProgress).
                     update((s) => {
@@ -644,7 +649,9 @@ function EntryCard({ handle, entry, exercise, last, unit, onChange, onRemove, on
     const r = sides ? rightHint(i) : null;
     const right = r ? { right: { reps: set.right?.reps ?? r.reps ?? reps, weightKg: set.right?.weightKg ?? r.weightKg ?? weightKg } } : {};
     setSet(set.id, { done: true, reps, weightKg, ...right, doneAt: new Date().toISOString() });
-    onSetDone(entry.sets.every((s) => s.id === set.id || s.done), !!set.warmup);
+    const finishes = entry.sets.every((s) => s.id === set.id || s.done);
+    if (!finishes) haptic(undefined, 'light');
+    onSetDone(finishes, !!set.warmup);
   };
   const finishedAt = entryFinishedAt(entry);
 
@@ -768,6 +775,7 @@ function EntryCard({ handle, entry, exercise, last, unit, onChange, onRemove, on
           )}
         </span>
         <span className="head head-done">Done</span>
+        <span aria-hidden />
         {entry.sets.map((set, i) => {
           const h = hint(i);
           const shownWeight = set.weightKg ?? h?.weightKg ?? null;
@@ -782,15 +790,7 @@ function EntryCard({ handle, entry, exercise, last, unit, onChange, onRemove, on
             );
           return (
             <div key={set.id} className={`set-row${set.done ? ' done' : ''}${sides ? ' sided' : ''}`} style={{ display: 'contents' }}>
-              <SetMenu
-                label={label(i)}
-                kind={kindOf(set)}
-                plates={barbell && shownWeight != null ? platesLabel(Number(formatWeight(shownWeight, unit)), unit, bar) : null}
-                weightText={shownWeight != null ? `${formatWeight(shownWeight, unit)} ${unit}` : ''}
-                bar={barbell ? { weight: bar, unit, onChange: setBar } : undefined}
-                onKind={(kind) => setSet(set.id, { warmup: kind === 'warmup' || undefined, drop: kind === 'drop' || undefined })}
-                onDelete={() => onChange((e) => ({ ...e, sets: e.sets.filter((s) => s.id !== set.id) }))}
-              />
+              <SetNumber label={label(i)} kind={kindOf(set)} />
               {side(
                 'L',
                 <NumericInput
@@ -826,6 +826,15 @@ function EntryCard({ handle, entry, exercise, last, unit, onChange, onRemove, on
               >
                 <Check size={17} />
               </button>
+              <SetMenu
+                label={label(i)}
+                kind={kindOf(set)}
+                plates={barbell && shownWeight != null ? platesLabel(Number(formatWeight(shownWeight, unit)), unit, bar) : null}
+                weightText={shownWeight != null ? `${formatWeight(shownWeight, unit)} ${unit}` : ''}
+                bar={barbell ? { weight: bar, unit, onChange: setBar } : undefined}
+                onKind={(kind) => setSet(set.id, { warmup: kind === 'warmup' || undefined, drop: kind === 'drop' || undefined })}
+                onDelete={() => onChange((e) => ({ ...e, sets: e.sets.filter((s) => s.id !== set.id) }))}
+              />
               {rh && (
                 <>
                   <span className="side-gap" aria-hidden />
@@ -856,6 +865,7 @@ function EntryCard({ handle, entry, exercise, last, unit, onChange, onRemove, on
                       onChange={(weightKg) => setRight(set.id, { weightKg })}
                     />,
                   )}
+                  <span className="side-gap" aria-hidden />
                   <span className="side-gap" aria-hidden />
                 </>
               )}

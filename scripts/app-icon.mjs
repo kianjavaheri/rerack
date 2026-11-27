@@ -168,14 +168,21 @@ function icon({ comment, tile, round, base, bevel, rainbow, glow, max, power, st
 `;
 }
 
-/** The mark in one flat colour on the tile: no rainbow, edges or glow. */
-function flatIcon({ comment, tile, round, base, scale = 1 }) {
+/**
+ * The mark in one flat colour on the tile: no rainbow, edges or glow. `sweep` instead paints it with those colours
+ * running left to right across the mark (the accent icons, scripts/ios-accent-icons.mjs).
+ */
+function flatIcon({ comment, tile, round, base, scale = 1, sweep }) {
+  if (sweep) base = 'url(#sweep)';
   return `<!-- ${comment} Drawn by scripts/app-icon.mjs: edit that, not this. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="${tile[0]}"/><stop offset="1" stop-color="${tile[1]}"/>
-    </linearGradient>
+    </linearGradient>${sweep ? `
+    <linearGradient id="sweep" gradientUnits="userSpaceOnUse" x1="176" y1="0" x2="848" y2="0">
+      ${sweep.map((c, i) => `<stop offset="${+(i / (sweep.length - 1)).toFixed(3)}" stop-color="${c}"/>`).join('')}
+    </linearGradient>` : ''}
     <!-- A thin gap in the letters where the bar crosses them. -->
     <mask id="gap" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
       <rect width="1024" height="1024" fill="#fff"/>
@@ -210,6 +217,17 @@ const dark = {
 };
 
 const draw2 = (o) => (STYLE === 'flat' ? flatIcon(o) : icon(o));
+
+/** The tiles the accent icons come on, matching the app's themes. */
+export const ICON_TILES = { dark: dark.tile, light: ['#ffffff', '#e9e9ec'], bamboo: ['#fbf7ec', '#eee5cd'] };
+
+/** The flat icon on one of `ICON_TILES`, the mark in one colour (`base`) or a sweep of colours. */
+export const accentIconSvg = ({ tile, base, sweep, comment }) => flatIcon({ scale: MARK_SCALE, tile, base, sweep, comment });
+
+// Imported (by scripts/ios-accent-icons.mjs) for the above only: nothing below runs.
+const run = process.argv[1] && new URL(import.meta.url).pathname === (await import('node:path')).resolve(process.argv[1]);
+if (run) await main();
+async function main() {
 
 // `node scripts/app-icon.mjs drafts`: bolder versions of the flat icon to compare (thicker strokes, like Hevy's and
 // Threads'), written to drafts/icon/ only. The real icon files are left alone. Each keeps the cut where the bar
@@ -252,3 +270,4 @@ writeFileSync(`${root}public/app-icon-light.svg`, draw2({
   full: 0.7,
 }));
 console.log('wrote public/app-icon.svg, favicon.svg, app-icon-light.svg');
+}

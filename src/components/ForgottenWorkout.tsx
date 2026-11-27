@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { hapticDelete } from '../utils/haptics';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { formatTime, pluralize, relativeDay } from '../core/format';
 import { now } from '../core/ids';
@@ -53,7 +54,10 @@ export function ForgottenWorkoutPrompt() {
   const discard = async () => {
     // A finished workout picked back up goes back to how it was, rather than deleting what was logged before.
     if (session.resumedFrom) await repo.saveSession(cancelResume(session));
-    else await repo.deleteSession(session.id);
+    else {
+      hapticDelete();
+      await repo.deleteSession(session.id);
+    }
     leavePage(HOME_PATH);
   };
 

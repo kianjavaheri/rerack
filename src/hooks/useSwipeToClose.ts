@@ -17,7 +17,8 @@ const KEEP_TOUCH = 'textarea, select, input[type="range"]';
  * it goes back. Touch only.
  *
  * With `expandable`, a sheet that sits at the bottom of a phone screen can also be pulled up to nearly the full screen
- * (`.expanded`), like an iOS sheet's large detent; it stays there, and a pull down from there closes it.
+ * (`.expanded`), like an iOS sheet's large detent; it stays there, and a pull down from there closes it. A swipe up
+ * that starts on a list with more to scroll scrolls the list (growing it first made the first scroll seem to fail).
  */
 export function useSwipeToClose(sheetRef: RefObject<HTMLElement | null>, onClose: () => void, expandable = false) {
   useEffect(() => {
@@ -58,6 +59,15 @@ export function useSwipeToClose(sheetRef: RefObject<HTMLElement | null>, onClose
       return false;
     };
 
+    /** Under the finger is a list with more to scroll: an upward swipe there scrolls it instead of growing the sheet. */
+    const inScroller = (from: Element) => {
+      for (let el: Element | null = from; el && el !== sheet.parentElement; el = el.parentElement) {
+        if (el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowY)) return true;
+      }
+      return false;
+    };
+    let startedInScroller = false;
+
     const place = (y: number, animate: boolean) => {
       sheet.style.transition = animate ? 'transform 0.26s var(--ease)' : 'none';
       sheet.style.transform = y ? `translateY(${y}px)` : '';
@@ -79,6 +89,7 @@ export function useSwipeToClose(sheetRef: RefObject<HTMLElement | null>, onClose
       tracking = true;
       dragging = false;
       raising = false;
+      startedInScroller = inScroller(target);
       startX = t.clientX;
       startY = lastY = t.clientY;
       lastAt = e.timeStamp;
@@ -90,8 +101,8 @@ export function useSwipeToClose(sheetRef: RefObject<HTMLElement | null>, onClose
       const t = e.touches[0];
       const dx = Math.abs(t.clientX - startX);
       const dy = t.clientY - startY;
-      if (!dragging && dy < 0 && dx <= Math.abs(dy) && canExpand()) {
-        // Up on a sheet that can grow: it grows first, then its list scrolls (once expanded).
+      if (!dragging && dy < 0 && dx <= Math.abs(dy) && canExpand() && !startedInScroller) {
+        // Up on a sheet that can grow, outside its list (the header, the grabber): it grows.
         if (e.cancelable) e.preventDefault();
         if (-dy < START_PX) return;
         dragging = true;

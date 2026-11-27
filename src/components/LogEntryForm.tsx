@@ -1,4 +1,5 @@
 import { Disc3, Plus, X } from 'lucide-react';
+import { hapticDelete } from '../utils/haptics';
 import { useState } from 'react';
 import { toLocalInput } from '../core/format';
 import { barWeight, isBarbellExercise } from '../core/plates';
@@ -70,6 +71,7 @@ export function LogEntryForm({
   const remove = async () => {
     if (!existing || busy) return;
     setBusy(true);
+    hapticDelete();
     const undo = await removeLoggedNumbers(existing.sessionId, exercise.id, occurrence);
     onClose();
     notify(`Removed ${exercise.name}`, { undo: () => void undo() });

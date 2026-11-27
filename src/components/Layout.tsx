@@ -15,6 +15,8 @@ import { useHomeWidget } from '../native/widget';
 import { useAppLinks } from '../native/links';
 import { useNativeRestTimer } from '../native/rest';
 import { useAppleWatch } from '../native/watch';
+import { nativeAccent } from '../core/accents';
+import { useAppIcon } from '../native/appIcon';
 import { notificationOn } from '../core/notifications';
 import { preloadTabPages, TAB_PATHS } from '../pages/tabPages';
 import { AccountMenu } from './AccountMenu';
@@ -55,7 +57,7 @@ function activeTab(pathname: string, openSessionId: string | undefined): number 
 }
 
 export function Layout() {
-  const { settings, resolvedTheme, update } = useSettings();
+  const { settings, resolvedTheme, update, ready } = useSettings();
   const { status } = useAuth();
   const location = useLocation();
   const { pathname } = location;
@@ -87,12 +89,14 @@ export function Layout() {
     exercises,
     settings.restTimer !== false,
     resolvedTheme === 'dark',
-    settings.darkAccent === 'purple',
+    JSON.stringify(nativeAccent(settings)),
     pictureOf,
     notificationOn(settings, 'rest') && !(open && watchRunning === open.id),
   );
   // Workout reminders and the workout-left-open alert, scheduled ahead on the phone.
   useScheduledNotifications(sessions, settings);
+  // The home-screen icon, when it follows the accent and theme.
+  useAppIcon(settings, ready, location.pathname);
   // The home-screen widget's next workout and week.
   useHomeWidget(sessions, settings);
   // rerack:// links (the widget opens Check in).

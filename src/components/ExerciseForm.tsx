@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { hapticDelete } from '../utils/haptics';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { now } from '../core/ids';
@@ -89,6 +90,7 @@ export function ExerciseForm({
 
   // Removes at once (past sessions and charts keep it) and offers Undo.
   const archive = async () => {
+    hapticDelete();
     await repo.saveExercise({ ...exercise, archived: true, updatedAt: now() });
     onClose();
     notify(`Removed “${exercise.name}”`, { undo: () => void repo.saveExercise({ ...exercise, archived: false, updatedAt: now() }) });

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { hapticDelete } from '../utils/haptics';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { now } from '../core/ids';
 import { cloneWorkout, uniqueName } from '../core/plan';
@@ -7,14 +8,14 @@ import type { Exercise, ID, Routine, Session, Workout } from '../core/types';
 import { repo } from '../data';
 import { removeFromAppleHealth, saveToAppleHealth, syncToAppleHealth } from '../native/health';
 import { useShareLink } from '../hooks/useShareLink';
-import { ContextMenu, type ContextAction } from './ContextMenu';
-import { DuplicateFill, EditFill, RenameFill, ShareFill, TrashFill } from './MenuIcons';
+import { Copy, Pencil, PencilLine, Share, Trash2 } from 'lucide-react';
+import { ActionSheet, type SheetAction } from './ActionSheet';
 import { DuplicateRoutineDialog } from './DuplicateRoutineDialog';
 import { DeleteRoutineDialog } from './DeleteRoutineDialog';
 import { useFeedback } from './Feedback';
 import { Modal } from './Modal';
 
-/** A card that was pressed and held: the record, and the card element the menu lifts out. */
+/** A card that was pressed and held: the record, and the card itself. */
 export interface Held<T> {
   item: T;
   anchor: HTMLElement;
@@ -61,10 +62,11 @@ function RenameDialog({ title, item, others, onRename, onClose }: RenameDialogPr
   );
 }
 
-const shareAction = (onSelect: () => void): ContextAction => ({ label: 'Share', icon: <ShareFill />, onSelect });
-const renameAction = (onSelect: () => void): ContextAction => ({ label: 'Rename', icon: <RenameFill />, onSelect });
-const editAction = (onSelect: () => void): ContextAction => ({ label: 'Edit', icon: <EditFill />, onSelect });
-const duplicateAction = (onSelect: () => void): ContextAction => ({ label: 'Duplicate', icon: <DuplicateFill />, onSelect });
+type Kind = 'workout' | 'routine';
+const shareAction = (kind: Kind, onSelect: () => void): SheetAction => ({ label: `Share ${kind}`, icon: <Share size={20} />, onSelect });
+const renameAction = (onSelect: () => void): SheetAction => ({ label: 'Rename', icon: <PencilLine size={20} />, onSelect });
+const editAction = (kind: Kind, onSelect: () => void): SheetAction => ({ label: `Edit ${kind}`, icon: <Pencil size={20} />, onSelect });
+const duplicateAction = (kind: Kind, onSelect: () => void): SheetAction => ({ label: `Duplicate ${kind}`, icon: <Copy size={20} />, onSelect });
 
 /** Opens an editor, which returns here when done (`?from=`). */
 function useOpenEditor() {
@@ -72,7 +74,7 @@ function useOpenEditor() {
   const { pathname, search } = useLocation();
   return (path: string) => navigate(`${path}?from=${encodeURIComponent(pathname + search)}`);
 }
-const deleteAction = (onSelect: () => void): ContextAction => ({ label: 'Delete', icon: <TrashFill />, danger: true, onSelect });
+const deleteAction = (label: string, onSelect: () => void): SheetAction => ({ label, icon: <Trash2 size={20} />, danger: true, onSelect });
 
 interface WorkoutActionsProps {
   held: Held<Workout>;
@@ -83,7 +85,7 @@ interface WorkoutActionsProps {
 }
 
 /** Edit, share, duplicate, rename or delete a workout from its card. Deleting acts at once and offers Undo. */
-export function WorkoutActions({ held: { item: workout, anchor }, workouts, routines, exercises, onClose }: WorkoutActionsProps) {
+export function WorkoutActions({ held: { item: workout }, workouts, routines, exercises, onClose }: WorkoutActionsProps) {
   const { notify } = useFeedback();
   const openEditor = useOpenEditor();
   const shareLink = useShareLink();
@@ -93,6 +95,7 @@ export function WorkoutActions({ held: { item: workout, anchor }, workouts, rout
   const remove = async () => {
     onClose();
     const inRoutines = routines.filter((r) => r.workoutIds.includes(workout.id));
+    hapticDelete();
     await repo.deleteWorkout(workout.id);
     notify(`Deleted “${workout.name}”`, {
       undo: async () => {
@@ -119,21 +122,21 @@ export function WorkoutActions({ held: { item: workout, anchor }, workouts, rout
     );
   }
   const actions = [
-    editAction(() => {
+    editAction('workout', () => {
       onClose();
       openEditor(`/edit/workouts/${workout.id}`);
     }),
-    ...(workout.exercises.length > 0 ? [shareAction(share)] : []),
+    ...(workout.exercises.length > 0 ? [shareAction('workout', share)] : []),
     // A copy of its own ("Upper A 2"), opened to be changed.
-    duplicateAction(() => {
+    duplicateAction('workout', () => {
       onClose();
       const copy = cloneWorkout(workout, workouts);
       void repo.saveWorkout(copy).then(() => openEditor(`/edit/workouts/${copy.id}`));
     }),
     renameAction(() => setRenaming(true)),
-    deleteAction(() => void remove()),
+    deleteAction('Delete workout', () => void remove()),
   ];
-  return <ContextMenu anchor={anchor} actions={actions} onClose={onClose} />;
+  return <ActionSheet title={workout.name} actions={actions} onClose={onClose} closeOnSelect={false} />;
 }
 
 interface RoutineActionsProps {
@@ -145,7 +148,7 @@ interface RoutineActionsProps {
 }
 
 /** Edit, share, duplicate, rename or delete a routine from its card. Deleting asks first, as in the routine editor. */
-export function RoutineActions({ held: { item: routine, anchor }, routines, workouts, exercises, onClose }: RoutineActionsProps) {
+export function RoutineActions({ held: { item: routine }, routines, workouts, exercises, onClose }: RoutineActionsProps) {
   const shareLink = useShareLink();
   const openEditor = useOpenEditor();
   const [next, setNext] = useState<'rename' | 'delete' | 'duplicate' | null>(null);
@@ -168,25 +171,26 @@ export function RoutineActions({ held: { item: routine, anchor }, routines, work
     onClose();
   };
   const actions = [
-    editAction(() => {
+    editAction('routine', () => {
       onClose();
       openEditor(`/edit/routines/${routine.id}`);
     }),
-    ...(routine.workoutIds.length > 0 ? [shareAction(share)] : []),
-    duplicateAction(() => setNext('duplicate')),
+    ...(routine.workoutIds.length > 0 ? [shareAction('routine', share)] : []),
+    duplicateAction('routine', () => setNext('duplicate')),
     renameAction(() => setNext('rename')),
-    deleteAction(() => setNext('delete')),
+    deleteAction('Delete routine', () => setNext('delete')),
   ];
-  return <ContextMenu anchor={anchor} actions={actions} onClose={onClose} />;
+  return <ActionSheet title={routine.name} actions={actions} onClose={onClose} closeOnSelect={false} />;
 }
 
 /** Rename or delete a logged session from its History card. Deleting acts at once and offers Undo. */
-export function SessionActions({ held: { item: session, anchor }, onClose }: { held: Held<Session>; onClose: () => void }) {
+export function SessionActions({ held: { item: session }, onClose }: { held: Held<Session>; onClose: () => void }) {
   const { notify } = useFeedback();
   const [renaming, setRenaming] = useState(false);
 
   const remove = async () => {
     onClose();
+    hapticDelete();
     await repo.deleteSession(session.id);
     removeFromAppleHealth(session.id);
     notify(`Deleted “${session.name}”`, {
@@ -204,5 +208,12 @@ export function SessionActions({ held: { item: session, anchor }, onClose }: { h
           return repo.saveSession({ ...session, name });
         }} onClose={onClose} />;
   }
-  return <ContextMenu anchor={anchor} actions={[renameAction(() => setRenaming(true)), deleteAction(() => void remove())]} onClose={onClose} />;
+  return (
+    <ActionSheet
+      title={session.name}
+      actions={[renameAction(() => setRenaming(true)), deleteAction('Delete workout', () => void remove())]}
+      onClose={onClose}
+      closeOnSelect={false}
+    />
+  );
 }

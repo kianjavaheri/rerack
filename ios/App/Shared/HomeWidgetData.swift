@@ -19,8 +19,8 @@ struct HomeWidgetData: Codable {
     var days: [Day]
     /// When the app wrote it (ms), to know which days' "done" is still unknown.
     var writtenAt: Double
-    /// The app's dark-mode accent ("purple"), or nil for the warm one (`Settings.darkAccent`).
-    var accent: String?
+    /// The app's accent in both themes (missing from older builds: the default colours).
+    var colors: AccentColors?
 
     static let key = "homeWidget"
 
@@ -28,4 +28,19 @@ struct HomeWidgetData: Codable {
         guard let data = UserDefaults(suiteName: ExerciseImages.appGroup)?.data(forKey: key) else { return nil }
         return try? JSONDecoder().decode(HomeWidgetData.self, from: data)
     }
+}
+
+/// The app's accent in one theme (src/core/accents.ts `nativeAccent`): four colours along its sweep, one solid colour
+/// for timers and rings, and the colour for text and checks on the sweep, each "#rrggbb".
+struct AccentTone: Codable, Hashable {
+    var sweep: [String]
+    var accent: String
+    var on: String
+}
+
+/// The accent in light and dark mode, and the light theme's page colour when it isn't plain (Bamboo).
+struct AccentColors: Codable, Hashable {
+    var light: AccentTone
+    var dark: AccentTone
+    var paper: String?
 }

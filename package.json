@@ -11,7 +11,7 @@
     "dev:emulator": "vite --mode emulator",
     "emulators": "firebase emulators:start --project demo-fitness-tracker",
     "deploy": "npm run build && firebase deploy --only hosting,firestore:rules",
-    "icons": "pwa-assets-generator && node scripts/ios-assets.mjs",
+    "icons": "pwa-assets-generator && node scripts/ios-assets.mjs && node scripts/ios-accent-icons.mjs",
     "ios": "node scripts/ios-google-scheme.mjs && npm run build && cap sync ios && cap open ios",
     "ios:live": "sh scripts/ios-live.sh"
   },

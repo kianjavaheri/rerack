@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { hapticDelete } from '../utils/haptics';
 import { useState } from 'react';
 import { cancelResume } from '../core/sessions';
 import type { Session } from '../core/types';
@@ -33,6 +34,7 @@ export function CancelWorkoutButton({ session, label = 'Cancel workout', onCance
       else await repo.saveSession(restored);
       return;
     }
+    hapticDelete();
     await repo.deleteSession(session.id);
     onCancelled?.();
   };

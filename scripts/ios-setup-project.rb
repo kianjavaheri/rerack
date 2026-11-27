@@ -134,6 +134,9 @@ app.build_configurations.each do |config|
   config.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'App/App.entitlements'
   config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = DEPLOYMENT
   config.build_settings['TARGETED_DEVICE_FAMILY'] = '1'
+  # The accent icons (scripts/ios-accent-icons.mjs, AppIcon-<accent>-<theme>) go in as alternate icons, which the app
+  # switches to with setAlternateIconName (AppScreenPlugin.setIcon).
+  config.build_settings['ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS'] = 'YES'
 end
 
 # Crashlytics (@capacitor-firebase/crashlytics): the app's Firebase config, once downloaded from the Firebase console

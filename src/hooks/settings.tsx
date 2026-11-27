@@ -1,8 +1,13 @@
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { accentOf, accentTone, accentVars, BAMBOO_PAPER, DEFAULT_ACCENT } from '../core/accents';
 import { DEFAULT_SETTINGS, type Settings, type ThemePreference } from '../core/types';
 import { repo } from '../data';
 import { isNative } from '../native/platform';
+import { registerPlugin } from '@capacitor/core';
+
+/** ios/App/App/AppScreenPlugin.swift */
+const AppScreen = registerPlugin<{ setBackground(color: { r: number; g: number; b: number }): Promise<void> }>('AppScreen');
 import { useRepoQuery } from './useRepo';
 
 interface SettingsContextValue {
@@ -24,29 +29,45 @@ const THEME_KEY = 'lifttrack:theme';
 function storedTheme(): ThemePreference {
   try {
     const value = localStorage.getItem(THEME_KEY);
-    return value === 'light' || value === 'dark' ? value : 'system';
+    return value === 'light' || value === 'dark' || value === 'bamboo' ? value : 'system';
   } catch {
     return 'system';
   }
 }
 
-/** Dark mode's accent, kept on this device too so the first frame uses it (index.html sets data-accent). */
-const ACCENT_KEY = 'rerack:dark-accent';
-function storedAccent(): Settings['darkAccent'] {
+/**
+ * The accent, kept on this device too: its choice for the moments before settings load, and its CSS variables for
+ * both themes, which index.html applies before the first frame (the loader ring included). The keys it replaced
+ * (dark-accent, mono-accent, pink-accent) are still read once, then removed.
+ */
+const ACCENT_KEY = 'rerack:accent';
+const ACCENT_VARS_KEY = 'rerack:accent-vars';
+const OLD_KEYS = ['rerack:dark-accent', 'rerack:mono-accent', 'rerack:pink-accent'];
+function storedAccent(): Partial<Settings> {
   try {
-    return localStorage.getItem(ACCENT_KEY) === 'purple' ? 'purple' : null;
+    const accent = localStorage.getItem(ACCENT_KEY);
+    if (accent) return { accent };
+    return {
+      darkAccent: localStorage.getItem(OLD_KEYS[0]) === 'purple' ? 'purple' : null,
+      monoAccent: localStorage.getItem(OLD_KEYS[1]) === '1',
+      pinkAccent: localStorage.getItem(OLD_KEYS[2]) === '1',
+    };
   } catch {
-    return null;
+    return {};
   }
 }
 
-/** The black/white accent, kept on this device too so the first frame uses it (index.html sets data-mono). */
-const MONO_KEY = 'rerack:mono-accent';
-function storedMono(): boolean {
-  try {
-    return localStorage.getItem(MONO_KEY) === '1';
-  } catch {
-    return false;
+let applied: string[] = [];
+/** Puts an accent's colours on the page (also used live while the colour wheel is turned, before it's saved). */
+export function applyAccent(accent: string, dark: boolean) {
+  const root = document.documentElement;
+  for (const name of applied) root.style.removeProperty(name);
+  applied = [];
+  root.classList.toggle('accent-custom', accent !== DEFAULT_ACCENT);
+  if (accent === DEFAULT_ACCENT) return;
+  for (const [name, value] of Object.entries(accentVars(accentTone(accent, dark)))) {
+    root.style.setProperty(name, value);
+    applied.push(name);
   }
 }
 
@@ -56,7 +77,7 @@ function systemTheme(): 'light' | 'dark' {
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const loaded = useRepoQuery((r) => r.getSettings());
-  const settings = loaded ?? { ...DEFAULT_SETTINGS, theme: storedTheme(), darkAccent: storedAccent(), monoAccent: storedMono() };
+  const settings = loaded ?? { ...DEFAULT_SETTINGS, theme: storedTheme(), ...storedAccent() };
   const [system, setSystem] = useState(systemTheme);
 
   useEffect(() => {
@@ -66,7 +87,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
-  const resolvedTheme = settings.theme === 'system' ? system : settings.theme;
+  const resolvedTheme = settings.theme === 'system' ? system : settings.theme === 'dark' ? 'dark' : 'light';
+  const bamboo = settings.theme === 'bamboo';
 
   useEffect(() => {
     if (!loaded) return;
@@ -77,38 +99,45 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [loaded?.theme]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Only dark mode reads it (index.css: [data-theme='dark'][data-accent='purple']).
-  const accent = settings.darkAccent;
+  const accent = accentOf(settings);
   useEffect(() => {
-    if (accent) document.documentElement.dataset.accent = accent;
-    else delete document.documentElement.dataset.accent;
+    applyAccent(accent, resolvedTheme === 'dark');
     if (!loaded) return;
     try {
-      if (accent) localStorage.setItem(ACCENT_KEY, accent);
-      else localStorage.removeItem(ACCENT_KEY);
+      for (const key of OLD_KEYS) localStorage.removeItem(key);
+      if (accent === DEFAULT_ACCENT) {
+        localStorage.removeItem(ACCENT_KEY);
+        localStorage.removeItem(ACCENT_VARS_KEY);
+      } else {
+        localStorage.setItem(ACCENT_KEY, accent);
+        localStorage.setItem(
+          ACCENT_VARS_KEY,
+          JSON.stringify({ light: accentVars(accentTone(accent, false)), dark: accentVars(accentTone(accent, true)) }),
+        );
+      }
     } catch {
-      // Private mode etc.: the first frame is warm until settings load.
+      // Private mode etc.: the first frame has the default colours until settings load.
     }
-  }, [accent, !!loaded]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const mono = !!settings.monoAccent;
-  useEffect(() => {
-    if (mono) document.documentElement.dataset.mono = '';
-    else delete document.documentElement.dataset.mono;
-    if (!loaded) return;
-    try {
-      if (mono) localStorage.setItem(MONO_KEY, '1');
-      else localStorage.removeItem(MONO_KEY);
-    } catch {
-      // Private mode etc.: the first frame has the colours until settings load.
-    }
-  }, [mono, !!loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [accent, resolvedTheme, !!loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;
+    if (bamboo) document.documentElement.dataset.paper = 'bamboo';
+    else delete document.documentElement.dataset.paper;
     if (isNative) void StatusBar.setStyle({ style: resolvedTheme === 'dark' ? Style.Dark : Style.Light }).catch(() => {});
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolvedTheme === 'dark' ? '#0f1011' : '#f2f1f6');
-  }, [resolvedTheme]);
+    if (isNative) {
+      // The native colour behind the page (seen when it's pulled past the top) follows the page's own.
+      // --paper (the app's body; read as the variable, since the body's own colour is still fading at this point).
+      const hex = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
+      if (/^#[0-9a-f]{6}$/i.test(hex)) {
+        const n = parseInt(hex.slice(1), 16);
+        void AppScreen.setBackground({ r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }).catch(() => {});
+      }
+    }
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', resolvedTheme === 'dark' ? '#0f1011' : bamboo ? BAMBOO_PAPER : '#f2f1f6');
+  }, [resolvedTheme, bamboo]);
 
   // Merged into the latest saved settings, not this render's copy (which is the defaults before the first load).
   const update = (patch: Partial<Settings>) => {

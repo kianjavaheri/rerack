@@ -6,7 +6,8 @@ export type ID = string;
 export type Timestamp = string;
 
 export type WeightUnit = 'lb' | 'kg';
-export type ThemePreference = 'system' | 'light' | 'dark';
+/** 'bamboo' is a light theme on a warm off-white page. */
+export type ThemePreference = 'system' | 'light' | 'dark' | 'bamboo';
 
 /** How an exercise is measured. Bodyweight exercises allow an optional added load. */
 export type ExerciseKind = 'weighted' | 'bodyweight';
@@ -186,15 +187,27 @@ export interface Settings {
   unit: WeightUnit;
   theme: ThemePreference;
   /**
-   * Dark mode's accent, being tried out: 'purple' swaps the warm sweep (orange, salmon, red) for a pink-to-violet-to-blue
+   * The accent (Settings → Appearance, `core/accents.ts`): a premade one's id ('classic', 'purple', 'pink'…) or a
+   * custom colour ("#3fa9f5"). Missing: the old switches below, else classic (`accentOf`).
+   */
+  accent?: string;
+  /**
+   * Old, replaced by `accent` (still read by `accentOf`): dark mode's accent: 'purple' swaps the warm sweep (orange, salmon, red) for a pink-to-violet-to-blue
    * one. Missing = warm. Light mode is unaffected. Set in Settings → Appearance.
    */
   darkAccent?: 'purple' | null;
   /**
-   * Being tried out: one plain accent instead of the colours, black in light mode and white in dark (overrides
+   * Old, replaced by `accent`: one plain accent instead of the colours, black in light mode and white in dark (overrides
    * `darkAccent`). Set in Settings → Appearance.
    */
   monoAccent?: boolean;
+  /** Old, replaced by `accent`: pink in both themes, deeper in light mode and lighter in dark (overrides `darkAccent`; off while `monoAccent` is on). */
+  pinkAccent?: boolean;
+  /**
+   * iPhone app: the home-screen icon follows the accent and theme (`appIconFor`). Missing: off (the usual icon),
+   * since iOS shows a notice every time an app changes its icon.
+   */
+  appIconMatches?: boolean;
   /** The routine being followed: drives "Up next", planned days and check-in badges. See `followedRoutine`. */
   activeRoutineId?: ID | null;
   /** Rest length in seconds, started by checking off a set; 0 = only when started by hand (then 2:00). Missing: `DEFAULT_REST_SECONDS`. */

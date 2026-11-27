@@ -1,4 +1,5 @@
-import { ArrowLeft, Check, Copy, PencilLine, Play, Plus, Share, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowUp, Check, Copy, Pencil, PencilLine, Play, Plus, Share, Trash2 } from 'lucide-react';
+import { hapticDelete } from '../utils/haptics';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ExerciseForm } from '../components/ExerciseForm';
@@ -7,8 +8,7 @@ import { ExercisePicker } from '../components/ExercisePicker';
 import { NotFound } from '../components/NotFound';
 import { NotesButton, WorkoutNotepad } from '../components/Notes';
 import { SupersetButton, SupersetPill, usePills } from '../components/SupersetLink';
-import { ContextMenu, type ContextAction } from '../components/ContextMenu';
-import { EditFill, MoveDownFill, MoveUpFill, ReplaceFill, TrashFill } from '../components/MenuIcons';
+import { ActionSheet, type SheetAction } from '../components/ActionSheet';
 import { Stepper } from '../components/Stepper';
 import { PageSkeleton } from '../components/Skeleton';
 import { DEFAULT_REPS, DEFAULT_SETS, PLAN_PATH } from '../config';
@@ -165,6 +165,7 @@ export function WorkoutEditorPage() {
   const remove = async () => {
     const deleted = workout;
     const inRoutines = (routines ?? []).filter((r) => r.workoutIds.includes(deleted.id));
+    hapticDelete();
     await repo.deleteWorkout(deleted.id);
     navigate(from, { replace: true });
     notify(`Deleted “${deleted.name}”`, {
@@ -393,16 +394,24 @@ export function WorkoutEditorPage() {
         const slot = workout.exercises[i];
         const ex = exerciseById.get(slot.exerciseId);
         const close = () => setHeldSlot(null);
-        const actions: ContextAction[] = [
-          { label: 'Replace', icon: <ReplaceFill />, onSelect: () => (close(), setReplacing(slot.id)) },
-          ...(ex ? [{ label: 'Edit', icon: <EditFill />, onSelect: () => (close(), setRenaming(ex)) }] : []),
-          ...(i > 0 ? [{ label: 'Move up', icon: <MoveUpFill />, onSelect: () => (close(), update((w) => ({ ...w, exercises: moveUnlinked(w.exercises, i, i - 1) }))) }] : []),
+        const actions: SheetAction[] = [
+          { label: 'Replace exercise', icon: <ArrowLeftRight size={20} />, onSelect: () => setReplacing(slot.id) },
+          ...(ex ? [{ label: 'Edit exercise', icon: <Pencil size={20} />, onSelect: () => setRenaming(ex) }] : []),
+          ...(i > 0 ? [{ label: 'Move up', icon: <ArrowUp size={20} />, onSelect: () => update((w) => ({ ...w, exercises: moveUnlinked(w.exercises, i, i - 1) })) }] : []),
           ...(i < workout.exercises.length - 1
-            ? [{ label: 'Move down', icon: <MoveDownFill />, onSelect: () => (close(), update((w) => ({ ...w, exercises: moveUnlinked(w.exercises, i, i + 1) }))) }]
+            ? [{ label: 'Move down', icon: <ArrowDown size={20} />, onSelect: () => update((w) => ({ ...w, exercises: moveUnlinked(w.exercises, i, i + 1) })) }]
             : []),
-          { label: 'Remove', icon: <TrashFill />, danger: true, onSelect: () => (close(), update((w) => ({ ...w, exercises: removeUnlinked(w.exercises, i) }))) },
+          {
+            label: 'Remove exercise',
+            icon: <Trash2 size={20} />,
+            danger: true,
+            onSelect: () => {
+              hapticDelete();
+              update((w) => ({ ...w, exercises: removeUnlinked(w.exercises, i) }));
+            },
+          },
         ];
-        return <ContextMenu anchor={heldSlot.anchor} actions={actions} onClose={close} />;
+        return <ActionSheet title={ex?.name ?? 'Exercise'} actions={actions} onClose={close} />;
       })()}
       {renaming && <ExerciseForm exercise={renaming} onClose={() => setRenaming(null)} />}
       {photosOf && <ExercisePhotos name={photosOf.name} media={mediaFor(photosOf)} onClose={() => setPhotosOf(null)} />}

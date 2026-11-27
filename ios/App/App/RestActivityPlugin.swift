@@ -57,7 +57,7 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
                 restStartedAt: restStartedAt,
                 restEndsAt: restEndsAt,
                 dark: call.getBool("dark") ?? true,
-                purple: call.getBool("purple") ?? false,
+                colors: call.getString("colors").flatMap { try? JSONDecoder().decode(AccentColors.self, from: Data($0.utf8)) },
                 image: image
             )
             let content = ActivityContent(state: state, staleDate: nil)
@@ -161,7 +161,7 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             restStartedAt: restStartedAt,
             restEndsAt: restEndsAt,
             dark: previous.dark,
-            purple: previous.purple,
+            colors: previous.colors,
             image: image
         )
         await current.update(ActivityContent(state: state, staleDate: nil))

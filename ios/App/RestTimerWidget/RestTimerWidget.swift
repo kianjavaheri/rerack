@@ -16,14 +16,22 @@ struct Palette {
     /// wallpaper tinted it (a lavender over a purple one); a white wash keeps it white.
     let wash: Color
 
-    /// `purple`: the app's "Purple in dark mode" (`[data-accent='purple']` in index.css, its --ink-* colours); dark only.
-    static func of(dark: Bool, purple: Bool = false) -> Palette {
-        if dark && purple {
-            return Palette(background: rgb(0x0F1011), text: .white, muted: .white.opacity(0.55),
-                           sweep: [rgb(0xF08AFD), rgb(0xCC82FF), rgb(0x9D8EFF), rgb(0x8697FF)], accent: rgb(0xC182FF),
-                           wash: .clear)
-        }
-        return dark
+    /// `colors`: the accent chosen in the app (src/core/accents.ts), else the default sweeps below.
+    static func of(dark: Bool, colors: AccentColors? = nil) -> Palette {
+        let base = defaults(dark: dark)
+        guard let colors else { return base }
+        let tone = dark ? colors.dark : colors.light
+        let paper = dark ? nil : colors.paper.flatMap(hexColor)
+        return Palette(
+            background: paper ?? base.background, text: base.text, muted: base.muted,
+            sweep: tone.sweep.compactMap(hexColor).nonEmpty ?? base.sweep,
+            accent: hexColor(tone.accent) ?? base.accent,
+            wash: paper.map { $0.opacity(0.6) } ?? base.wash
+        )
+    }
+
+    private static func defaults(dark: Bool) -> Palette {
+        dark
             ? Palette(background: rgb(0x0F1011), text: .white, muted: .white.opacity(0.55),
                       sweep: [rgb(0xF58A5C), rgb(0xF28F82), rgb(0xEF6266), rgb(0xEA5560)], accent: rgb(0xF27870),
                       wash: .clear)
@@ -33,6 +41,16 @@ struct Palette {
     }
 
     var gradient: LinearGradient { LinearGradient(colors: sweep, startPoint: .leading, endPoint: .trailing) }
+}
+
+/// "#rrggbb" as a colour, or nil if it isn't one.
+func hexColor(_ hex: String) -> Color? {
+    guard hex.hasPrefix("#"), hex.count == 7, let value = Int(hex.dropFirst(), radix: 16) else { return nil }
+    return rgb(value)
+}
+
+extension Array {
+    var nonEmpty: Self? { isEmpty ? nil : self }
 }
 
 func rgb(_ hex: Int) -> Color {
@@ -55,7 +73,7 @@ struct RestTimerLiveActivity: Widget {
             ActivityContent(context: context)
         } dynamicIsland: { context in
             // The Dynamic Island is always black, so it uses the dark colours.
-            let palette = Palette.of(dark: true)
+            let palette = Palette.of(dark: true, colors: context.state.colors)
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 8) {
@@ -114,11 +132,11 @@ private struct ActivityContent: View {
 
     var body: some View {
         if family == .small {
-            let palette = Palette.of(dark: true, purple: context.state.purple == true)
+            let palette = Palette.of(dark: true, colors: context.state.colors)
             WatchActivityView(context: context, palette: palette)
                 .activityBackgroundTint(palette.background)
         } else {
-            let palette = Palette.of(dark: context.state.dark)
+            let palette = Palette.of(dark: context.state.dark, colors: context.state.colors)
             LockScreenView(context: context, palette: palette)
                 .background(palette.wash)
                 // Dark: pure black, like other workout apps' (Hevy's) on the lock screen.

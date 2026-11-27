@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Modal } from './Modal';
 
 export interface SheetAction {
@@ -10,12 +10,30 @@ export interface SheetAction {
 }
 
 /**
- * A sheet of actions as one grouped list, a hairline between rows (an exercise's ⋮ while logging). Choosing one
- * closes the sheet first, so an action that opens its own window (the exercise search) isn't stacked on it.
+ * A sheet of actions as one grouped list, a hairline between rows: an exercise's or a set's ⋮ while logging, and every
+ * press-and-hold on a card. Choosing one closes the sheet first, so an action that opens its own window (the exercise
+ * search) isn't stacked on it.
  */
-export function ActionSheet({ title, actions, onClose }: { title: ReactNode; actions: SheetAction[]; onClose: () => void }) {
+export function ActionSheet({
+  title,
+  actions,
+  onClose,
+  closeOnSelect = true,
+  children,
+}: {
+  title: ReactNode;
+  actions: SheetAction[];
+  onClose: () => void;
+  /** false: choosing only runs the action, which closes the sheet itself or replaces it (e.g. with a rename dialog). */
+  closeOnSelect?: boolean;
+  /** Shown between the title and the list (a set's plates). */
+  children?: ReactNode;
+}) {
+  // A hold that opened it may already have started selecting the card's text.
+  useEffect(() => window.getSelection()?.removeAllRanges(), []);
   return (
     <Modal title={title} onClose={onClose}>
+      {children}
       <div className="sheet-actions" role="menu">
         {actions.map((a) => (
           <button
@@ -23,7 +41,7 @@ export function ActionSheet({ title, actions, onClose }: { title: ReactNode; act
             className={`sheet-action${a.danger ? ' danger' : ''}`}
             role="menuitem"
             onClick={() => {
-              onClose();
+              if (closeOnSelect) onClose();
               a.onSelect();
             }}
           >

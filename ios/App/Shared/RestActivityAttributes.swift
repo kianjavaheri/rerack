@@ -16,9 +16,9 @@ struct RestActivityAttributes: ActivityAttributes {
         var restEndsAt: Date?
         /// The app's theme, so the lock screen matches it.
         var dark: Bool
-        /// The app's "Purple in dark mode" (`Settings.darkAccent`): only the watch's Smart Stack follows it (the watch
-        /// is always dark); the lock screen and Dynamic Island stay warm.
-        var purple: Bool? = nil
+        /// The app's accent (`nativeAccent`): the lock screen, Dynamic Island and the watch's Smart Stack follow it.
+        /// Nil: the default colours.
+        var colors: AccentColors? = nil
         /// A small picture of the exercise: a file in `ExerciseImages.folder` (the widget can't download), or nil.
         var image: String? = nil
     }

@@ -1,4 +1,5 @@
 import { pluralize } from '../core/format';
+import { hapticDelete } from '../utils/haptics';
 import type { Routine, Workout } from '../core/types';
 import { repo } from '../data';
 import { useSettings } from '../hooks/settings';
@@ -23,6 +24,7 @@ export function DeleteRoutineDialog({ routine, routines, workouts, onClose, onDe
 
   const remove = async (withWorkouts: boolean) => {
     onClose();
+    hapticDelete();
     await repo.deleteRoutine(routine.id);
     // Past sessions are kept either way; workouts still used by another routine are never deleted.
     if (withWorkouts) for (const wid of onlyHere) await repo.deleteWorkout(wid);

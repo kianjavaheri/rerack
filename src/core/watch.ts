@@ -1,3 +1,4 @@
+import { nativeAccent, type NativeTone } from './accents';
 import { cancelResume, createSessionFromWorkout, finalizeSession, orderByProgress } from './sessions';
 import { followedRoutine, lastPerformance, nextWorkoutInRoutine } from './stats';
 import type { Exercise, ID, Routine, Session, SessionEntry, SetLog, Settings, Timestamp, WeightUnit, Workout } from './types';
@@ -57,8 +58,8 @@ export interface WatchState {
   defaultRest: number;
   /** Settings' "Rest after an exercise's last set". Missing (older phones): off. */
   restAfterLastSet?: boolean;
-  /** Dark mode's accent (`Settings.darkAccent`): 'purple' for the pink-to-blue sweep, missing for the warm one. */
-  accent?: 'purple';
+  /** The accent in dark mode (the watch is always dark; `nativeAccent`): its sweep, one solid colour, text on it. */
+  colors?: NativeTone;
   /** What a turn of the Crown adds to a set's weight, in `unit` (Settings' weight step). Missing (older phones): 5 lb / 2.5 kg. */
   weightStep?: number;
   /** The open live workout, if any (without `resumedFrom`, which the watch never needs). */
@@ -177,7 +178,7 @@ export function watchState(input: {
     defaultRest: settings.restSeconds || DEFAULT_REST_SECONDS,
     restAfterLastSet: !!settings.restAfterLastSet,
     weightStep: weightStepFor(settings),
-    ...(settings.darkAccent === 'purple' ? { accent: 'purple' as const } : {}),
+    colors: nativeAccent(settings).dark,
     session,
     last,
     exercises: watchExercises,

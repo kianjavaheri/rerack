@@ -164,7 +164,9 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
 - **A set counts once it has reps > 0 and isn't a warm-up** (`isCompletedSet`) for stats, "Previous", records and
   history. Warm-ups (`SetLog.warmup`, toggled from the set-number menu) show as "W". A set's placeholders (`hint` in
   SessionPage's EntryCard; also what checking it off empty fills in) are the set above this session once anything's
-  in it (11 × 10 in set 1 suggests 11 × 10), else last time's same working set. Checking a set stamps
+  in it (11 × 10 in set 1 suggests 11 × 10), else last time's same working set. Checking a set (not the last of its exercise) gives a light haptic, and while live plays a short sound
+  (`utils/sounds.ts`, Web Audio with `navigator.audioSession.type = 'ambient'` so the silent switch mutes it; an
+  exercise finished, the workout's celebration and, on the web, a rest ending have their own). Checking a set stamps
   `SetLog.doneAt` (cleared when unchecked): an exercise's finish time (`entryFinishedAt`, a "✓ 5:12 PM" flare),
   and the list keeps the order things were done in without undoing one you set (`orderByProgress(entries, entryId)`):
   checking a set moves that exercise's group up past the groups just above it that are less far along (untouched <
@@ -277,31 +279,31 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   editor's Duplicate becomes "Separate copy for <routine>" when opened from a routine that shares it. Deleting a
   routine offers to delete workouts used only by it (sessions are always kept).
 - **Press-and-hold menus**: workout cards (Plan, Check in), routine cards (Plan) and session cards (Home's Recent workouts, History) open an
-  iOS-style context menu on press-and-hold or right-click (`useLongPress`, with a haptic → `components/ContextMenu.tsx`,
-  which lifts a copy of the card over a light blur, sized from `offsetWidth/Height` since a held card is shrunk by
-  `:active` and a copy that size wrapped its text out of the bottom; actions in `components/WorkoutActions.tsx`: Edit (opens the editor
+  action sheet on press-and-hold or right-click (`useLongPress`, with a haptic → `components/ActionSheet.tsx`, the same
+  sheet as an exercise's ⋮ while logging: the card's name as its title, one grouped list; it replaced an iOS-style
+  menu that lifted the card, which the user didn't want; `closeOnSelect={false}` so Rename can replace it with its
+  dialog); actions in `components/WorkoutActions.tsx`: Edit (opens the editor
   with `?from=` the current page), Share and **Duplicate** for workouts/routines, Rename, Delete). Duplicating a
   workout opens the copy's editor; a routine asks first (`components/DuplicateRoutineDialog.tsx`: copy its workouts
   too, or share the same ones; `cloneRoutine` in `core/plan.ts` keeps days, every and optional), also from the
   routine editor's Duplicate button. On Check in, where tapping a card
-  starts the workout, a routine's heading can be held too (`.routine-heading`). The menu's icons are our own filled
-  drawings in the manner of iOS's (`components/MenuIcons.tsx`: share, trash, edit, rename; SF Symbols themselves may
-  only be used in apps on Apple's platforms, and this is web code), with no dividers between the actions. Routine
+  starts the workout, a routine's heading can be held too (`.routine-heading`). Icons are lucide's outlines. Routine
   delete there and in the editor is `components/DeleteRoutineDialog.tsx`; deleting the followed routine follows the
   one trained from most recently instead (else the newest), so Home isn't left without one.
-  The touch that opens a menu carries on after it opens, so the tab and edge swipes also check for `.ctx-overlay`
+  The touch that opens a menu carries on after it opens, so the tab and edge swipes also check for an `.overlay`
   while a touch moves, not only where it starts.
 - **Hold and drag to reorder** (`hooks/useDragReorder.ts`): workouts in the routine editor and exercises in the
   workout editor (held anywhere on the card but a field; `.holdable` cards keep their inputs selectable), and
   exercises in a session (anywhere on the card). Held on a button, link or field it doesn't start (`startPress`). In the workout editor, letting go of a
-  lifted card without moving it (or right-clicking it) opens the press-and-hold menu (`ContextMenu`, via the hook's
+  lifted card without moving it (or right-clicking it) opens the same action sheet (via the hook's
   `onHold`) with what the card's own buttons used to be: **Replace** (the exercise search, keeps sets/reps/notes,
   Undo), Edit (the exercise form), Move up, Move down, Remove; only the superset link stays on the card. After 350 ms still the item lifts with a haptic, the page stops
   scrolling by touch (touchmove `preventDefault`) and scrolls itself near the screen edges, the others slide aside, and
   letting go calls the same move as the arrow buttons (`move` / `moveUnlinked`). Moving first is a scroll. Slides
   and the drop use an even 280 ms ease-in-out (the app's front-loaded `--ease` at 0.2 s looked like popping), and
   offsets are cleared with transitions off before the list re-renders (else cards jump past and slide back). Every
-  press-and-hold in the app gives a haptic when it takes effect. A press must never outlive its touch: while one is
+  press-and-hold in the app gives a haptic when it takes effect, and every delete or remove one firm tap
+  (`hapticDelete`: sets, exercises, workouts, routines, sessions, Log entries, cancelling a workout). A press must never outlive its touch: while one is
   going its document `touchmove` handler blocks scrolling, and once a press whose `pointerup` never arrived (the
   element under the finger removed, e.g. deleting sets) left the page unscrollable while tab swipes still worked. So
   it also ends on `touchend`/`touchcancel`, any other pointer going down, blur or the page hiding, and a new press
@@ -400,8 +402,9 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   workout), and on barbell lifts the **Weight** header is a button (`.head-btn`), the Per side switch ("Weight" ↔ "Per side", rainbow when on). **Add set** is a gray button across
   the row with its label centred, the superset link after it. The set menu's warm-up item says "Working set" to go
   back.
-- **During a workout**: the set number is a menu, drawn as a small rounded button with a chevron under the number
-  (a plain number didn't read as tappable) (`SetMenu`: warm-up, drop set, plates per side via `core/plates.ts`
+- **During a workout**: each set row ends with a ⋮ after its check (`SetMenu`; a friend couldn't find delete when
+  the set number was the menu, so the number is plain again, `SetNumber`), which opens an `ActionSheet` ("Set 2"; a
+  dropdown there hid under the tab bar): warm-up, drop set, plates per side via `core/plates.ts`
   for barbell lifts with a Bar picker, delete). **Drop sets** (`SetLog.drop`) count like working sets everywhere
   (stats, records, Last) but show "D" and take no set number (1, D, 2); they still line up with last time's sets by
   position, and "Go up" skips them. **Bar weight** is per exercise (`Exercise.barKg`, unset = 45 lb / 20 kg;
@@ -524,9 +527,10 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
   reminder time; missing = not chosen = rest alerts only, as before). Kinds: `rest` ("Rest over", `native/rest.ts`),
   `reminders` (the followed routine's planned days, next 14, at `reminderAt`, default 17:00; today's dropped once
   done; `reminderPlan`), `open` ("Still working out?" 3 h after an open live workout's last change,
-  `openWorkoutAlert`). `native/notifications.ts` `useScheduledNotifications` (Layout) cancels and reschedules ids
+  `openWorkoutAlert`; `WatchBridge.swift` removes it natively on every watch op, since a workout finished on the
+  watch with the app closed got it hours later). `native/notifications.ts` `useScheduledNotifications` (Layout) cancels and reschedules ids
   2 and 100–113 whenever the plan changes, never prompting; permission is asked by Settings' card and the intro's
-  Notifications step (after the routine/program, before "You're set"; Later skips it). Local notifications only, so
+  Notifications step (after the routine/program, before "Make it yours" (theme and accent) and "You're set"; Later skips it). Local notifications only, so
   the web just stores the choice.
 - **Profile** (the top of the Settings page, which has two headings: "Profile" at the top, then "Settings"
   (`.settings-heading`) over the app's settings; `components/Profile.tsx`; deliberately only there): `ProfileHeader` is laid out like
@@ -549,14 +553,14 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
   New routine's sheet (`NewRoutineSheet`); using one follows it.
 - **First-run intro** (`components/Intro.tsx`, mounted in Layout as `IntroGate`): its own window (full screen on a
   phone, a panel on wide screens; `.intro`, z 90, under dialogs). Explains routine → workout → exercise (a diagram
-  with one colour per level, `--lvl-*`), then step 1 names the routine (presets Push / Pull / Legs, Upper / Lower,
-  Full Body, whose workout names are suggested in turn), step 2 makes a workout by tapping tiles in
+  with one colour per level, `--lvl-*`), then step 1 offers **Create new routine** (→ a page of its own, `'name'`, that names it: presets Push / Pull / Legs, Upper / Lower,
+  Full Body, whose workout names are suggested in turn, or your own), **Import from text**, a line, and the programs; step 2 makes a workout by tapping tiles in
   `components/ExerciseGrid.tsx` (picture, name, a circle that fills with the rainbow; Popular / Yours / muscle-group
   filters, search, and an "Add “…”" tile for a new one; picks keep their tapped order, shown as numbered chips). Each
   workout is saved straight away (library picks adopted, `DEFAULT_SETS`/`DEFAULT_REPS`); the routine is made with
   the first one and followed if none is. Shows once per account (`Settings.introDone`, synced) to accounts with no
   routines or workouts, while no workout is open and not on a share link's page (`/share`, `/s/…`: it covered the
-  preview, so a friend's link seemed to do nothing); `introDone: false` (Settings → Intro → Show again) brings it back.
+  preview, so a friend's link seemed to do nothing); `introDone: false` (Settings → Intro → Show again) brings it back; with a workout open, Show again only says to finish it first.
   It covers the whole screen (`inset: 0`, not the `--vv-*` area dialogs use: sized to that, iOS moving it around the
   focused field let the page show through below); with the keyboard up the bottom bar hides (`.keyboard-open`), and
   the grid's search and filters are sticky, scrolled to the top on focus so results fill down to the keyboard. Both
@@ -626,7 +630,8 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
   glass seeing the page): overlays dim without blurring, or blur on their own `::before`. Write `-webkit-backdrop-filter` **before**
   `backdrop-filter`: the other way round, the production minifier (lightningcss) drops the standard one, so Chrome and
   Firefox lose the blur in builds only (dev isn't minified). Check CSS like this in `preview-build`, whose service
-  worker may be serving an older build (unregister it first). On phones sheets float 8px
+  worker may be serving an older build (unregister it first). A dialog's dimmed overlay fades in by its background colour, never
+  `opacity`: inside a fading parent WebKit drew the sheet's glass unblurred (see-through) for up to seconds. On phones sheets float 8px
   inside the screen edges with 36px corners.
 - Dark mode is near-black with a faint cool tint, after linear.app (`#08090a` base, `#0f1011` panel/app background,
   `~#18191b` cards, `#8a8f98` muted text). The accent is the logo's **rainbow**, its colours
@@ -637,19 +642,23 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
   (a masked `::after`). Dark mode is a warm sweep (orange, salmon, red; little pink); light mode a
   mostly-blue sweep with some depth (indigo, blue, sky; deeper ink for contrast). The lock screen
   (`RestTimerWidget.swift` `Palette`) mirrors both.
-  **Purple in dark mode** (being tried out; Settings → Appearance switch, `Settings.darkAccent: 'purple'`, null =
-  warm): `[data-theme='dark'][data-accent='purple']` in `index.css` swaps `--accent` and `--rb-*`/`--ink-*` for a
-  pink → violet → blue sweep (#ea74fc … #6e81ff, from a swatch the user picked). `hooks/settings.tsx` sets
-  `html[data-accent]` and mirrors it to localStorage `rerack:dark-accent`, which `index.html` reads for the first frame
-  and the loader ring. The home-screen widget follows it too (`HomeWidgetData.accent`, sent by `native/widget.ts`;
-  `Palette.of(dark:purple:)`), and so does the Apple Watch app (`WatchState.accent` → `Theme` in
-  `RerackWatchApp.swift`); the Live Activity's watch layout (Smart Stack) too (`ContentState.purple`, from `useNativeRestTimer`); the
-  lock screen, Dynamic Island and landing page stay warm.
-  **Black and white** (also being tried out; Settings → Appearance switch under Purple, `Settings.monoAccent`, both
-  themes, overrides purple): `[data-theme='light'][data-mono]` / `[data-theme='dark'][data-mono]` in `index.css` set
-  every accent role to one colour (black in light, white in dark; `--on-rainbow` the opposite). `html[data-mono]`
-  is mirrored to localStorage `rerack:mono-accent` for the first frame and the loader ring. Web only: the widget,
-  watch and lock screen don't follow it.
+  **Other accents** (Settings → Appearance → Accent colour, `components/Appearance.tsx` `AccentPicker`, also the
+  intro's "Make it yours" step): premade ones (Classic, the default above; Purple, Pink, Ocean, Forest, Gold, Mono =
+  black in light / white in dark) or **Custom**, a colour wheel (hue round it, saturation outwards, a brightness
+  slider; the whole app previews while it's turned, saved on letting go). `Settings.accent` is a preset id or a
+  "#rrggbb"; `accentOf` also reads the switches it replaced (`darkAccent`, `monoAccent`, `pinkAccent`). Everything is
+  in `core/accents.ts`: each preset has a light and a dark `AccentTone` (`rb`, `ink`, accent, fill, `on`); a custom
+  colour's tones are worked out (`customTone`: hues a little either side, fills kept within a lightness range, ink
+  pushed deeper in light and lighter in dark). Not in index.css: `hooks/settings.tsx` `applyAccent` sets the variables
+  on `<html>` (plus `html.accent-custom`, `--on-accent` for selection text) and keeps both themes' in localStorage
+  `rerack:accent-vars`, which `index.html` applies before the first frame (the loader ring reads them; not on the
+  landing page). `nativeAccent` sends the same to the iPhone side as Swift `AccentColors` (four sweep colours, one
+  solid, text on it, per theme; `HomeWidgetData.swift`): the widget (`HomeWidgetData.colors`), the lock screen,
+  Dynamic Island and Smart Stack (`ContentState.colors`, a JSON string from `useNativeRestTimer`) through
+  `Palette.of(dark:colors:)`, and the watch (`WatchState.colors`, dark tone → `Theme`). The landing page stays warm.
+  **Bamboo** (a fourth theme, `theme: 'bamboo'`): light with a warm off-white page (`[data-theme='light'][data-paper='bamboo']`
+  in index.css, only surfaces; `resolvedTheme` is 'light'). `index.html` sets `data-paper` from `lifttrack:theme`; the
+  light widget and lock screen use its page colour (`AccentColors.paper`).
   The loading ring in `index.html` follows the same split. The logo itself keeps the full rainbow. `--accent` is one solid colour from it (blue in light, pink in dark) for what can't
   take a gradient (focus ring, checkboxes, selection, dashed outlines). Heatmap squares show their part of one
   rainbow across the grid (`--gx/--gy/--gw/--gh`). `--danger` is rose/red. Easing tokens: `--ease`,
@@ -705,6 +714,9 @@ MARKETING_VERSION / CURRENT_PROJECT_VERSION.
 - `AppViewController.swift` registers this app's plugins (`bridge?.registerPluginInstance`) and turns iOS scroll
   bounce back on (Capacitor sets `bounces = false`).
 - Keep the screen on: `hooks/useWakeLock.ts` → `AppScreenPlugin.swift` (`UIApplication.isIdleTimerDisabled`).
+  The same plugin's `setBackground` sets the web view's native background (seen when the page is pulled past its
+  top) to the theme's `--paper`, from `hooks/settings.tsx`; capacitor.config's fixed dark one showed as a black band
+  over light and Bamboo pages.
 - Haptics: `utils/haptics.ts` (`haptic`, `hapticAlert`, `prepareHaptic`) → `AppHapticsPlugin.swift`, which plays
   taps through **Core Haptics** (`CHHapticEngine`, fallback `AudioServicesPlaySystemSound(1519)`).
   `UIImpactFeedbackGenerator` (what @capacitor/haptics uses, removed) was accepted but silent in this app on iOS 27.
@@ -781,6 +793,14 @@ more of the tile; `GEOM` and `MARK_SCALE`). `node scripts/app-icon.mjs drafts` w
 rainbow coming in along its diagonal, glass edges (rim, specular highlight, inner shadow) and a glow; its SVGs, PNGs,
 iPhone icon set, portfolio images and script are kept in `archive/icon-rainbow-glass/` (README there says how to bring
 it back). The widget and Live Activity still draw `LogoMark` in the theme's sweep.
+**Accent icons** (Settings → Appearance → "Match the app icon", app only, `Settings.appIconMatches`, off by default):
+`scripts/ios-accent-icons.mjs` (in `npm run icons`, importing `accentIconSvg` from app-icon.mjs, whose writing only
+runs when it's run itself) draws each premade accent's sweep (its `ink`) as the flat mark on a dark, light and bamboo
+tile → `AppIcon-<accent>-<theme>.appiconset` (20; Mono on dark is the primary icon), all sharing the primary's tinted
+PNG; the app target has `ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS` (setup script) so they're alternate icons.
+`core/appIcon.ts` `appIconFor` picks one (custom colour → Mono's; theme System counts as dark, so the phone's own
+light/dark switching never changes the icon), and `native/appIcon.ts` `useAppIcon` (Layout) applies it through
+`AppScreenPlugin.setIcon` only once you're out of Settings and the intro, since iOS shows a notice at every change.
 The iPhone icon set has this dark icon plus a grey one for tinted home screens; `npm run icons` also writes the watch
 app's (`RerackWatch/Assets.xcassets`, watchOS rounds it itself). `public/app-icon-light.svg` is a white
 version (white tile, near-black lettering; in the glass style a deeper rainbow that rises sooner), used

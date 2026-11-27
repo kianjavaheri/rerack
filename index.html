@@ -24,11 +24,9 @@
       // (hooks/settings.tsx), else the phone's light/dark setting.
       let themeChoice = null;
       try { themeChoice = localStorage.getItem('lifttrack:theme'); } catch {}
-      const dark = themeChoice === 'dark' || (themeChoice !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+      const dark = themeChoice === 'dark' || (themeChoice === 'system' || !themeChoice) && matchMedia('(prefers-color-scheme: dark)').matches;
       document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-      // Dark mode's accent, if another is being tried (hooks/settings.tsx).
-      try { if (localStorage.getItem('rerack:dark-accent') === 'purple') document.documentElement.dataset.accent = 'purple'; } catch {}
-      try { if (localStorage.getItem('rerack:mono-accent') === '1') document.documentElement.dataset.mono = ''; } catch {}
+      if (themeChoice === 'bamboo') document.documentElement.dataset.paper = 'bamboo';
       // Opened from the home screen: app-style bottom tabs instead of the website's top bar.
       // The iPhone app (Capacitor injects window.Capacitor before this runs) looks the same.
       const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
@@ -42,8 +40,20 @@
       try { appUser = localStorage.getItem('rerack:app-user') === '1'; } catch {}
       if (!installed && (location.pathname === '/about' || (location.pathname === '/' && !appUser))) {
         document.documentElement.classList.add('landing');
+        delete document.documentElement.dataset.paper;
       } else if (location.pathname === '/') {
         history.replaceState(null, '', '/home' + location.search + location.hash);
+      }
+      // The accent, when it isn't the default: its colours for this theme, kept by hooks/settings.tsx (not on the
+      // landing page, which has its own).
+      if (!document.documentElement.classList.contains('landing')) {
+        try {
+          const vars = JSON.parse(localStorage.getItem('rerack:accent-vars') || 'null');
+          if (vars) {
+            for (const [name, value] of Object.entries(vars[dark ? 'dark' : 'light'])) document.documentElement.style.setProperty(name, value);
+            document.documentElement.classList.add('accent-custom');
+          }
+        } catch {}
       }
     </script>
     <style>
@@ -54,6 +64,7 @@
       html[data-theme='dark'] { background: #08090a; }
       html.standalone { background: #f2f1f6; }
       html.standalone[data-theme='dark'] { background: #0f1011; }
+      html[data-paper='bamboo'], html.standalone[data-paper='bamboo'] { background: #f3eedf; }
       .boot {
         position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
         gap: 16px; opacity: 0; animation: boot-in 0.3s ease 0.4s forwards;
@@ -72,11 +83,10 @@
       html[data-theme='dark'] .boot-spin::after {
         background: conic-gradient(from 0deg, transparent 0deg, #ed7543 70deg, #ec7c6e 170deg, #e8635c 270deg, #d93a45 340deg, transparent 360deg);
       }
-      html[data-theme='dark'][data-accent='purple'] .boot-spin::after {
-        background: conic-gradient(from 0deg, transparent 0deg, #ea74fc 70deg, #c168ff 170deg, #a870ff 270deg, #6e81ff 340deg, transparent 360deg);
+      /* Another accent (index.html's first script / hooks/settings.tsx set its variables on <html>). */
+      html.accent-custom .boot-spin::after {
+        background: conic-gradient(from 0deg, transparent 0deg, var(--rb-1) 70deg, var(--rb-3) 170deg, var(--rb-5) 270deg, var(--rb-6) 340deg, transparent 360deg);
       }
-      html[data-mono] .boot-spin::after { background: conic-gradient(from 0deg, transparent 0deg, #111 340deg, transparent 360deg); }
-      html[data-theme='dark'][data-mono] .boot-spin::after { background: conic-gradient(from 0deg, transparent 0deg, #f5f5f5 340deg, transparent 360deg); }
       @keyframes boot-in { to { opacity: 1; } }
       @keyframes boot-spin { to { transform: rotate(360deg); } }
       @media (prefers-reduced-motion: reduce) { .boot-spin::after { animation-duration: 2.4s; } }

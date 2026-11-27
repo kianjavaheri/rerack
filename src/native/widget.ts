@@ -1,5 +1,6 @@
 import { registerPlugin } from '@capacitor/core';
 import { useEffect } from 'react';
+import { nativeAccent } from '../core/accents';
 import { dayString } from '../core/body';
 import { doneOn, followedRoutine, requiredOn } from '../core/stats';
 import type { Session, Settings } from '../core/types';
@@ -29,8 +30,8 @@ export function useHomeWidget(sessions: Session[] | undefined, settings: Setting
       return { date: dayString(date), planned, done: doneOn(sessions, date).size > 0 };
     });
     // writtenAt changes every render, so it's left out of the comparison below and added when sending.
-    // accent: dark mode's purple, so the widget's colours follow the app's (Palette.of(dark:purple:)).
-    json = JSON.stringify({ routine: routine?.name ?? null, days, accent: settings.darkAccent ?? null });
+    // colors: the accent in both themes (and Bamboo's page), so the widget's colours follow the app's (Swift `AccentColors`).
+    json = JSON.stringify({ routine: routine?.name ?? null, days, colors: nativeAccent(settings) });
   }
 
   useEffect(() => {

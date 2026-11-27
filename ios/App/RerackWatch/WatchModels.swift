@@ -229,6 +229,13 @@ struct WatchWorkout: Codable, Identifiable, Equatable {
     var slots: [WatchSlot]
 }
 
+/// The accent's colours, each "#rrggbb": four along its sweep, one solid, and text on the sweep.
+struct WatchTone: Codable, Equatable {
+    var sweep: [String]
+    var accent: String
+    var on: String
+}
+
 struct WatchState: Codable, Equatable {
     var v: Int
     var unit: String
@@ -238,8 +245,8 @@ struct WatchState: Codable, Equatable {
     var restAfterLastSet: Bool?
     /// A turn of the Crown on a set's weight, in `unit` (missing from older phones: 5 lb / 2.5 kg).
     var weightStep: Double?
-    /// The app's dark-mode accent ("purple"), or nil for the warm one (`Settings.darkAccent`).
-    var accent: String?
+    /// The app's accent in dark mode (`nativeAccent`); nil (older phones) for the default warm one.
+    var colors: WatchTone?
     var session: Session?
     var last: [String: [WatchSet]]
     var exercises: [String: WatchExercise]
