@@ -183,6 +183,16 @@ export interface Session {
   notes?: string;
 }
 
+/** A Plus purchase as synced in `Settings.plus`. */
+export interface PlusStatus {
+  productId: string;
+  /** StoreKit's original transaction id: the same across a subscription's renewals. */
+  originalId: string;
+  /** Null: the lifetime purchase. Else when the subscription runs out unless it renews. */
+  expiresAt: string | null;
+  willRenew?: boolean;
+}
+
 export interface Settings {
   unit: WeightUnit;
   theme: ThemePreference;
@@ -208,6 +218,11 @@ export interface Settings {
    * since iOS shows a notice every time an app changes its icon.
    */
   appIconMatches?: boolean;
+  /**
+   * Rerack Plus (`core/plus.ts`), as the iPhone app last saw it in StoreKit, synced so the web app and other devices
+   * know too. Null or missing: none. Written only by `usePurchases`.
+   */
+  plus?: PlusStatus | null;
   /** The routine being followed: drives "Up next", planned days and check-in badges. See `followedRoutine`. */
   activeRoutineId?: ID | null;
   /** Rest length in seconds, started by checking off a set; 0 = only when started by hand (then 2:00). Missing: `DEFAULT_REST_SECONDS`. */

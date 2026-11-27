@@ -261,6 +261,9 @@ function ExerciseAnalytics({ exercise, points, unit, color, metric, onMetric, ra
                   dataKey="t"
                   type="number"
                   scale="time"
+                  // Ticks only at the sessions: the tooltip snaps to the axis's ticks, so evenly spaced dates put it
+                  // between points (minTickGap still drops labels that would overlap).
+                  ticks={data.map((d) => d.t)}
                   domain={data.length === 1 ? [data[0].t - 86_400_000 * 3, data[0].t + 86_400_000 * 3] : ['dataMin', 'dataMax']}
                   tickFormatter={(t: number) => formatDate(new Date(t).toISOString())}
                   tick={{ fill: 'var(--muted)', fontSize: 12 }}

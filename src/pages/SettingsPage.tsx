@@ -8,6 +8,9 @@ import { AccentPicker, ThemePicker } from '../components/Appearance';
 import { useFeedback } from '../components/Feedback';
 import { NotificationChoice } from '../components/NotificationChoice';
 import { ProfileFields, ProfileHeader } from '../components/Profile';
+import { openPlusSheet } from '../components/PlusSheet';
+import { plusSummary } from '../core/plus';
+import { setDevPlus, useDevPlus } from '../native/purchases';
 import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
 import { RestLength } from '../components/RestLength';
 import { checkSnapshot } from '../core/backup';
@@ -74,7 +77,7 @@ function AppleHealthCard() {
 
 export function SettingsPage() {
   const navigate = useNavigate();
-  const { settings, update } = useSettings();
+  const { settings, update, plus } = useSettings();
   const { confirm, notify } = useFeedback();
   const auth = useAuth();
   const signedIn = auth.status === 'signed-in';
@@ -130,6 +133,8 @@ export function SettingsPage() {
         {auth.status === 'local' && <SignInCard />}
 
         <h2 className="title settings-heading">Settings</h2>
+
+        <PlusCard />
 
         <div className="card">
           <div className="spread">
@@ -276,7 +281,9 @@ export function SettingsPage() {
           {isNative && (
             <div className="spread" style={{ flexWrap: 'nowrap', marginTop: 20 }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>Match the app icon</div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>
+                  Match the app icon {!plus && <span className="plus-tag">Plus</span>}
+                </div>
                 <div className="muted small">
                   The home-screen icon takes your accent and theme. It changes once you leave Settings, and iPhone lets
                   you know each time.
@@ -288,7 +295,7 @@ export function SettingsPage() {
                 role="switch"
                 aria-checked={!!settings.appIconMatches}
                 aria-label="Match the app icon"
-                onClick={() => update({ appIconMatches: !settings.appIconMatches })}
+                onClick={() => (plus ? update({ appIconMatches: !settings.appIconMatches }) : openPlusSheet())}
               />
             </div>
           )}
@@ -405,6 +412,44 @@ function WeightStepCard() {
           <span className="suffix">{unit}</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Rerack Plus: what you have, or a way to see what it is. Calm, one line, no upsell beyond that. */
+function PlusCard() {
+  const { plus, settings } = useSettings();
+  const dev = useDevPlus();
+  return (
+    <div className="card">
+      <div className="spread" style={{ flexWrap: 'nowrap' }}>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>Rerack Plus</div>
+          <div className="muted small">
+            {plus
+              ? settings.plus
+                ? `You have Plus. ${plusSummary(settings.plus)}.`
+                : 'You have Plus.'
+              : 'Every accent, your own colour, Bamboo and a matching icon. Everything else stays free.'}
+          </div>
+        </div>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={openPlusSheet}>
+          {plus ? 'Details' : 'See Plus'}
+        </button>
+      </div>
+      {import.meta.env.DEV && (
+        <div className="spread" style={{ flexWrap: 'nowrap', marginTop: 14 }}>
+          <div className="muted small">Development only: act as if this device has Plus.</div>
+          <button
+            type="button"
+            className={`switch${dev ? ' on' : ''}`}
+            role="switch"
+            aria-checked={dev}
+            aria-label="Pretend to have Plus"
+            onClick={() => setDevPlus(!dev)}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -47,24 +47,22 @@ export function DeleteRoutineDialog({ routine, routines, workouts, onClose, onDe
     <Modal title={`Delete “${routine.name}”?`} onClose={onClose}>
       <p className="muted" style={{ fontSize: 14, lineHeight: 1.5 }}>
         {onlyHere.length > 0
-          ? `${pluralize(onlyHere.length, 'workout')} only used here: ${onlyHere.map((wid) => workoutById.get(wid)?.name).join(', ')}. ${onlyHere.length === 1 ? 'Keep it, or delete it' : 'Keep them, or delete them'} with the routine? Past sessions are kept either way.`
+          ? `${pluralize(onlyHere.length, 'workout')} only used here: ${onlyHere.map((wid) => workoutById.get(wid)?.name).join(', ')}. Delete all deletes ${onlyHere.length === 1 ? 'it' : 'them'} too. Past sessions are kept either way.`
           : 'Its workouts are also in other routines, so they stay. Past sessions are kept.'}
       </p>
-      <div className="row-wrap" style={{ justifyContent: 'flex-end', marginTop: 18, gap: 8 }}>
-        <button className="btn btn-sm" autoFocus onClick={onClose}>
-          Cancel
-        </button>
+      {/* No Cancel: the × and a swipe down close it. Both deletes share one row. */}
+      <div className="row" style={{ marginTop: 18, gap: 8 }}>
         {onlyHere.length > 0 ? (
           <>
-            <button className="btn btn-sm" onClick={() => remove(false)}>
+            <button className="btn btn-sm" style={{ flex: 1 }} onClick={() => remove(false)}>
               Delete routine only
             </button>
-            <button className="btn btn-sm" style={danger} onClick={() => remove(true)}>
-              Delete routine and workouts
+            <button className="btn btn-sm" style={{ ...danger, flex: 1 }} onClick={() => remove(true)}>
+              Delete all
             </button>
           </>
         ) : (
-          <button className="btn btn-sm" style={danger} onClick={() => remove(false)}>
+          <button className="btn btn-sm" style={{ ...danger, flex: 1 }} onClick={() => remove(false)}>
             Delete routine
           </button>
         )}

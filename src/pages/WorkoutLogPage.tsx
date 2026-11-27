@@ -22,7 +22,20 @@ export function RecentWorkouts({ count = 4 }: { count?: number }) {
   const { settings } = useSettings();
   const [held, setHeld] = useState<Held<Session> | null>(null);
   const hold = useLongPress(setHeld);
-  if (!sessions || !exercises || sessions.length === 0) return null;
+  if (!sessions || !exercises) return null;
+  // A new account: the heading anyway, saying what will go here.
+  if (sessions.length === 0) {
+    return (
+      <section className="section">
+        <h2 className="section-title" style={{ margin: 0 }}>
+          Recent workouts
+        </h2>
+        <p className="muted" style={{ marginTop: 8, fontSize: 14 }}>
+          Workouts you log show up here. Tap + to start one.
+        </p>
+      </section>
+    );
+  }
 
   const exerciseName = new Map(exercises.map((e) => [e.id, e.name]));
   return (

@@ -330,9 +330,8 @@ export function SessionPage() {
                 finishedAt: s.finishedAt ? new Date(Date.parse(s.finishedAt) + shift).toISOString() : null,
               }));
             }}
-          />
-          {!inProgress && (
-            <div className="row-wrap" style={{ gap: 10, alignItems: 'flex-start', marginTop: 10 }}>
+          >
+            {!inProgress && (
               <label className="duration-field">
                 <span className="label">Duration</span>
                 <div className="affix">
@@ -349,8 +348,8 @@ export function SessionPage() {
                   <span className="suffix">min</span>
                 </div>
               </label>
-            </div>
-          )}
+            )}
+          </DateTimeFields>
         </div>
       )}
 
@@ -422,7 +421,7 @@ export function SessionPage() {
                     update((s) => {
                       const entries = orderByProgress(s.entries, entry.id);
                       if (entries.every((e, k) => e.id === s.entries[k].id)) return s;
-                      flip();
+                      flip(entry.id);
                       return { ...s, entries };
                     });
                   }}

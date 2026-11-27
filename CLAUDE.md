@@ -52,7 +52,10 @@ with a few missed sessions and some a day late, weights climbing with two lighte
 the `web-shots` launch config (:5176, its own origin, so loading demo data there doesn't touch `web-local`'s), load
 demo data, `standalone` class, viewport 390 x 797, finish animations before each capture. The same shots, as PNGs (`<name>-dark.png` /
 `<name>-light.png`), go in `portfolio/screenshots/`. Taking them late at night, the page's `Date` can be swapped for a
-subclass whose `now` is an evening, so times and the greeting read naturally. The sign-in screen links
+subclass whose `now` is an evening, so times and the greeting read naturally (the `web-shots` account's last day is Wed
+Nov 4, 2026; after swapping, fire a `visibilitychange` so ForgottenWorkout re-reads the clock, else it asks "Still working
+out?"). The shots: Home, Workouts' Routines tab scrolled to Programs with Upper / Lower open, a live Pull with the rest
+running, its summary, Bench Press in Analytics, the Log; each theme captured from the same state by saving `theme`. The sign-in screen links
 back with "What's Rerack?" (`.web-only`, hidden when installed). A back-to-top button (`.lp-top-btn`: a rounded square in the
 app's rainbow, orange in dark and blue in light, like the tab bar's +) shows at the bottom right once the first
 screen has scrolled away; the footer leaves room under its links for it. The PWA manifest's `start_url` is `/home`.
@@ -172,7 +175,7 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   checking a set moves that exercise's group up past the groups just above it that are less far along (untouched <
   under way < finished), nothing else moves. So the next one started takes the next open spot (start 2, then 4 → 2,
   4, 1, 3; finish 4 while 2 isn't → 4, 2), and one you dragged after another stays there (a superset moves as one;
-  in progress only, saved, cards slide via `useSlotFlip`; the watch's set ops do the same). Finishing one plays
+  in progress only, saved, cards slide via `useSlotFlip`; one that lands above the screen is scrolled to, clear of the rest bar, `flip(entry.id)`; the watch's set ops do the same). Finishing one plays
   `components/DoneBurst.tsx` (a rainbow circle whose check draws itself, a ring, two haptic taps; pointer-events none).
   `lastPerformanceWithDate` takes options: `before` (the session's own start, so back-dated logs look further back),
   `occurrence` (same exercise twice in a workout) and prefers real sessions over imported ones. The ✓ "done" flag drives
@@ -214,7 +217,7 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   YouTube links read "YouTube Video" with YouTube's logo (`isYouTube` in `core/links.ts`).
 - Progress metric for one number per session (`progressValue`): estimated 1RM (Epley) for weighted exercises, total
   reps for bodyweight. Analytics is one page (Records was dropped; Log is its own tab, and the old
-  `?view=log` redirects there). It lists logged workouts and exercises together (one filter; `?workout=` or `?exercise=`, else the latest workout). A workout plots each exercise as % change from its first session so
+  `?view=log` redirects there). It lists logged workouts and exercises together (one filter; `?workout=` or `?exercise=`, else the latest workout). Charts' X axis has a tick at every data point (`ticks`): Recharts' tooltip snaps to ticks, and landed on dates with nothing logged. A workout plots each exercise as % change from its first session so
   different loads share one axis (no dual axes). Under the chart each exercise is a row with a check box in its line's
   colour (tap to hide or show it) and an **Only** button that shows it by itself (tapped again, all come back); "Show
   all" appears once any is hidden. Above it, two tiles: Average change and "Up last session" ("3 of 5 exercises"; the
@@ -288,7 +291,7 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   too, or share the same ones; `cloneRoutine` in `core/plan.ts` keeps days, every and optional), also from the
   routine editor's Duplicate button. On Check in, where tapping a card
   starts the workout, a routine's heading can be held too (`.routine-heading`). Icons are lucide's outlines. Routine
-  delete there and in the editor is `components/DeleteRoutineDialog.tsx`; deleting the followed routine follows the
+  delete there and in the editor is `components/DeleteRoutineDialog.tsx` (no Cancel: its delete buttons share one row; tapping outside or swiping down closes it); deleting the followed routine follows the
   one trained from most recently instead (else the newest), so Home isn't left without one.
   The touch that opens a menu carries on after it opens, so the tab and edge swipes also check for an `.overlay`
   while a touch moves, not only where it starts.
@@ -299,7 +302,7 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   `onHold`) with what the card's own buttons used to be: **Replace** (the exercise search, keeps sets/reps/notes,
   Undo), Edit (the exercise form), Move up, Move down, Remove; only the superset link stays on the card. After 350 ms still the item lifts with a haptic, the page stops
   scrolling by touch (touchmove `preventDefault`) and scrolls itself near the screen edges, the others slide aside, and
-  letting go calls the same move as the arrow buttons (`move` / `moveUnlinked`). Moving first is a scroll. Slides
+  letting go calls the same move as the arrow buttons (`move` / `moveUnlinked`). Moving first is a scroll. The lifted shadow is on the card itself (`.drag-lifted .card`), not the square wrapper, whose shadow showed as corners. Slides
   and the drop use an even 280 ms ease-in-out (the app's front-loaded `--ease` at 0.2 s looked like popping), and
   offsets are cleared with transitions off before the list re-renders (else cards jump past and slide back). Every
   press-and-hold in the app gives a haptic when it takes effect, and every delete or remove one firm tap
@@ -309,6 +312,32 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   it also ends on `touchend`/`touchcancel`, any other pointer going down, blur or the page hiding, and a new press
   ends a stale one. Page scroll locks behind dialogs, menus and windows go through `utils/scrollLock.ts` (counted;
   each saving and restoring `body.style.overflow` could restore "hidden").
+- **Rerack Plus** (`core/plus.ts`): an upgrade, never a gate. The user uninstalls apps with trials or paywalled core
+  features, so: no trial, no limits, nothing needed to train behind it (logging, routines, progress, sync, watch,
+  widgets, Health, backups and export stay free). Plus is the look: every accent but Classic, the colour wheel,
+  Bamboo, "Match the app icon". Products (`PLUS_PRODUCTS`): `com.kianjavaheri.fitnesstracker.plus.monthly` /
+  `.yearly` (one subscription group, "Rerack Plus") and `.lifetime` (non-consumable), all Family Sharing.
+  **Gating is in one place**: `SettingsProvider` exposes `settings` as `withoutPlus(saved)` when Plus is off
+  (Classic, Light for Bamboo, no icon matching) and `saved` as stored, so everything downstream (CSS, widget, lock
+  screen, watch, icon, the first-frame localStorage copies) follows, and a lapsed user's choice comes back with Plus.
+  `plus` = StoreKit on this iPhone (`useDevicePlus`) or the synced copy `Settings.plus` (`plusActive`: lifetime, or a
+  subscription within 3 days of `expiresAt`, since only the phone sees renewals). Without Plus a locked accent or
+  Bamboo is **tried on** (`preview`/`setPreview`: page CSS only, never saved or sent native) with `PlusPreviewBar`
+  (Trying Pink · Undo · Get Plus); leaving the picker ends it, and getting Plus while trying saves what was tried.
+  `components/PlusSheet.tsx` (`openPlusSheet()`, host in Layout): calm on purpose (no countdowns or "best value"),
+  free-is-free line first, the three plans with StoreKit's own prices, Restore purchases, Terms (Apple's standard
+  EULA) and Privacy, renewal wording App Review asks for; on the web it says Plus is bought in the iPhone app.
+  Settings has a Plus card at the top of Settings, with a **dev-only** "act as if this device has Plus" switch
+  (`setDevPlus`, localStorage `rerack:plus-dev`, ignored in builds).
+  **StoreKit** (`ios/App/App/AppPurchasesPlugin.swift`, `AppPurchases` in JS, `native/purchases.ts`): StoreKit 2,
+  no server: products, purchase (`confirmIn` the scene), entitlements (`active`: current verified, not revoked;
+  `known`: every original id this Apple ID has), restore (`AppStore.sync`), manage (Apple's sheet), and a
+  `Transaction.updates` listener from load that finishes transactions and tells JS. `usePurchases` (Layout) re-reads
+  at start, on return to the front and on each update, and writes `Settings.plus` via `syncedPlus`: StoreKit granting
+  wins; not granting clears it only if it's this Apple ID's own purchase (`known`). The synced copy is trusted from the
+  client (it's only cosmetics); a Cloud Function with App Store Server Notifications could make it server-written.
+  Local testing: `ios/App/App/Rerack.storekit` (in the project, no target; pick it in Edit Scheme → Run → Options →
+  StoreKit Configuration). The privacy policy has a Rerack Plus section.
 - **No calories**: tracking them (typed in, or from Apple Health) was tried and dropped; typing them in wasn't worth
   the space. Reading Health is possible now that there's a paid Developer account, if it's ever revisited.
 - **Duration**: `Session.durationMinutes` overrides the timer (null = deliberately none); back-logged sessions have
@@ -350,7 +379,7 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   `ExerciseLibrary` from `ExercisesPage.tsx`. (It was a Programs | Exercises switch with Import on the right, and
   before that "Import from notes".) `/edit` redirects there; editors keep
   `/edit/workouts/:id`, `/edit/routines/:id`, `/edit/exercises`, `/edit/import` and return to it.
-- What you've logged lives on Home: **Recent workouts** (the last 4, `RecentWorkouts` in `WorkoutLogPage.tsx`) under
+- What you've logged lives on Home: **Recent workouts** (the last 4, `RecentWorkouts` in `WorkoutLogPage.tsx`; with none yet, the heading and a gray line saying they'll show up there) under
   Activity, with "See all" → `/history` (`HistoryPage`: every session by month, a sub-page with Back and edge swipe).
   Finishing a workout opens its summary as a page of its own over the app (`components/SummaryWindow.tsx`,
   `openWorkoutSummary(id, celebrate)`, rendered once in Layout so it doesn't depend on which copy of SessionPage is
@@ -390,7 +419,7 @@ GoogleAuthProvider.credential(JSON.stringify({ sub, email, name })))` works with
   (`ToastBanner`). Deletes act at once and offer Undo; only irreversible things (backup restore,
   signing out with unsynced changes) ask first. Starting a workout while one is open goes through `useStartSession`.
 - **Live workout page**: no date/time row (the bottom bar has the time so far; back-logged and finished ones show the
-  date fields: just Date and Time, no Today/Yesterday shortcuts, a new log starting at now) and no "tap the check" hint; the Live / Done badge sits right after the name (`.session-name` grows
+  date fields: just Date and Time, with Duration on the same row (`DateTimeFields`' children, `.with-extra`), no Today/Yesterday shortcuts, a new log starting at now) and no "tap the check" hint; the Live / Done badge sits right after the name (`.session-name` grows
   with the text). An exercise card (`EntryCard`): on the left its picture, then the name with small gray text under it ("Last 3d ago",
   `shortAgo`, or "First time"; once finished "✓ 5:12 PM · Last …"), and on the right a two-column grid
   (`.entry-actions`): its rest chip over a **Notes** chip (icon and the word, `NotesButton`; every notes button is this chip now, the workout's own in the editor and session title rows too, with our own page-with-a-plus icon, `NoteIcon` in `components/Notes.tsx`), both as wide as
@@ -682,6 +711,7 @@ out from the start, end − `restLength`, so ±15 s survive; 0:00 ends it). `Res
   without labelling what it encodes.
 - Navbar spans the full width (`.nav-inner`, slim `clamp()` gutter) while page content stays max 1200px; the signed-in
   avatar is 34px with extra spacing around it and the theme toggle.
+- In the app, links and images can't be long-pressed or dragged (`-webkit-touch-callout`, `-webkit-user-drag` under `html.standalone`): dragging a card's edge showed iOS's link preview with its `capacitor://` address. `.icon-btn` has `padding: 0` (iOS's default button padding pushed the set ⋮ off its highlight).
 - The user prefers compact sizing (13px nav, 15px base, 36px buttons) and plain, personal copy — no marketing
   taglines or branding. Check layouts at phone widths: breakpoints are 480/560/820/900/980px; on ≤560px the main
   panel goes edge-to-edge and the hub is a single row.

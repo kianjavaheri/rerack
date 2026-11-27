@@ -1,8 +1,10 @@
-import { Check } from 'lucide-react';
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { Check, Lock } from 'lucide-react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { ACCENT_PRESETS, accentOf, accentTone, isCustomAccent } from '../core/accents';
+import { isPlusAccent, isPlusTheme } from '../core/plus';
 import type { ThemePreference } from '../core/types';
 import { applyAccent, useSettings } from '../hooks/settings';
+import { openPlusSheet } from './PlusSheet';
 
 const THEMES: { id: ThemePreference; label: string }[] = [
   { id: 'system', label: 'System' },
@@ -11,16 +13,32 @@ const THEMES: { id: ThemePreference; label: string }[] = [
   { id: 'bamboo', label: 'Bamboo' },
 ];
 
-/** System, Light, Dark or Bamboo (a light theme on a warm off-white page). */
+/**
+ * System, Light, Dark or Bamboo (a light theme on a warm off-white page; Plus). Without Plus, Bamboo is tried on
+ * (`preview`, see PlusPreviewBar) rather than saved.
+ */
 export function ThemePicker() {
-  const { settings, update } = useSettings();
+  const { settings, update, plus, preview, setPreview } = useSettings();
+  const theme = preview?.theme ?? settings.theme;
   return (
     <div className="segmented theme-picker">
-      {THEMES.map((t) => (
-        <button key={t.id} className={settings.theme === t.id ? 'on' : ''} onClick={() => update({ theme: t.id })}>
-          {t.label}
-        </button>
-      ))}
+      {THEMES.map((t) => {
+        const locked = !plus && isPlusTheme(t.id);
+        return (
+          <button
+            key={t.id}
+            className={theme === t.id ? 'on' : ''}
+            onClick={() => {
+              if (locked) return setPreview({ ...preview, theme: t.id });
+              if (preview?.theme) setPreview(preview.accent ? { accent: preview.accent } : null);
+              update({ theme: t.id });
+            }}
+          >
+            {t.label}
+            {locked && <Lock size={11} strokeWidth={2.5} className="plus-lock-inline" aria-label="Plus" />}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -35,11 +53,17 @@ const sweepOf = (accent: string, dark: boolean) => {
  * wheel. Changes apply at once; the wheel shows its colour on the whole app while it's turned and saves on letting go.
  */
 export function AccentPicker() {
-  const { settings, update, resolvedTheme } = useSettings();
+  const { settings, update, resolvedTheme, plus, preview, setPreview } = useSettings();
   const dark = resolvedTheme === 'dark';
-  const accent = accentOf(settings);
+  const accent = preview?.accent ?? accentOf(settings);
   const custom = isCustomAccent(accent);
   const [wheelOpen, setWheelOpen] = useState(custom);
+  // Without Plus a Plus accent is tried on, not saved; picking a free one ends the try.
+  const choose = (next: string) => {
+    if (!plus && isPlusAccent(next)) return setPreview({ ...preview, accent: next });
+    if (preview?.accent) setPreview(preview.theme ? { theme: preview.theme } : null);
+    update({ accent: next });
+  };
 
   return (
     <div className="accent-picker">
@@ -53,11 +77,16 @@ export function AccentPicker() {
             className={`accent-swatch${accent === p.id ? ' on' : ''}`}
             onClick={() => {
               setWheelOpen(false);
-              update({ accent: p.id });
+              choose(p.id);
             }}
           >
             <span className="accent-dot" style={{ background: sweepOf(p.id, dark) }}>
               {accent === p.id && <Check size={16} strokeWidth={3} style={{ color: accentTone(p.id, dark).on }} />}
+              {!plus && isPlusAccent(p.id) && (
+                <span className="plus-lock" aria-label="Plus">
+                  <Lock size={9} strokeWidth={3} />
+                </span>
+              )}
             </span>
             <span className="accent-name">{p.name}</span>
           </button>
@@ -71,6 +100,11 @@ export function AccentPicker() {
         >
           <span className="accent-dot accent-dot-wheel">
             {custom && <span className="accent-dot-inner" style={{ background: accent }} />}
+            {!plus && (
+              <span className="plus-lock" aria-label="Plus">
+                <Lock size={9} strokeWidth={3} />
+              </span>
+            )}
           </span>
           <span className="accent-name">Custom</span>
         </button>
@@ -79,9 +113,50 @@ export function AccentPicker() {
         <ColorWheel
           value={custom ? accent : null}
           onPreview={(hex) => applyAccent(hex, dark)}
-          onChange={(hex) => update({ accent: hex })}
+          onChange={choose}
         />
       )}
+      <PlusPreviewBar />
+    </div>
+  );
+}
+
+/**
+ * Shown while a Plus look is being tried on without Plus: what it is, Get Plus, and Undo. Nothing is saved meanwhile,
+ * and leaving (Settings, the intro step) ends the try. Getting Plus while trying keeps what was tried.
+ */
+function PlusPreviewBar() {
+  const { plus, preview, setPreview, update } = useSettings();
+  const previewRef = useRef(preview);
+  previewRef.current = preview;
+
+  useEffect(() => () => setPreview(null), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!plus || !previewRef.current) return;
+    update(previewRef.current);
+    setPreview(null);
+  }, [plus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!preview || plus) return null;
+  const what = [
+    preview.accent && (isCustomAccent(preview.accent) ? 'your own colour' : ACCENT_PRESETS.find((p) => p.id === preview.accent)?.name),
+    preview.theme === 'bamboo' && 'Bamboo',
+  ]
+    .filter(Boolean)
+    .join(' and ');
+  return (
+    <div className="plus-preview" role="status">
+      <div className="plus-preview-text">
+        <strong>Trying {what}</strong>
+        <span className="muted small">Keep it with Rerack Plus.</span>
+      </div>
+      <button type="button" className="btn btn-sm btn-ghost" onClick={() => setPreview(null)}>
+        Undo
+      </button>
+      <button type="button" className="btn btn-sm btn-primary" onClick={openPlusSheet}>
+        Get Plus
+      </button>
     </div>
   );
 }

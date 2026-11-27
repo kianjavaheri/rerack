@@ -26,7 +26,11 @@ end
 
 # The app's own Swift files.
 app_group = project.main_group['App']
-%w[RestActivityPlugin.swift AppHapticsPlugin.swift AppScreenPlugin.swift AppHealthPlugin.swift AppWidgetPlugin.swift AppViewController.swift WatchBridge.swift WatchPlugin.swift].each { |f| add_source(app, file_ref(app_group, f)) }
+%w[RestActivityPlugin.swift AppHapticsPlugin.swift AppScreenPlugin.swift AppHealthPlugin.swift AppWidgetPlugin.swift AppViewController.swift WatchBridge.swift WatchPlugin.swift AppPurchasesPlugin.swift].each { |f| add_source(app, file_ref(app_group, f)) }
+
+# StoreKit's local test products (Rerack Plus), listed so Edit Scheme → Run → Options → StoreKit Configuration can
+# pick it. Not in any target: only Xcode reads it, for Run.
+file_ref(app_group, 'Rerack.storekit')
 
 # The "rest over" notification's sound (scripts/rest-sound.mjs), bundled so a notification can name it.
 app.resources_build_phase.add_file_reference(file_ref(app_group, 'rest-over.caf'), true)

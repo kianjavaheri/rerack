@@ -4,14 +4,29 @@ import { accentOf, accentTone, accentVars, BAMBOO_PAPER, DEFAULT_ACCENT } from '
 import { DEFAULT_SETTINGS, type Settings, type ThemePreference } from '../core/types';
 import { repo } from '../data';
 import { isNative } from '../native/platform';
+import { useDevicePlus } from '../native/purchases';
+import { plusActive, withoutPlus } from '../core/plus';
 import { registerPlugin } from '@capacitor/core';
 
 /** ios/App/App/AppScreenPlugin.swift */
 const AppScreen = registerPlugin<{ setBackground(color: { r: number; g: number; b: number }): Promise<void> }>('AppScreen');
 import { useRepoQuery } from './useRepo';
 
+/** A Plus look tried on without Plus: shown on the page only, never saved or sent to the widget, watch or icon. */
+export interface LookPreview {
+  accent?: string;
+  theme?: ThemePreference;
+}
+
 interface SettingsContextValue {
+  /** The settings in effect: without Plus, its look falls back to Classic and Light (`withoutPlus`). */
   settings: Settings;
+  /** As saved, Plus choices included (kept while Plus is off, so they come back with it). */
+  saved: Settings;
+  /** Rerack Plus is on: StoreKit on this iPhone, or the synced copy (`Settings.plus`). */
+  plus: boolean;
+  preview: LookPreview | null;
+  setPreview: (preview: LookPreview | null) => void;
   /** The saved settings have loaded (until then `settings` is the defaults). */
   ready: boolean;
   /** The theme actually applied after resolving "system". */
@@ -77,7 +92,13 @@ function systemTheme(): 'light' | 'dark' {
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const loaded = useRepoQuery((r) => r.getSettings());
-  const settings = loaded ?? { ...DEFAULT_SETTINGS, theme: storedTheme(), ...storedAccent() };
+  const saved = loaded ?? { ...DEFAULT_SETTINGS, theme: storedTheme(), ...storedAccent() };
+  const devicePlus = useDevicePlus();
+  // Before settings load, the stored theme and accent were already this device's effective ones.
+  const plus = devicePlus || plusActive(saved.plus) || !loaded;
+  const settings = plus ? saved : withoutPlus(saved);
+  const [preview, setPreview] = useState<LookPreview | null>(null);
+  const shown = preview ? { ...settings, ...preview } : settings;
   const [system, setSystem] = useState(systemTheme);
 
   useEffect(() => {
@@ -87,21 +108,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
-  const resolvedTheme = settings.theme === 'system' ? system : settings.theme === 'dark' ? 'dark' : 'light';
-  const bamboo = settings.theme === 'bamboo';
+  const resolvedTheme = shown.theme === 'system' ? system : shown.theme === 'dark' ? 'dark' : 'light';
+  const bamboo = shown.theme === 'bamboo';
 
   useEffect(() => {
     if (!loaded) return;
     try {
-      localStorage.setItem(THEME_KEY, loaded.theme);
+      localStorage.setItem(THEME_KEY, settings.theme);
     } catch {
       // Private mode etc.: the first frame just follows the phone's setting.
     }
-  }, [loaded?.theme]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [settings.theme, !!loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const accent = accentOf(settings);
+  const shownAccent = preview?.accent ?? accent;
   useEffect(() => {
-    applyAccent(accent, resolvedTheme === 'dark');
+    applyAccent(shownAccent, resolvedTheme === 'dark');
     if (!loaded) return;
     try {
       for (const key of OLD_KEYS) localStorage.removeItem(key);
@@ -118,7 +140,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     } catch {
       // Private mode etc.: the first frame has the default colours until settings load.
     }
-  }, [accent, resolvedTheme, !!loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [accent, shownAccent, resolvedTheme, !!loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;
@@ -144,7 +166,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     void repo.getSettings().then((current) => repo.saveSettings({ ...current, ...patch }));
   };
 
-  return <SettingsContext.Provider value={{ settings, ready: !!loaded, resolvedTheme, update }}>{children}</SettingsContext.Provider>;
+  return <SettingsContext.Provider value={{ settings, saved, plus, preview, setPreview, ready: !!loaded, resolvedTheme, update }}>{children}</SettingsContext.Provider>;
 }
 
 export function useSettings() {

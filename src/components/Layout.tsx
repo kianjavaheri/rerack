@@ -17,12 +17,14 @@ import { useNativeRestTimer } from '../native/rest';
 import { useAppleWatch } from '../native/watch';
 import { nativeAccent } from '../core/accents';
 import { useAppIcon } from '../native/appIcon';
+import { usePurchases } from '../native/purchases';
 import { notificationOn } from '../core/notifications';
 import { preloadTabPages, TAB_PATHS } from '../pages/tabPages';
 import { AccountMenu } from './AccountMenu';
 import { ForgottenWorkoutPrompt } from './ForgottenWorkout';
 import { IntroGate } from './Intro';
 import { SummaryWindow } from './SummaryWindow';
+import { PlusSheetHost } from './PlusSheet';
 import { FloatingAccountButton } from './AccountButton';
 import { SyncIndicator } from './SyncIndicator';
 import { TabPager } from './TabPager';
@@ -97,6 +99,7 @@ export function Layout() {
   useScheduledNotifications(sessions, settings);
   // The home-screen icon, when it follows the accent and theme.
   useAppIcon(settings, ready, location.pathname);
+  usePurchases(settings, ready, update);
   // The home-screen widget's next workout and week.
   useHomeWidget(sessions, settings);
   // rerack:// links (the widget opens Check in).
@@ -228,6 +231,7 @@ export function Layout() {
       <SummaryWindow />
       <FloatingAccountButton />
       <IntroGate />
+      <PlusSheetHost />
       <SyncIndicator />
 
       {/* Installed as an app (html.standalone, set in index.html) the top bar gives way to app-style tabs. */}

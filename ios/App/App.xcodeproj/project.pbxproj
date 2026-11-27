@@ -45,6 +45,7 @@
 		AF8979C838BE37B76FA6EA46 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8612F439C532D42E946B0202 /* ActivityKit.framework */; };
 		AFBD26FC26040CCD43FE06FE /* RestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6BEFB1408CBC8C8150528CC /* RestActivityAttributes.swift */; };
 		CEFE81FC0CED47AD8C42BAEB /* WatchModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5D9A3CD0F60FA6FE8A6510 /* WatchModels.swift */; };
+		D1A299D304B8A6C50E743FCA /* AppPurchasesPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0103F4444FA98D62C00F75 /* AppPurchasesPlugin.swift */; };
 		E441A719253D40098C72D856 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52EABD77B6ABFDC1756EF9E6 /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
@@ -129,11 +130,13 @@
 		A4259A7F6D3A909BB254FA18 /* rest-over.caf */ = {isa = PBXFileReference; includeInIndex = 1; path = "rest-over.caf"; sourceTree = "<group>"; };
 		A6BEFB1408CBC8C8150528CC /* RestActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestActivityAttributes.swift; sourceTree = "<group>"; };
 		BAEC62DD6CE2B0978DE4775B /* AppWidgetPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppWidgetPlugin.swift; sourceTree = "<group>"; };
+		BD0103F4444FA98D62C00F75 /* AppPurchasesPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppPurchasesPlugin.swift; sourceTree = "<group>"; };
 		C722CF406C3F3475A975D6AB /* HomeWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeWidget.swift; sourceTree = "<group>"; };
 		CA3D7CA9722A577CB3340249 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		CD83D507973BA2A07A521157 /* RerackWatch.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = RerackWatch.entitlements; sourceTree = "<group>"; };
 		DB520D1B952CBA10589473D1 /* WatchBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchBridge.swift; sourceTree = "<group>"; };
 		DE450428D7E7778A93048785 /* HomeWidgetData.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeWidgetData.swift; sourceTree = "<group>"; };
+		F854185192DA2A37F60EBE25 /* Rerack.storekit */ = {isa = PBXFileReference; includeInIndex = 1; path = Rerack.storekit; sourceTree = "<group>"; };
 		FC57CE1CAA308D265794F505 /* RestTimerWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestTimerWidget.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -233,6 +236,8 @@
 				DB520D1B952CBA10589473D1 /* WatchBridge.swift */,
 				426D652C51088CDD2BB8FF67 /* WatchPlugin.swift */,
 				6C640DF1FD2C983DDC86407D /* AppScreenPlugin.swift */,
+				BD0103F4444FA98D62C00F75 /* AppPurchasesPlugin.swift */,
+				F854185192DA2A37F60EBE25 /* Rerack.storekit */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -475,6 +480,7 @@
 				9202E705771C8C7220267CFD /* WatchBridge.swift in Sources */,
 				7CD515991664F5C650795343 /* WatchPlugin.swift in Sources */,
 				8AC5663D879421DBFCDAB5C2 /* AppScreenPlugin.swift in Sources */,
+				D1A299D304B8A6C50E743FCA /* AppPurchasesPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,0 +1,97 @@
+{
+  "identifier" : "6C1F0A52",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "39.99",
+      "familyShareable" : true,
+      "internalID" : "6C1F0A53",
+      "localizations" : [
+        {
+          "description" : "Rerack Plus for good, with one payment.",
+          "displayName" : "Plus Lifetime",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.kianjavaheri.fitnesstracker.plus.lifetime",
+      "referenceName" : "Plus Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_developerTeamID" : "78842M9R35",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "6C1F0A54",
+      "localizations" : [
+
+      ],
+      "name" : "Rerack Plus",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "19.99",
+          "familyShareable" : true,
+          "groupNumber" : 1,
+          "internalID" : "6C1F0A55",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Every accent, your own colour, Bamboo and a matching icon.",
+              "displayName" : "Plus Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.kianjavaheri.fitnesstracker.plus.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Plus Yearly",
+          "subscriptionGroupID" : "6C1F0A54",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "2.99",
+          "familyShareable" : true,
+          "groupNumber" : 2,
+          "internalID" : "6C1F0A56",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Every accent, your own colour, Bamboo and a matching icon.",
+              "displayName" : "Plus Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.kianjavaheri.fitnesstracker.plus.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Plus Monthly",
+          "subscriptionGroupID" : "6C1F0A54",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

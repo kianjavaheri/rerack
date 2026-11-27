@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react';
 import { toLocalInput } from '../core/format';
 
 /** Separate date and time fields for an ISO timestamp (a new log starts at today and now). */
-export function DateTimeFields({ value, onChange }: { value: string; onChange: (iso: string) => void }) {
+/** A session's date and time; `children` (the Duration field) goes on the same row. */
+export function DateTimeFields({ value, onChange, children }: { value: string; onChange: (iso: string) => void; children?: ReactNode }) {
   const [date, time] = toLocalInput(value).split('T');
   const today = toLocalInput(new Date().toISOString()).split('T')[0];
 
@@ -13,7 +15,7 @@ export function DateTimeFields({ value, onChange }: { value: string; onChange: (
   };
 
   return (
-    <div className="datetime">
+    <div className={`datetime${children ? ' with-extra' : ''}`}>
       <label>
         <span className="label">Date</span>
         <input className="input" type="date" value={date} max={today} onChange={(e) => set(e.target.value, time)} />
@@ -22,6 +24,7 @@ export function DateTimeFields({ value, onChange }: { value: string; onChange: (
         <span className="label">Time</span>
         <input className="input" type="time" value={time} onChange={(e) => set(date, e.target.value)} />
       </label>
+      {children}
     </div>
   );
 }
